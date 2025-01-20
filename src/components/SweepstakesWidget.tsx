@@ -87,12 +87,12 @@ export function SweepstakesWidget({
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold text-center">{title}</CardTitle>
+    <Card className="w-full max-w-md mx-auto sm:w-[95%] md:w-full">
+      <CardHeader className="space-y-2 px-4 sm:px-6">
+        <CardTitle className="text-xl sm:text-2xl font-bold text-center">{title}</CardTitle>
       </CardHeader>
 
-      <div className="px-6">
+      <div className="px-4 sm:px-6">
         <AspectRatio ratio={16 / 9} className="bg-muted rounded-md overflow-hidden">
           <img
             src={imageUrl}
@@ -102,17 +102,21 @@ export function SweepstakesWidget({
         </AspectRatio>
       </div>
 
-      <CardContent className="p-6">
+      <CardContent className="p-4 sm:p-6">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
             <FormField
               control={form.control}
               name="first_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>First Name</FormLabel>
+                  <FormLabel className="text-sm sm:text-base">First Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="John" {...field} />
+                    <Input 
+                      placeholder="John" 
+                      {...field} 
+                      className="h-11 sm:h-10 text-base sm:text-sm"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -124,9 +128,13 @@ export function SweepstakesWidget({
               name="last_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Last Name</FormLabel>
+                  <FormLabel className="text-sm sm:text-base">Last Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Doe" {...field} />
+                    <Input 
+                      placeholder="Doe" 
+                      {...field} 
+                      className="h-11 sm:h-10 text-base sm:text-sm"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -138,9 +146,14 @@ export function SweepstakesWidget({
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel className="text-sm sm:text-base">Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="john@example.com" type="email" {...field} />
+                    <Input 
+                      placeholder="john@example.com" 
+                      type="email" 
+                      {...field} 
+                      className="h-11 sm:h-10 text-base sm:text-sm"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -152,30 +165,30 @@ export function SweepstakesWidget({
               name="gender"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Gender (Optional)</FormLabel>
+                  <FormLabel className="text-sm sm:text-base">Gender (Optional)</FormLabel>
                   <FormControl>
                     <RadioGroup
                       onValueChange={field.onChange}
                       defaultValue={field.value}
-                      className="flex flex-col space-y-1"
+                      className="flex flex-col space-y-2"
                     >
                       <FormItem className="flex items-center space-x-3 space-y-0">
                         <FormControl>
-                          <RadioGroupItem value="male" />
+                          <RadioGroupItem value="male" className="h-5 w-5" />
                         </FormControl>
-                        <FormLabel className="font-normal">Male</FormLabel>
+                        <FormLabel className="font-normal text-base sm:text-sm">Male</FormLabel>
                       </FormItem>
                       <FormItem className="flex items-center space-x-3 space-y-0">
                         <FormControl>
-                          <RadioGroupItem value="female" />
+                          <RadioGroupItem value="female" className="h-5 w-5" />
                         </FormControl>
-                        <FormLabel className="font-normal">Female</FormLabel>
+                        <FormLabel className="font-normal text-base sm:text-sm">Female</FormLabel>
                       </FormItem>
                       <FormItem className="flex items-center space-x-3 space-y-0">
                         <FormControl>
-                          <RadioGroupItem value="other" />
+                          <RadioGroupItem value="other" className="h-5 w-5" />
                         </FormControl>
-                        <FormLabel className="font-normal">Other</FormLabel>
+                        <FormLabel className="font-normal text-base sm:text-sm">Other</FormLabel>
                       </FormItem>
                     </RadioGroup>
                   </FormControl>
@@ -194,10 +207,10 @@ export function SweepstakesWidget({
                       type="checkbox"
                       checked={field.value}
                       onChange={field.onChange}
-                      className="mt-1"
+                      className="mt-1 h-5 w-5"
                     />
                   </FormControl>
-                  <FormLabel className="font-normal">
+                  <FormLabel className="font-normal text-base sm:text-sm">
                     I accept the terms and conditions
                   </FormLabel>
                   <FormMessage />
@@ -205,7 +218,7 @@ export function SweepstakesWidget({
               )}
             />
 
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full h-11 sm:h-10 text-base sm:text-sm">
               Enter Sweepstakes
             </Button>
           </form>
@@ -213,7 +226,7 @@ export function SweepstakesWidget({
       </CardContent>
 
       {disclaimer && (
-        <CardFooter className="text-sm text-muted-foreground text-center px-6">
+        <CardFooter className="text-sm text-muted-foreground text-center px-4 sm:px-6">
           {disclaimer}
         </CardFooter>
       )}
