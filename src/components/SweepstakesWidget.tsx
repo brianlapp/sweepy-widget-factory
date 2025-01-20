@@ -13,7 +13,7 @@ const formSchema = z.object({
   first_name: z.string().min(2, "First name must be at least 2 characters"),
   last_name: z.string().min(2, "Last name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
-  age: z.string().optional(),
+  age: z.string().optional().transform((val) => val ? parseInt(val, 10) : null),
   country: z.string().optional(),
   gender: z.string().optional(),
   postal_code: z.string().optional(),
@@ -51,7 +51,14 @@ export function SweepstakesWidget({ sweepstakesId }: SweepstakesWidgetProps) {
         .from('sweepstakes_entries')
         .insert({
           sweepstakes_id: sweepstakesId,
-          ...values,
+          first_name: values.first_name,
+          last_name: values.last_name,
+          email: values.email,
+          age: values.age,
+          country: values.country,
+          gender: values.gender,
+          postal_code: values.postal_code,
+          terms_accepted: values.terms_accepted,
         });
 
       if (entryError) throw entryError;
