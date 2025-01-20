@@ -9,7 +9,154 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      sweepstakes: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          end_date: string
+          entries_to_draw: number
+          id: string
+          image_url: string | null
+          impression_pixel: string | null
+          is_active: boolean | null
+          prize_info: string | null
+          start_date: string
+          thank_you_headline: string | null
+          thank_you_image_url: string | null
+          title: string
+          tracking_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          end_date: string
+          entries_to_draw?: number
+          id?: string
+          image_url?: string | null
+          impression_pixel?: string | null
+          is_active?: boolean | null
+          prize_info?: string | null
+          start_date?: string
+          thank_you_headline?: string | null
+          thank_you_image_url?: string | null
+          title: string
+          tracking_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          end_date?: string
+          entries_to_draw?: number
+          id?: string
+          image_url?: string | null
+          impression_pixel?: string | null
+          is_active?: boolean | null
+          prize_info?: string | null
+          start_date?: string
+          thank_you_headline?: string | null
+          thank_you_image_url?: string | null
+          title?: string
+          tracking_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      sweepstakes_entries: {
+        Row: {
+          age: number | null
+          country: string | null
+          created_at: string | null
+          email: string
+          first_name: string
+          gender: string | null
+          id: string
+          is_winner: boolean | null
+          last_name: string
+          postal_code: string | null
+          sweepstakes_id: string | null
+          terms_accepted: boolean
+        }
+        Insert: {
+          age?: number | null
+          country?: string | null
+          created_at?: string | null
+          email: string
+          first_name: string
+          gender?: string | null
+          id?: string
+          is_winner?: boolean | null
+          last_name: string
+          postal_code?: string | null
+          sweepstakes_id?: string | null
+          terms_accepted?: boolean
+        }
+        Update: {
+          age?: number | null
+          country?: string | null
+          created_at?: string | null
+          email?: string
+          first_name?: string
+          gender?: string | null
+          id?: string
+          is_winner?: boolean | null
+          last_name?: string
+          postal_code?: string | null
+          sweepstakes_id?: string | null
+          terms_accepted?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sweepstakes_entries_sweepstakes_id_fkey"
+            columns: ["sweepstakes_id"]
+            isOneToOne: false
+            referencedRelation: "sweepstakes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sweepstakes_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          show_age_verification: boolean | null
+          show_country_selection: boolean | null
+          show_gender_selection: boolean | null
+          sweepstakes_id: string | null
+          updated_at: string | null
+          use_beehiiv: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          show_age_verification?: boolean | null
+          show_country_selection?: boolean | null
+          show_gender_selection?: boolean | null
+          sweepstakes_id?: string | null
+          updated_at?: string | null
+          use_beehiiv?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          show_age_verification?: boolean | null
+          show_country_selection?: boolean | null
+          show_gender_selection?: boolean | null
+          sweepstakes_id?: string | null
+          updated_at?: string | null
+          use_beehiiv?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sweepstakes_settings_sweepstakes_id_fkey"
+            columns: ["sweepstakes_id"]
+            isOneToOne: false
+            referencedRelation: "sweepstakes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
