@@ -6,12 +6,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { uploadReadme } from "@/utils/uploadReadme";
 
 async function fetchReadme() {
   try {
     const { data, error } = await supabase.storage
       .from('static')
-      .download('README.md');
+      .download('/README.md');
     
     if (error) {
       console.error('Storage error:', error);
@@ -28,18 +30,32 @@ async function fetchReadme() {
 
 export default function ReadmePage() {
   const { toast } = useToast();
-  const { data: readme, isLoading, error } = useQuery({
+  const { data: readme, isLoading, error, refetch } = useQuery({
     queryKey: ['readme'],
     queryFn: fetchReadme,
+    retry: 1,
     onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Error loading README",
-        description: "Please try uploading the README file first.",
-      });
       console.error('Query error:', error);
     }
   });
+
+  const handleUpload = async () => {
+    try {
+      await uploadReadme();
+      toast({
+        title: "README uploaded",
+        description: "The README file has been uploaded successfully.",
+      });
+      refetch();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Upload failed",
+        description: "Failed to upload README file. Please try again.",
+      });
+      console.error('Upload error:', error);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -58,12 +74,13 @@ export default function ReadmePage() {
   if (error) {
     return (
       <div className="container mx-auto py-8 px-4">
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Failed to load README content. Please try again later.
+            Failed to load README content. The file might not exist yet.
           </AlertDescription>
         </Alert>
+        <Button onClick={handleUpload}>Upload README</Button>
       </div>
     );
   }

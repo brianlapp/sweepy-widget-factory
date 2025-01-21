@@ -3,6 +3,8 @@ import readme from "../../README.md?raw";
 
 export async function uploadReadme() {
   try {
+    console.log('Starting README upload...');
+    
     const { data, error } = await supabase.storage
       .from('static')
       .upload('README.md', new Blob([readme], { type: 'text/markdown' }), {
@@ -16,6 +18,7 @@ export async function uploadReadme() {
     }
 
     console.log('README uploaded successfully:', data);
+    return data;
   } catch (error) {
     console.error('Error in uploadReadme:', error);
     throw error;
