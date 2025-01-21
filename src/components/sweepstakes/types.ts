@@ -20,4 +20,7 @@ export interface SweepstakesWidgetProps {
   title?: string;
   imageUrl?: string;
   disclaimer?: string;
+  thankYouHeadline?: string;
+  thankYouImageUrl?: string;
+  trackingUrl?: string;
 }

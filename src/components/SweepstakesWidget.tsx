@@ -8,14 +8,22 @@ export function SweepstakesWidget({
   sweepstakesId, 
   title = "Enter to Win!", 
   imageUrl = "/placeholder.svg",
-  disclaimer 
+  disclaimer,
+  thankYouHeadline,
+  thankYouImageUrl,
+  trackingUrl
 }: SweepstakesWidgetProps) {
   return (
     <Card className="w-full max-w-md mx-auto sm:w-[95%] md:w-full">
       <SweepstakesHeader title={title} imageUrl={imageUrl} />
       
       <CardContent className="p-4 sm:p-6">
-        <SweepstakesForm sweepstakesId={sweepstakesId} />
+        <SweepstakesForm 
+          sweepstakesId={sweepstakesId}
+          thankYouHeadline={thankYouHeadline}
+          thankYouImageUrl={thankYouImageUrl}
+          trackingUrl={trackingUrl}
+        />
       </CardContent>
 
       {disclaimer && (

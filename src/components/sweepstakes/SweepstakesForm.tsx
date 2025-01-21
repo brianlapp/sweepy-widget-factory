@@ -7,12 +7,23 @@ import { toast } from "sonner";
 import { FormFields } from "./FormFields";
 import { formSchema, FormData } from "./types";
 import { submitSweepstakesEntry } from "./api";
+import { ThankYouPage } from "./ThankYouPage";
 
 interface SweepstakesFormProps {
   sweepstakesId: string;
+  thankYouHeadline?: string;
+  thankYouImageUrl?: string;
+  trackingUrl?: string;
 }
 
-export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
+export function SweepstakesForm({ 
+  sweepstakesId,
+  thankYouHeadline,
+  thankYouImageUrl,
+  trackingUrl
+}: SweepstakesFormProps) {
+  const [isSubmitted, setIsSubmitted] = React.useState(false);
+  
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -26,12 +37,23 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
   const onSubmit = async (values: FormData) => {
     try {
       await submitSweepstakesEntry(sweepstakesId, values);
+      setIsSubmitted(true);
       toast.success("Thank you for entering!");
     } catch (error) {
       console.error('Error submitting entry:', error);
       toast.error("There was an error submitting your entry. Please try again.");
     }
   };
+
+  if (isSubmitted) {
+    return (
+      <ThankYouPage 
+        headline={thankYouHeadline}
+        imageUrl={thankYouImageUrl}
+        trackingUrl={trackingUrl}
+      />
+    );
+  }
 
   return (
     <Form {...form}>
