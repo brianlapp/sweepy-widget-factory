@@ -20,6 +20,9 @@ export default function AuthPage() {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
+          options: {
+            persistSession: true // This ensures the session persists
+          }
         });
         
         if (signInError) {
@@ -37,6 +40,9 @@ export default function AuthPage() {
         const { error: signUpError } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            persistSession: true // This ensures the session persists for new signups too
+          }
         });
         
         if (signUpError) {
