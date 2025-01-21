@@ -5,25 +5,40 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 async function fetchReadme() {
-  const { data, error } = await supabase.storage
-    .from('static')
-    .download('README.md');
-  
-  if (error) {
-    console.error('Storage error:', error);
+  try {
+    const { data, error } = await supabase.storage
+      .from('static')
+      .download('README.md');
+    
+    if (error) {
+      console.error('Storage error:', error);
+      throw error;
+    }
+    
+    const text = await data.text();
+    return text;
+  } catch (error) {
+    console.error('Error fetching README:', error);
     throw error;
   }
-  
-  const text = await data.text();
-  return text;
 }
 
 export default function ReadmePage() {
+  const { toast } = useToast();
   const { data: readme, isLoading, error } = useQuery({
     queryKey: ['readme'],
     queryFn: fetchReadme,
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error loading README",
+        description: "Please try uploading the README file first.",
+      });
+      console.error('Query error:', error);
+    }
   });
 
   if (isLoading) {
