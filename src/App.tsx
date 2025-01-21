@@ -9,6 +9,7 @@ import AuthPage from "./pages/auth/AuthPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import { EditSweepstakesPage } from "./pages/admin/EditSweepstakesPage";
 import { PreviewPage } from "./pages/preview/PreviewPage";
+import ReadmePage from "./pages/ReadmePage";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/admin/sweepstakes/new" element={<EditSweepstakesPage />} />
             <Route path="/admin/sweepstakes/:id/edit" element={<EditSweepstakesPage />} />
             <Route path="/preview/:id" element={<PreviewPage />} />
+            <Route path="/readme" element={<ReadmePage />} />
           </Routes>
         </TooltipProvider>
       </BrowserRouter>
