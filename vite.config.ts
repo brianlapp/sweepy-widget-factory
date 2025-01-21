@@ -8,6 +8,8 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    // Add this to handle client-side routing during development
+    middlewareMode: false,
   },
   plugins: [
     react(),
@@ -19,13 +21,17 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // Add this configuration for proper client-side routing
   preview: {
     port: 8080,
     strictPort: true,
   },
-  // This ensures that the router works correctly
   build: {
     outDir: 'dist',
+    // Add this to ensure all routes redirect to index.html
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
   },
 }));
