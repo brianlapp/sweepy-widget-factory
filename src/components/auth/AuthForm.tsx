@@ -2,15 +2,18 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
 interface AuthFormProps {
   mode: "login" | "signup";
   onSubmit: (email: string, password: string) => Promise<void>;
   isLoading: boolean;
   onModeChange: (mode: "login" | "signup") => void;
+  error?: string;
 }
 
-export function AuthForm({ mode, onSubmit, isLoading, onModeChange }: AuthFormProps) {
+export function AuthForm({ mode, onSubmit, isLoading, onModeChange, error }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -21,6 +24,14 @@ export function AuthForm({ mode, onSubmit, isLoading, onModeChange }: AuthFormPr
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription className="flex items-center gap-2">
+            <ExclamationTriangleIcon className="h-4 w-4" />
+            {error}
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
@@ -41,6 +52,7 @@ export function AuthForm({ mode, onSubmit, isLoading, onModeChange }: AuthFormPr
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
+          minLength={6}
         />
       </div>
       <Button type="submit" className="w-full" disabled={isLoading}>

@@ -8,31 +8,46 @@ import { supabase } from "@/integrations/supabase/client";
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "signup">("login");
+  const [error, setError] = useState<string>("");
   const navigate = useNavigate();
 
-  const onSubmit = async (email: string, password: string) => {
+  const handleAuth = async (email: string, password: string) => {
     try {
       setIsLoading(true);
+      setError("");
       
       if (mode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         
-        if (error) throw error;
+        if (signInError) {
+          if (signInError.message === "Invalid login credentials") {
+            setError("Invalid email or password. Please try again or sign up if you don't have an account.");
+          } else {
+            setError(signInError.message);
+          }
+          return;
+        }
+        
+        toast.success("Successfully signed in!");
         navigate("/admin");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { error: signUpError } = await supabase.auth.signUp({
           email,
           password,
         });
         
-        if (error) throw error;
-        toast.success("Check your email to confirm your account");
+        if (signUpError) {
+          setError(signUpError.message);
+          return;
+        }
+        
+        toast.success("Please check your email to confirm your account!");
       }
     } catch (error: any) {
-      toast.error(error.message);
+      setError(error.message);
     } finally {
       setIsLoading(false);
     }
@@ -54,9 +69,10 @@ export default function AuthPage() {
         <CardContent>
           <AuthForm 
             mode={mode} 
-            onSubmit={onSubmit}
+            onSubmit={handleAuth}
             isLoading={isLoading}
-            onModeChange={(newMode) => setMode(newMode)}
+            onModeChange={setMode}
+            error={error}
           />
         </CardContent>
       </Card>
