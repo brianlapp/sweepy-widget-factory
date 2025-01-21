@@ -3,9 +3,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useNavigate } from "react-router-dom";
 
 export default function Index() {
-  const { data: sweepstakes, isLoading } = useQuery({
+  const navigate = useNavigate();
+
+  const { data: sweepstakes, isLoading, error } = useQuery({
     queryKey: ['active-sweepstakes'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -14,7 +17,10 @@ export default function Index() {
         .eq('is_active', true)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching sweepstakes:', error);
+        throw error;
+      }
       return data;
     },
   });
@@ -23,6 +29,20 @@ export default function Index() {
     return (
       <div className="container mx-auto py-8">
         <Skeleton className="h-[600px] w-full max-w-md mx-auto" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto py-8 text-center">
+        <p className="text-red-500">Error loading sweepstakes. Please try again later.</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+        >
+          Retry
+        </button>
       </div>
     );
   }
