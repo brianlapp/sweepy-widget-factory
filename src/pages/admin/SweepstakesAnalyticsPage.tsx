@@ -13,6 +13,8 @@ export function SweepstakesAnalyticsPage() {
   const { data: sweepstakes } = useQuery({
     queryKey: ['sweepstakes', id],
     queryFn: async () => {
+      if (!id) throw new Error("No sweepstakes ID provided");
+      
       const { data, error } = await supabase
         .from('sweepstakes')
         .select('*')
@@ -22,11 +24,14 @@ export function SweepstakesAnalyticsPage() {
       if (error) throw error;
       return data;
     },
+    enabled: !!id,
   });
 
   const { data: entries, refetch: refetchEntries } = useQuery({
     queryKey: ['sweepstakes-entries', id],
     queryFn: async () => {
+      if (!id) throw new Error("No sweepstakes ID provided");
+
       const { data, error } = await supabase
         .from('sweepstakes_entries')
         .select('*')
@@ -35,6 +40,7 @@ export function SweepstakesAnalyticsPage() {
       if (error) throw error;
       return data;
     },
+    enabled: !!id,
   });
 
   const pickWinner = async () => {
@@ -73,6 +79,10 @@ export function SweepstakesAnalyticsPage() {
   };
 
   const currentWinner = entries?.find(entry => entry.is_winner);
+
+  if (!id) {
+    return <div className="container py-8">No sweepstakes ID provided</div>;
+  }
 
   return (
     <div className="container py-8 space-y-8">
