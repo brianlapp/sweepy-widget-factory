@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { uploadReadme } from "@/utils/uploadReadme";
@@ -27,6 +27,19 @@ async function fetchReadme() {
     throw error;
   }
 }
+
+const CompletedItemRenderer = ({ children }: { children: React.ReactNode }) => {
+  const text = children?.toString() || '';
+  if (text.includes('✅')) {
+    return (
+      <span className="flex items-center gap-2">
+        <Check className="h-4 w-4 text-green-500" />
+        {text.replace('✅', '')}
+      </span>
+    );
+  }
+  return <>{children}</>;
+};
 
 export default function ReadmePage() {
   const { toast } = useToast();
@@ -89,7 +102,13 @@ export default function ReadmePage() {
     <div className="container mx-auto py-8 px-4">
       <Card>
         <CardContent className="p-6 prose prose-sm md:prose-base lg:prose-lg dark:prose-invert max-w-none">
-          <ReactMarkdown>{readme || ''}</ReactMarkdown>
+          <ReactMarkdown components={{
+            li: ({ children }) => (
+              <li>
+                <CompletedItemRenderer>{children}</CompletedItemRenderer>
+              </li>
+            )
+          }}>{readme || ''}</ReactMarkdown>
         </CardContent>
       </Card>
     </div>
