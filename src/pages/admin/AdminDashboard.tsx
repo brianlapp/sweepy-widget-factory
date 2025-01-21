@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Edit, Trash, Eye, Code } from "lucide-react";
+import { Plus, Edit, Trash, Eye, Code, BarChart } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -117,6 +117,13 @@ export default function AdminDashboard() {
                     onClick={() => window.open(`/preview/${sweep.id}`, '_blank')}
                   >
                     <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => navigate(`/admin/sweepstakes/${sweep.id}/analytics`)}
+                  >
+                    <BarChart className="h-4 w-4" />
                   </Button>
                   <Dialog>
                     <DialogTrigger asChild>
