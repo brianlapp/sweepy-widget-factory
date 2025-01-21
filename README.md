@@ -1,8 +1,15 @@
 # Welcome to your Lovable project
 
-## Access Control
-This project is private and access-controlled. Only authorized team members can view and modify the project. The project can be accessed at:
+## Access Control & URLs
+This project has two different URLs:
+
+### Development Access (Private)
+The development project is private and access-controlled. Only authorized team members can view and modify the code. The development environment can be accessed at:
 https://lovable.dev/projects/53cfa3da-b5f1-4f2b-84b9-e4a164320fb6
+
+### Public Access
+The live application is public and can be accessed by anyone at:
+https://53cfa3da-b5f1-4f2b-84b9-e4a164320fb6.lovable.dev
 
 ## Project Status & Roadmap
 
