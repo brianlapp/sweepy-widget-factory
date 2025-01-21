@@ -12,8 +12,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Edit, Trash } from "lucide-react";
+import { Plus, Edit, Trash, Eye, Code } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function AdminDashboard() {
   const { session, isLoading } = useAuth();
@@ -21,7 +28,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!isLoading && !session) {
-      console.log("No session, redirecting to auth"); // Debug log
+      console.log("No session, redirecting to auth");
       navigate("/auth");
     }
   }, [session, isLoading, navigate]);
@@ -43,12 +50,20 @@ export default function AdminDashboard() {
     },
   });
 
-  // Show loading state while checking auth
+  const getEmbedCode = (sweepstakesId: string) => {
+    return `<div id="sweepstakes-widget" data-sweepstakes-id="${sweepstakesId}"></div>
+<script src="${window.location.origin}/widget.js"></script>`;
+  };
+
+  const handleCopyEmbed = (sweepstakesId: string) => {
+    navigator.clipboard.writeText(getEmbedCode(sweepstakesId));
+    toast.success("Embed code copied to clipboard!");
+  };
+
   if (isLoading) {
     return <div className="p-8">Loading...</div>;
   }
 
-  // Don't render anything if not authenticated
   if (!session) {
     return null;
   }
@@ -95,7 +110,34 @@ export default function AdminDashboard() {
                 <TableCell>
                   {new Date(sweep.end_date).toLocaleDateString()}
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => window.open(`/preview/${sweep.id}`, '_blank')}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <Code className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Embed Code</DialogTitle>
+                      </DialogHeader>
+                      <div className="bg-muted p-4 rounded-md">
+                        <pre className="text-sm whitespace-pre-wrap break-all">
+                          {getEmbedCode(sweep.id)}
+                        </pre>
+                      </div>
+                      <Button onClick={() => handleCopyEmbed(sweep.id)}>
+                        Copy Code
+                      </Button>
+                    </DialogContent>
+                  </Dialog>
                   <Button
                     variant="ghost"
                     size="icon"
