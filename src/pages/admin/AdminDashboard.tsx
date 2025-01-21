@@ -16,16 +16,17 @@ import { Plus, Edit, Trash } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AdminDashboard() {
-  const { session } = useAuth();
+  const { session, isLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!session) {
+    if (!isLoading && !session) {
+      console.log("No session, redirecting to auth"); // Debug log
       navigate("/auth");
     }
-  }, [session, navigate]);
+  }, [session, isLoading, navigate]);
 
-  const { data: sweepstakes, isLoading } = useQuery({
+  const { data: sweepstakes, isLoading: isSweepstakesLoading } = useQuery({
     queryKey: ["sweepstakes"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -42,8 +43,14 @@ export default function AdminDashboard() {
     },
   });
 
+  // Show loading state while checking auth
   if (isLoading) {
     return <div className="p-8">Loading...</div>;
+  }
+
+  // Don't render anything if not authenticated
+  if (!session) {
+    return null;
   }
 
   return (

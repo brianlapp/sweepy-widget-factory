@@ -1,15 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [error, setError] = useState<string>("");
   const navigate = useNavigate();
+  const { session, isLoading: isSessionLoading } = useAuth();
+
+  useEffect(() => {
+    if (session && !isSessionLoading) {
+      console.log("Session exists, redirecting to admin"); // Debug log
+      navigate("/admin");
+    }
+  }, [session, isSessionLoading, navigate]);
 
   const handleAuth = async (email: string, password: string) => {
     try {
@@ -17,12 +26,14 @@ export default function AuthPage() {
       setError("");
       
       if (mode === "login") {
+        console.log("Attempting login..."); // Debug log
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password
         });
         
         if (signInError) {
+          console.error("Sign in error:", signInError); // Debug log
           if (signInError.message === "Invalid login credentials") {
             setError("Invalid email or password. Please try again or sign up if you don't have an account.");
           } else {
@@ -32,7 +43,6 @@ export default function AuthPage() {
         }
         
         toast.success("Successfully signed in!");
-        navigate("/admin");
       } else {
         const { error: signUpError } = await supabase.auth.signUp({
           email,
@@ -43,6 +53,7 @@ export default function AuthPage() {
         });
         
         if (signUpError) {
+          console.error("Sign up error:", signUpError); // Debug log
           setError(signUpError.message);
           return;
         }
@@ -50,11 +61,26 @@ export default function AuthPage() {
         toast.success("Please check your email to confirm your account!");
       }
     } catch (error: any) {
+      console.error("Auth error:", error); // Debug log
       setError(error.message);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Show loading state while session is being checked
+  if (isSessionLoading) {
+    return (
+      <div className="container flex items-center justify-center min-h-screen">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  // Don't show auth page if already authenticated
+  if (session) {
+    return null;
+  }
 
   return (
     <div className="container flex items-center justify-center min-h-screen py-8">
