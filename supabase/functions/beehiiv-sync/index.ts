@@ -36,6 +36,12 @@ serve(async (req) => {
       customTag 
     });
 
+    // Prepare the subscriber data with base tag
+    const tags = ['sweeps'];
+    if (customTag) {
+      tags.push(customTag);
+    }
+
     // Prepare the subscriber data
     const subscriberData: BeehiivSubscriber = {
       email,
@@ -44,18 +50,14 @@ serve(async (req) => {
       utm_source: 'sweepstakes',
       utm_medium: customTag || 'organic',
       utm_campaign: customTag || undefined,
-      tags: ['sweeps'],
+      tags,
       reactivate: true,
     };
 
-    // Add custom tag if provided
-    if (customTag) {
-      subscriberData.tags.push(customTag);
-    }
-
     console.log('BeehiiV Sync - Sending data:', subscriberData);
 
-    const response = await fetch(
+    // First create/update the subscription
+    const subscribeResponse = await fetch(
       `https://api.beehiiv.com/v2/publications/${BEEHIIV_PUBLICATION_ID}/subscriptions`,
       {
         method: 'POST',
@@ -67,16 +69,41 @@ serve(async (req) => {
       }
     );
 
-    const data = await response.json();
+    const subscribeData = await subscribeResponse.json();
 
-    if (!response.ok) {
-      console.error('BeehiiV API error:', data);
-      throw new Error(data.message || 'Failed to sync with BeehiiV');
+    if (!subscribeResponse.ok) {
+      console.error('BeehiiV API error (subscribe):', subscribeData);
+      throw new Error(subscribeData.message || 'Failed to sync with BeehiiV');
     }
 
-    console.log('BeehiiV Sync - Success:', data);
+    console.log('BeehiiV Sync - Subscribe Success:', subscribeData);
 
-    return new Response(JSON.stringify(data), {
+    // Then explicitly add tags to the subscription
+    if (subscribeData.data?.id) {
+      const tagResponse = await fetch(
+        `https://api.beehiiv.com/v2/publications/${BEEHIIV_PUBLICATION_ID}/subscriptions/${subscribeData.data.id}/tags`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${BEEHIIV_API_KEY}`,
+          },
+          body: JSON.stringify({ tags }),
+        }
+      );
+
+      const tagData = await tagResponse.json();
+      
+      if (!tagResponse.ok) {
+        console.error('BeehiiV API error (tags):', tagData);
+        // Don't throw here as the subscription was successful
+        console.warn('Failed to add tags but subscription was created');
+      } else {
+        console.log('BeehiiV Sync - Tags Success:', tagData);
+      }
+    }
+
+    return new Response(JSON.stringify(subscribeData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
