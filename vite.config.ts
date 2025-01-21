@@ -19,4 +19,13 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Add this configuration for proper client-side routing
+  preview: {
+    port: 8080,
+    strictPort: true,
+  },
+  // This ensures that the router works correctly
+  build: {
+    outDir: 'dist',
+  },
 }));
