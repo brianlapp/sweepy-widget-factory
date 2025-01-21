@@ -36,11 +36,6 @@ export default function ReadmePage() {
     retry: 1,
     meta: {
       errorMessage: 'Failed to load README content'
-    },
-    onSettled: (data, error) => {
-      if (error) {
-        console.error('Query error:', error);
-      }
     }
   });
 
