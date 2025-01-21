@@ -34,8 +34,13 @@ export default function ReadmePage() {
     queryKey: ['readme'],
     queryFn: fetchReadme,
     retry: 1,
-    onError: (error) => {
-      console.error('Query error:', error);
+    meta: {
+      errorMessage: 'Failed to load README content'
+    },
+    onSettled: (data, error) => {
+      if (error) {
+        console.error('Query error:', error);
+      }
     }
   });
 
