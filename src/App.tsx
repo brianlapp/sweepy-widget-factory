@@ -7,6 +7,7 @@ import { AuthProvider } from "@/components/auth/AuthProvider";
 import Index from "./pages/Index";
 import AuthPage from "./pages/auth/AuthPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import { EditSweepstakesPage } from "./pages/admin/EditSweepstakesPage";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +22,8 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/sweepstakes/new" element={<EditSweepstakesPage />} />
+            <Route path="/admin/sweepstakes/:id/edit" element={<EditSweepstakesPage />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
