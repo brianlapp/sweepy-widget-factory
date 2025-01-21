@@ -31,15 +31,6 @@ const handler = async (req: Request): Promise<Response> => {
     // Always include 'sweeps' tag and add custom tag if provided
     const tags = customTag ? ['sweeps', customTag] : ['sweeps'];
 
-    const subscriber: BeehiivSubscriber = {
-      email,
-      first_name,
-      last_name,
-      utm_source: utm_source || 'sweepstakes',
-      tags,
-      reactivate: true
-    };
-
     const response = await fetch(
       `https://api.beehiiv.com/v2/publications/${BEEHIIV_PUBLICATION_ID}/subscriptions`,
       {
@@ -52,9 +43,9 @@ const handler = async (req: Request): Promise<Response> => {
           email: subscriber.email,
           first_name: subscriber.first_name,
           last_name: subscriber.last_name,
-          utm_source: subscriber.utm_source,
-          tags: subscriber.tags,
-          reactivate: subscriber.reactivate,
+          utm_source: 'sweepstakes',
+          tags: tags,
+          reactivate: true,
         }),
       }
     );
