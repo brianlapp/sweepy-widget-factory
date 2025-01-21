@@ -9,7 +9,7 @@ https://lovable.dev/projects/53cfa3da-b5f1-4f2b-84b9-e4a164320fb6
 
 ### Public Access
 The live application is public and can be accessed by anyone at:
-https://53cfa3da-b5f1-4f2b-84b9-e4a164320fb6.lovable.dev
+https://53cfa3da-b5f1-4f2b-84b9-e4a164320fb6.lovable.app
 
 ## Project Status & Roadmap
 
@@ -136,3 +136,4 @@ Simply open [Lovable](https://lovable.dev/projects/53cfa3da-b5f1-4f2b-84b9-e4a16
 ## I want to use a custom domain - is that possible?
 
 We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+
