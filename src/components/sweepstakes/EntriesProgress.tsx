@@ -15,8 +15,10 @@ export function EntriesProgress({
   entryValue,
   prizeValue 
 }: EntriesProgressProps) {
-  const progress = Math.min((currentEntries / entriesToDraw) * 100, 100);
-  const entriesLeft = Math.max(entriesToDraw - currentEntries, 0);
+  // Calculate total entries needed based on prize value and entry value
+  const totalEntriesNeeded = Math.ceil(prizeValue / entryValue);
+  const progress = Math.min((currentEntries / totalEntriesNeeded) * 100, 100);
+  const entriesLeft = Math.max(totalEntriesNeeded - currentEntries, 0);
   const percentage = Math.round(progress);
   
   return (
@@ -34,7 +36,7 @@ export function EntriesProgress({
                 </button>
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
-                <p>The prize will be drawn when {entriesToDraw} entries are reached! Enter daily to increase your chances.</p>
+                <p>The prize will be drawn when {totalEntriesNeeded} entries are reached! Enter daily to increase your chances.</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
