@@ -1,9 +1,5 @@
 project_id = "xrycgmzgskcbhvdclflj"
 
-[api]
-enabled = true
-url = "https://xrycgmzgskcbhvdclflj.supabase.co"
-
 [functions]
 [functions.beehiiv-sync]
 verify_jwt = false
