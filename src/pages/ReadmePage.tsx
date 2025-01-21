@@ -9,7 +9,7 @@ import { AlertCircle } from "lucide-react";
 async function fetchReadme() {
   const { data, error } = await supabase.storage
     .from('static')
-    .download('/README.md');
+    .download('README.md');
   
   if (error) {
     console.error('Storage error:', error);
