@@ -24,8 +24,9 @@ interface SweepstakesFormProps {
 export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
   const navigate = useNavigate();
   const { createMutation, updateMutation, isEditing } = useSweepstakesMutations(sweepstakesId);
+  const [useBeehiiv, setUseBeehiiv] = React.useState(false);
 
-  const { data: sweepstakes, isLoading } = useQuery({
+  const { data: sweepstakes, isLoading: isSweepstakesLoading } = useQuery({
     queryKey: ['sweepstakes', sweepstakesId],
     queryFn: async () => {
       if (!sweepstakesId) return null;
@@ -33,6 +34,22 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
         .from('sweepstakes')
         .select('*')
         .eq('id', sweepstakesId)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: isEditing,
+  });
+
+  const { data: settings, isLoading: isSettingsLoading } = useQuery({
+    queryKey: ['sweepstakes_settings', sweepstakesId],
+    queryFn: async () => {
+      if (!sweepstakesId) return null;
+      const { data, error } = await supabase
+        .from('sweepstakes_settings')
+        .select('*')
+        .eq('sweepstakes_id', sweepstakesId)
         .maybeSingle();
       
       if (error) throw error;
@@ -62,8 +79,6 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
     },
   });
 
-  const drawType = form.watch('draw_type');
-
   React.useEffect(() => {
     if (sweepstakes) {
       const formattedSweepstakes = {
@@ -78,15 +93,42 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
     }
   }, [sweepstakes, form]);
 
-  const onSubmit = (values: FormData) => {
+  React.useEffect(() => {
+    if (settings) {
+      setUseBeehiiv(settings.use_beehiiv || false);
+    }
+  }, [settings]);
+
+  const onSubmit = async (values: FormData) => {
     if (isEditing) {
-      updateMutation.mutate(values);
+      await updateMutation.mutateAsync(values);
     } else {
-      createMutation.mutate(values);
+      const result = await createMutation.mutateAsync(values);
+      if (result) {
+        // Update settings after creating sweepstakes
+        await supabase
+          .from('sweepstakes_settings')
+          .insert({
+            sweepstakes_id: result.id,
+            use_beehiiv: useBeehiiv,
+          });
+      }
     }
   };
 
-  if (isEditing && isLoading) {
+  const handleBeehiivToggle = async (checked: boolean) => {
+    setUseBeehiiv(checked);
+    if (sweepstakesId) {
+      await supabase
+        .from('sweepstakes_settings')
+        .upsert({
+          sweepstakes_id: sweepstakesId,
+          use_beehiiv: checked,
+        });
+    }
+  };
+
+  if ((isEditing && isSweepstakesLoading) || isSettingsLoading) {
     return <div>Loading...</div>;
   }
 
@@ -97,7 +139,7 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
           <CardContent className="space-y-4">
             <BasicInfoFields form={form} />
             <DrawTypeFields form={form} />
-            {drawType === 'date' && <DateFields form={form} />}
+            {form.watch('draw_type') === 'date' && <DateFields form={form} />}
             
             <div className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
@@ -109,6 +151,19 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
               <Switch
                 checked={form.watch('is_active')}
                 onCheckedChange={(checked) => form.setValue('is_active', checked)}
+              />
+            </div>
+
+            <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <FormLabel>BeehiiV Integration</FormLabel>
+                <div className="text-sm text-muted-foreground">
+                  Sync entries with BeehiiV newsletter
+                </div>
+              </div>
+              <Switch
+                checked={useBeehiiv}
+                onCheckedChange={handleBeehiivToggle}
               />
             </div>
 
