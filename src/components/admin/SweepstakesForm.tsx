@@ -2,17 +2,19 @@ import React from 'react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { useQuery } from "@tanstack/react-query";
+import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { formSchema } from "./types";
 import type { FormData } from "./types";
+import { BasicInfoFields } from "./sweepstakes-form/BasicInfoFields";
+import { DateFields } from "./sweepstakes-form/DateFields";
+import { ThankYouFields } from "./sweepstakes-form/ThankYouFields";
+import { TrackingFields } from "./sweepstakes-form/TrackingFields";
+import { useSweepstakesMutations } from "./sweepstakes-form/useSweepstakesMutations";
 
 interface SweepstakesFormProps {
   sweepstakesId?: string;
@@ -20,7 +22,7 @@ interface SweepstakesFormProps {
 
 export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
   const navigate = useNavigate();
-  const isEditing = Boolean(sweepstakesId);
+  const { createMutation, updateMutation, isEditing } = useSweepstakesMutations(sweepstakesId);
 
   const { data: sweepstakes, isLoading } = useQuery({
     queryKey: ['sweepstakes', sweepstakesId],
@@ -67,75 +69,6 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
     }
   }, [sweepstakes, form]);
 
-  const createMutation = useMutation({
-    mutationFn: async (values: FormData) => {
-      const { data, error } = await supabase
-        .from('sweepstakes')
-        .insert({
-          title: values.title,
-          description: values.description,
-          prize_info: values.prize_info,
-          image_url: values.image_url,
-          entries_to_draw: values.entries_to_draw,
-          start_date: new Date(values.start_date).toISOString(),
-          end_date: new Date(values.end_date).toISOString(),
-          is_active: values.is_active,
-          thank_you_headline: values.thank_you_headline,
-          thank_you_image_url: values.thank_you_image_url,
-          tracking_url: values.tracking_url,
-          impression_pixel: values.impression_pixel,
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      toast.success("Sweepstakes created successfully!");
-      navigate("/admin/sweepstakes");
-    },
-    onError: (error) => {
-      console.error('Error creating sweepstakes:', error);
-      toast.error("Failed to create sweepstakes. Please try again.");
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (values: FormData) => {
-      const { data, error } = await supabase
-        .from('sweepstakes')
-        .update({
-          title: values.title,
-          description: values.description,
-          prize_info: values.prize_info,
-          image_url: values.image_url,
-          entries_to_draw: values.entries_to_draw,
-          start_date: new Date(values.start_date).toISOString(),
-          end_date: new Date(values.end_date).toISOString(),
-          is_active: values.is_active,
-          thank_you_headline: values.thank_you_headline,
-          thank_you_image_url: values.thank_you_image_url,
-          tracking_url: values.tracking_url,
-          impression_pixel: values.impression_pixel,
-        })
-        .eq('id', sweepstakesId)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      toast.success("Sweepstakes updated successfully!");
-      navigate("/admin/sweepstakes");
-    },
-    onError: (error) => {
-      console.error('Error updating sweepstakes:', error);
-      toast.error("Failed to update sweepstakes. Please try again.");
-    },
-  });
-
   const onSubmit = (values: FormData) => {
     if (isEditing) {
       updateMutation.mutate(values);
@@ -153,203 +86,24 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Title</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter sweepstakes title" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Enter sweepstakes description"
-                      className="min-h-[100px]"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="prize_info"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Prize Information</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Enter prize details"
-                      className="min-h-[100px]"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="start_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Start Date</FormLabel>
-                    <FormControl>
-                      <Input type="datetime-local" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="end_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>End Date</FormLabel>
-                    <FormControl>
-                      <Input type="datetime-local" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            <BasicInfoFields form={form} />
+            <DateFields form={form} />
+            
+            <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <FormLabel className="text-base">Active Status</FormLabel>
+                <div className="text-sm text-muted-foreground">
+                  Enable or disable this sweepstakes
+                </div>
+              </div>
+              <Switch
+                checked={form.watch('is_active')}
+                onCheckedChange={(checked) => form.setValue('is_active', checked)}
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="image_url"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Image URL</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter image URL" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="entries_to_draw"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Number of Winners</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        min="1"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="is_active"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">Active Status</FormLabel>
-                    <div className="text-sm text-muted-foreground">
-                      Enable or disable this sweepstakes
-                    </div>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <div className="space-y-4 border-t pt-4">
-              <h3 className="text-lg font-medium">Thank You Page Settings</h3>
-              <FormField
-                control={form.control}
-                name="thank_you_headline"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Thank You Headline</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter thank you headline" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="thank_you_image_url"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Thank You Image URL</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter thank you image URL" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="space-y-4 border-t pt-4">
-              <h3 className="text-lg font-medium">Tracking Settings</h3>
-              <FormField
-                control={form.control}
-                name="tracking_url"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tracking URL</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter tracking URL" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="impression_pixel"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Impression Pixel</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter impression pixel code" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <ThankYouFields form={form} />
+            <TrackingFields form={form} />
           </CardContent>
 
           <CardFooter className="flex justify-between">
