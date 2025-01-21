@@ -14,6 +14,7 @@ interface BeehiivSubscriber {
   last_name?: string;
   utm_source?: string;
   utm_medium?: string;
+  utm_campaign?: string;
   tags: string[];
   reactivate?: boolean;
 }
@@ -27,7 +28,32 @@ serve(async (req) => {
   try {
     const { email, first_name, last_name, utm_source, customTag } = await req.json();
 
-    console.log('Syncing subscriber to BeehiiV:', { email, first_name, last_name, utm_source, customTag });
+    console.log('BeehiiV Sync - Input:', { 
+      email, 
+      first_name, 
+      last_name, 
+      utm_source, 
+      customTag 
+    });
+
+    // Prepare the subscriber data
+    const subscriberData: BeehiivSubscriber = {
+      email,
+      first_name,
+      last_name,
+      utm_source: 'sweepstakes',
+      utm_medium: customTag || 'organic',
+      utm_campaign: customTag || undefined,
+      tags: ['sweeps'],
+      reactivate: true,
+    };
+
+    // Add custom tag if provided
+    if (customTag) {
+      subscriberData.tags.push(customTag);
+    }
+
+    console.log('BeehiiV Sync - Sending data:', subscriberData);
 
     const response = await fetch(
       `https://api.beehiiv.com/v2/publications/${BEEHIIV_PUBLICATION_ID}/subscriptions`,
@@ -37,27 +63,25 @@ serve(async (req) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${BEEHIIV_API_KEY}`,
         },
-        body: JSON.stringify({
-          email: email,
-          first_name: first_name,
-          last_name: last_name,
-          utm_source: utm_source || 'sweepstakes',
-          utm_medium: customTag || '',
-          tags: ['sweeps', customTag],
-          reactivate: true,
-        } as BeehiivSubscriber),
+        body: JSON.stringify(subscriberData),
       }
     );
 
     const data = await response.json();
-    console.log('Successfully synced with BeehiiV:', { data });
+
+    if (!response.ok) {
+      console.error('BeehiiV API error:', data);
+      throw new Error(data.message || 'Failed to sync with BeehiiV');
+    }
+
+    console.log('BeehiiV Sync - Success:', data);
 
     return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
   } catch (error) {
-    console.error('Error in beehiiv-sync function:', error);
+    console.error('BeehiiV Sync - Error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
