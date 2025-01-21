@@ -13,7 +13,7 @@ interface BeehiivSubscriber {
   first_name?: string;
   last_name?: string;
   utm_source?: string;
-  tags?: string[];
+  tags: string[];
   reactivate?: boolean;
 }
 
@@ -43,10 +43,10 @@ const handler = async (req: Request): Promise<Response> => {
           email: email,
           first_name: first_name,
           last_name: last_name,
-          utm_source: 'sweepstakes',
+          utm_source: utm_source || 'sweepstakes',
           tags: tags,
           reactivate: true,
-        }),
+        } as BeehiivSubscriber),
       }
     );
 
