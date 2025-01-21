@@ -40,9 +40,9 @@ const handler = async (req: Request): Promise<Response> => {
           'Authorization': `Bearer ${BEEHIIV_API_KEY}`,
         },
         body: JSON.stringify({
-          email: subscriber.email,
-          first_name: subscriber.first_name,
-          last_name: subscriber.last_name,
+          email: email,
+          first_name: first_name,
+          last_name: last_name,
           utm_source: 'sweepstakes',
           tags: tags,
           reactivate: true,
