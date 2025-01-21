@@ -72,12 +72,12 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
     mutationFn: async (values: FormData) => {
       const { data, error } = await supabase
         .from('sweepstakes')
-        .insert([{
+        .insert({
           ...values,
           // Ensure dates are in the correct format
           start_date: new Date(values.start_date).toISOString(),
           end_date: new Date(values.end_date).toISOString(),
-        }])
+        })
         .select()
         .single();
       
