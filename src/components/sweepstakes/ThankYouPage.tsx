@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface ThankYouPageProps {
   headline?: string;
@@ -19,20 +19,18 @@ export function ThankYouPage({
   }, [trackingUrl]);
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="text-center">
-        <h2 className="text-2xl font-semibold">{headline}</h2>
-      </CardHeader>
+    <div className="text-center space-y-6">
+      <h2 className="text-2xl font-semibold">{headline}</h2>
       
       {imageUrl && (
-        <CardContent className="flex justify-center p-6">
+        <div className="flex justify-center">
           <img 
             src={imageUrl} 
             alt="Thank you"
             className="max-w-full h-auto rounded-lg shadow-md"
           />
-        </CardContent>
+        </div>
       )}
-    </Card>
+    </div>
   );
 }

@@ -14,13 +14,15 @@ interface SweepstakesFormProps {
   thankYouHeadline?: string;
   thankYouImageUrl?: string;
   trackingUrl?: string;
+  onSubmitSuccess?: () => void;
 }
 
 export function SweepstakesForm({ 
   sweepstakesId,
   thankYouHeadline,
   thankYouImageUrl,
-  trackingUrl
+  trackingUrl,
+  onSubmitSuccess
 }: SweepstakesFormProps) {
   const [isSubmitted, setIsSubmitted] = React.useState(false);
   
@@ -38,6 +40,7 @@ export function SweepstakesForm({
     try {
       await submitSweepstakesEntry(sweepstakesId, values);
       setIsSubmitted(true);
+      onSubmitSuccess?.();
       toast.success("Thank you for entering!");
     } catch (error) {
       console.error('Error submitting entry:', error);

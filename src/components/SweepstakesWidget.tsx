@@ -13,9 +13,11 @@ export function SweepstakesWidget({
   thankYouImageUrl,
   trackingUrl
 }: SweepstakesWidgetProps) {
+  const [isSubmitted, setIsSubmitted] = React.useState(false);
+
   return (
     <Card className="w-full max-w-md mx-auto sm:w-[95%] md:w-full">
-      <SweepstakesHeader title={title} imageUrl={imageUrl} />
+      {!isSubmitted && <SweepstakesHeader title={title} imageUrl={imageUrl} />}
       
       <CardContent className="p-4 sm:p-6">
         <SweepstakesForm 
@@ -23,10 +25,11 @@ export function SweepstakesWidget({
           thankYouHeadline={thankYouHeadline}
           thankYouImageUrl={thankYouImageUrl}
           trackingUrl={trackingUrl}
+          onSubmitSuccess={() => setIsSubmitted(true)}
         />
       </CardContent>
 
-      {disclaimer && (
+      {!isSubmitted && disclaimer && (
         <CardFooter className="text-sm text-muted-foreground text-center px-4 sm:px-6">
           {disclaimer}
         </CardFooter>
