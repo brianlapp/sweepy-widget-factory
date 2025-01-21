@@ -16,6 +16,7 @@ export const formSchema = z.object({
   draw_type: z.enum(['date', 'entries']).default('date'),
   entry_value: z.number().min(0.01, "Entry value must be at least $0.01").default(0.10),
   prize_value: z.number().min(1, "Prize value must be at least $1").default(25.00),
+  beehiiv_tag: z.string().optional(),
 });
 
 export type FormData = z.infer<typeof formSchema>;

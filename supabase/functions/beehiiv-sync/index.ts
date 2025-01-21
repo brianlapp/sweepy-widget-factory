@@ -13,6 +13,7 @@ interface BeehiivSubscriber {
   first_name?: string;
   last_name?: string;
   utm_source?: string;
+  tags?: string[];
   reactivate?: boolean;
 }
 
@@ -23,15 +24,19 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, first_name, last_name, utm_source } = await req.json();
+    const { email, first_name, last_name, utm_source, customTag } = await req.json();
 
-    console.log('Syncing subscriber to BeehiiV:', { email, first_name, last_name, utm_source });
+    console.log('Syncing subscriber to BeehiiV:', { email, first_name, last_name, utm_source, customTag });
+
+    // Always include 'sweeps' tag and add custom tag if provided
+    const tags = customTag ? ['sweeps', customTag] : ['sweeps'];
 
     const subscriber: BeehiivSubscriber = {
       email,
       first_name,
       last_name,
       utm_source: utm_source || 'sweepstakes',
+      tags,
       reactivate: true
     };
 
@@ -48,6 +53,7 @@ const handler = async (req: Request): Promise<Response> => {
           first_name: subscriber.first_name,
           last_name: subscriber.last_name,
           utm_source: subscriber.utm_source,
+          tags: subscriber.tags,
           reactivate: subscriber.reactivate,
         }),
       }

@@ -28,6 +28,7 @@ export function useSweepstakesMutations(sweepstakesId?: string) {
           draw_type: values.draw_type,
           entry_value: values.entry_value,
           prize_value: values.prize_value,
+          beehiiv_tag: values.beehiiv_tag,
         })
         .select()
         .single();
@@ -65,6 +66,7 @@ export function useSweepstakesMutations(sweepstakesId?: string) {
           draw_type: values.draw_type,
           entry_value: values.entry_value,
           prize_value: values.prize_value,
+          beehiiv_tag: values.beehiiv_tag,
         })
         .eq('id', sweepstakesId)
         .select()

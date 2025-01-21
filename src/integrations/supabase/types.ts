@@ -11,6 +11,7 @@ export type Database = {
     Tables: {
       sweepstakes: {
         Row: {
+          beehiiv_tag: string | null
           created_at: string | null
           current_entries: number | null
           description: string | null
@@ -32,6 +33,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          beehiiv_tag?: string | null
           created_at?: string | null
           current_entries?: number | null
           description?: string | null
@@ -53,6 +55,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          beehiiv_tag?: string | null
           created_at?: string | null
           current_entries?: number | null
           description?: string | null

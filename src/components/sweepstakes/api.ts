@@ -17,11 +17,17 @@ export async function submitEntry(sweepstakesId: string, formData: FormData) {
     throw new Error("You've already entered this sweepstakes today. Please try again tomorrow!");
   }
 
-  // Get sweepstakes settings to check if BeehiiV sync is enabled
+  // Get sweepstakes settings and details to check if BeehiiV sync is enabled
   const { data: settings } = await supabase
     .from('sweepstakes_settings')
     .select('use_beehiiv')
     .eq('sweepstakes_id', sweepstakesId)
+    .single();
+
+  const { data: sweepstakes } = await supabase
+    .from('sweepstakes')
+    .select('beehiiv_tag')
+    .eq('id', sweepstakesId)
     .single();
 
   // If no entries today, submit the new entry
@@ -51,7 +57,8 @@ export async function submitEntry(sweepstakesId: string, formData: FormData) {
           email: formData.email,
           first_name: formData.first_name,
           last_name: formData.last_name,
-          utm_source: 'sweepstakes'
+          utm_source: 'sweepstakes',
+          customTag: sweepstakes?.beehiiv_tag
         }
       });
     } catch (error) {
