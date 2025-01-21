@@ -1,5 +1,9 @@
 # Welcome to your Lovable project
 
+## Access Control
+This project is private and access-controlled. Only authorized team members can view and modify the project. The project can be accessed at:
+https://lovable.dev/projects/53cfa3da-b5f1-4f2b-84b9-e4a164320fb6
+
 ## Project Status & Roadmap
 
 ### ✅ Completed Features (as of January 2024)
