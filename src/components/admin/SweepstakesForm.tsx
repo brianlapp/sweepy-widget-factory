@@ -46,8 +46,8 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
       prize_info: "",
       image_url: "",
       entries_to_draw: 1,
-      start_date: new Date().toISOString(),
-      end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      start_date: new Date().toISOString().split('T')[0],
+      end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       is_active: true,
       thank_you_headline: "",
       thank_you_image_url: "",
@@ -58,7 +58,13 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
 
   React.useEffect(() => {
     if (sweepstakes) {
-      form.reset(sweepstakes);
+      // Format dates for input[type="date"]
+      const formattedSweepstakes = {
+        ...sweepstakes,
+        start_date: new Date(sweepstakes.start_date).toISOString().split('T')[0],
+        end_date: new Date(sweepstakes.end_date).toISOString().split('T')[0],
+      };
+      form.reset(formattedSweepstakes);
     }
   }, [sweepstakes, form]);
 
@@ -66,7 +72,12 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
     mutationFn: async (values: FormData) => {
       const { data, error } = await supabase
         .from('sweepstakes')
-        .insert([values])
+        .insert([{
+          ...values,
+          // Ensure dates are in the correct format
+          start_date: new Date(values.start_date).toISOString(),
+          end_date: new Date(values.end_date).toISOString(),
+        }])
         .select()
         .single();
       
@@ -87,7 +98,12 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
     mutationFn: async (values: FormData) => {
       const { data, error } = await supabase
         .from('sweepstakes')
-        .update(values)
+        .update({
+          ...values,
+          // Ensure dates are in the correct format
+          start_date: new Date(values.start_date).toISOString(),
+          end_date: new Date(values.end_date).toISOString(),
+        })
         .eq('id', sweepstakesId)
         .select()
         .single();
@@ -116,6 +132,8 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
   if (isEditing && isLoading) {
     return <div>Loading...</div>;
   }
+
+  // ... keep existing code (the JSX form render part remains unchanged)
 
   return (
     <Card>
