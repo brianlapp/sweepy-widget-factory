@@ -13,6 +13,9 @@ export const formSchema = z.object({
   thank_you_image_url: z.string().optional(),
   tracking_url: z.string().optional(),
   impression_pixel: z.string().optional(),
+  draw_type: z.enum(['date', 'entries']).default('date'),
+  entry_value: z.number().min(0.01, "Entry value must be at least $0.01").default(0.10),
+  prize_value: z.number().min(1, "Prize value must be at least $1").default(25.00),
 });
 
 export type FormData = z.infer<typeof formSchema>;

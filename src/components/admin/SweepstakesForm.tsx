@@ -12,6 +12,7 @@ import { formSchema } from "./types";
 import type { FormData } from "./types";
 import { BasicInfoFields } from "./sweepstakes-form/BasicInfoFields";
 import { DateFields } from "./sweepstakes-form/DateFields";
+import { DrawTypeFields } from "./sweepstakes-form/DrawTypeFields";
 import { ThankYouFields } from "./sweepstakes-form/ThankYouFields";
 import { TrackingFields } from "./sweepstakes-form/TrackingFields";
 import { useSweepstakesMutations } from "./sweepstakes-form/useSweepstakesMutations";
@@ -55,8 +56,13 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
       thank_you_image_url: "",
       tracking_url: "",
       impression_pixel: "",
+      draw_type: "date",
+      entry_value: 0.10,
+      prize_value: 25.00,
     },
   });
+
+  const drawType = form.watch('draw_type');
 
   React.useEffect(() => {
     if (sweepstakes) {
@@ -87,11 +93,12 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <CardContent className="space-y-4">
             <BasicInfoFields form={form} />
-            <DateFields form={form} />
+            <DrawTypeFields form={form} />
+            {drawType === 'date' && <DateFields form={form} />}
             
             <div className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
-                <FormLabel className="text-base">Active Status</FormLabel>
+                <FormLabel>Active Status</FormLabel>
                 <div className="text-sm text-muted-foreground">
                   Enable or disable this sweepstakes
                 </div>

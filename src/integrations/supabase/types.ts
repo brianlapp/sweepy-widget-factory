@@ -12,14 +12,18 @@ export type Database = {
       sweepstakes: {
         Row: {
           created_at: string | null
+          current_entries: number | null
           description: string | null
+          draw_type: string
           end_date: string
           entries_to_draw: number
+          entry_value: number | null
           id: string
           image_url: string | null
           impression_pixel: string | null
           is_active: boolean | null
           prize_info: string | null
+          prize_value: number | null
           start_date: string
           thank_you_headline: string | null
           thank_you_image_url: string | null
@@ -29,14 +33,18 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          current_entries?: number | null
           description?: string | null
+          draw_type?: string
           end_date: string
           entries_to_draw?: number
+          entry_value?: number | null
           id?: string
           image_url?: string | null
           impression_pixel?: string | null
           is_active?: boolean | null
           prize_info?: string | null
+          prize_value?: number | null
           start_date?: string
           thank_you_headline?: string | null
           thank_you_image_url?: string | null
@@ -46,14 +54,18 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          current_entries?: number | null
           description?: string | null
+          draw_type?: string
           end_date?: string
           entries_to_draw?: number
+          entry_value?: number | null
           id?: string
           image_url?: string | null
           impression_pixel?: string | null
           is_active?: boolean | null
           prize_info?: string | null
+          prize_value?: number | null
           start_date?: string
           thank_you_headline?: string | null
           thank_you_image_url?: string | null

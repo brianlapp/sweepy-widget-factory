@@ -25,6 +25,9 @@ export function useSweepstakesMutations(sweepstakesId?: string) {
           thank_you_image_url: values.thank_you_image_url,
           tracking_url: values.tracking_url,
           impression_pixel: values.impression_pixel,
+          draw_type: values.draw_type,
+          entry_value: values.entry_value,
+          prize_value: values.prize_value,
         })
         .select()
         .single();
@@ -59,6 +62,9 @@ export function useSweepstakesMutations(sweepstakesId?: string) {
           thank_you_image_url: values.thank_you_image_url,
           tracking_url: values.tracking_url,
           impression_pixel: values.impression_pixel,
+          draw_type: values.draw_type,
+          entry_value: values.entry_value,
+          prize_value: values.prize_value,
         })
         .eq('id', sweepstakesId)
         .select()
