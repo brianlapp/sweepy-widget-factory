@@ -70,6 +70,9 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
         ...sweepstakes,
         start_date: new Date(sweepstakes.start_date).toISOString().split('T')[0],
         end_date: new Date(sweepstakes.end_date).toISOString().split('T')[0],
+        draw_type: sweepstakes.draw_type as "date" | "entries",
+        entry_value: Number(sweepstakes.entry_value) || 0.10,
+        prize_value: Number(sweepstakes.prize_value) || 25.00,
       };
       form.reset(formattedSweepstakes);
     }
