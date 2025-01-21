@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { FormFields } from "./FormFields";
 import { formSchema, FormData } from "./types";
-import { submitSweepstakesEntry } from "./api";
+import { submitEntry } from "./api";
 import { ThankYouPage } from "./ThankYouPage";
 
 interface SweepstakesFormProps {
@@ -38,13 +38,13 @@ export function SweepstakesForm({
 
   const onSubmit = async (values: FormData) => {
     try {
-      await submitSweepstakesEntry(sweepstakesId, values);
+      await submitEntry(sweepstakesId, values);
       setIsSubmitted(true);
       onSubmitSuccess?.();
       toast.success("Thank you for entering!");
     } catch (error) {
       console.error('Error submitting entry:', error);
-      toast.error("There was an error submitting your entry. Please try again.");
+      toast.error(error instanceof Error ? error.message : "There was an error submitting your entry. Please try again.");
     }
   };
 

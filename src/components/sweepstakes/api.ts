@@ -20,12 +20,17 @@ export async function submitEntry(sweepstakesId: string, formData: FormData) {
   // If no entries today, submit the new entry
   const { data, error } = await supabase
     .from('sweepstakes_entries')
-    .insert([
-      {
-        sweepstakes_id: sweepstakesId,
-        ...formData,
-      },
-    ])
+    .insert({
+      sweepstakes_id: sweepstakesId,
+      first_name: formData.first_name,
+      last_name: formData.last_name,
+      email: formData.email,
+      age: formData.age,
+      country: formData.country,
+      gender: formData.gender,
+      postal_code: formData.postal_code,
+      terms_accepted: formData.terms_accepted
+    })
     .select()
     .single();
 
