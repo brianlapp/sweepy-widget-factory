@@ -2,11 +2,12 @@ import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Info, Copy, Check } from 'lucide-react';
+import { Info, Copy, Check, AlertCircle } from 'lucide-react';
 import { uploadWidgetFiles } from '@/utils/uploadWidget';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface Version {
   id: string;
@@ -161,9 +162,24 @@ export function WidgetVersionManager() {
 
   return (
     <div className="space-y-6">
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          To make your widget available for embedding, follow these steps:
+          <ol className="list-decimal list-inside mt-2 space-y-1">
+            <li>Click "Create Version" to create a new widget version</li>
+            <li>Click "Deploy" on the new version to build and upload the widget files</li>
+            <li>Once deployed, select a sweepstakes and copy its embed code</li>
+          </ol>
+        </AlertDescription>
+      </Alert>
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Widget Versions</CardTitle>
+          <div>
+            <CardTitle className="text-sm font-medium">Widget Versions</CardTitle>
+            <CardDescription>Manage and deploy widget versions</CardDescription>
+          </div>
           <Button 
             size="sm" 
             onClick={() => createVersionMutation.mutate()}
@@ -212,6 +228,7 @@ export function WidgetVersionManager() {
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium">Embed Instructions</CardTitle>
+            <CardDescription>Get the code to embed your sweepstakes on any website</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
