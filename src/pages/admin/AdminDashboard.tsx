@@ -24,22 +24,22 @@ import {
 } from "@/components/ui/dialog";
 
 export default function AdminDashboard() {
-  const { session, isLoading } = useAuth();
+  const { session, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [isGeneratingBundle, setIsGeneratingBundle] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!isLoading && !session) {
+    if (!authLoading && !session) {
       console.log("No session, redirecting to auth");
       navigate("/auth");
     }
-  }, [session, isLoading, navigate]);
+  }, [session, authLoading, navigate]);
 
   // Fetch sweepstakes data
-  const { data: sweepstakes, isLoading: isSweepstakesLoading } = useQuery({
+  const { data: sweepstakes, isLoading: sweepstakesLoading } = useQuery({
     queryKey: ["sweepstakes"],
     queryFn: async () => {
+      console.log("Fetching sweepstakes data...");
       const { data, error } = await supabase
         .from("sweepstakes")
         .select("*")
@@ -51,22 +51,11 @@ export default function AdminDashboard() {
         throw error;
       }
 
+      console.log("Sweepstakes data:", data);
       return data;
     },
+    enabled: !!session, // Only fetch when authenticated
   });
-
-  const handleGenerateBundle = async () => {
-    setIsGeneratingBundle(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      toast.success("Widget bundle generated successfully!");
-    } catch (err) {
-      console.error("Bundle generation error:", err);
-      toast.error("Failed to generate widget bundle");
-    } finally {
-      setIsGeneratingBundle(false);
-    }
-  };
 
   const getEmbedCode = (sweepstakesId: string) => {
     return `<div id="sweepstakes-widget" data-sweepstakes-id="${sweepstakesId}"></div>
@@ -78,7 +67,7 @@ export default function AdminDashboard() {
     toast.success("Embed code copied to clipboard!");
   };
 
-  if (isLoading || isSweepstakesLoading) {
+  if (authLoading || sweepstakesLoading) {
     return <div className="p-8">Loading...</div>;
   }
 
