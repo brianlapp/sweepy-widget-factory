@@ -18,10 +18,10 @@ export function WidgetTestPage() {
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [isGeneratingBundle, setIsGeneratingBundle] = useState(false);
   const [showEmbedDialog, setShowEmbedDialog] = useState(false);
+  const [bundleContent, setBundleContent] = useState<string>('');
 
   // Get the public URL for the widget
   const widgetJsUrl = `${window.location.origin}/widget.js`;
-  const widgetBundleUrl = `${window.location.origin}/widget.bundle.js`;
 
   useEffect(() => {
     if (!isLoading && !session) {
@@ -73,7 +73,6 @@ export function WidgetTestPage() {
   const handleGenerateBundle = async () => {
     setIsGeneratingBundle(true);
     try {
-      // Trigger a build through Vite's development server
       const response = await fetch('/build-widget', {
         method: 'POST',
       });
@@ -82,6 +81,8 @@ export function WidgetTestPage() {
         throw new Error('Failed to generate widget bundle');
       }
 
+      const bundle = await response.text();
+      setBundleContent(bundle);
       toast.success("Widget bundle generated successfully!");
       setShowEmbedDialog(true);
     } catch (err) {
@@ -142,21 +143,30 @@ export function WidgetTestPage() {
           <DialogTrigger asChild>
             <Button onClick={handleGenerateBundle} disabled={isGeneratingBundle}>
               <Code className="mr-2 h-4 w-4" />
-              {isGeneratingBundle ? "Generating..." : "Get Embed Code"}
+              {isGeneratingBundle ? "Generating..." : "Get Widget Bundle"}
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle>Widget Embed Code</DialogTitle>
+              <DialogTitle>Widget Bundle Code</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Copy and paste this code into your website where you want the widget to appear:
+                Copy this bundle code and host it on a public URL. Then update the widget.js script to point to your hosted bundle:
               </p>
-              <pre className="p-4 bg-slate-100 rounded-lg text-sm overflow-x-auto">
-                {`<div id="sweepstakes-widget" data-sweepstakes-id="YOUR_SWEEPSTAKES_ID"></div>
-<script src="${widgetJsUrl}"></script>`}
-              </pre>
+              <Textarea 
+                value={bundleContent}
+                className="h-[400px] font-mono text-sm"
+                readOnly
+              />
+              <Button 
+                onClick={() => {
+                  navigator.clipboard.writeText(bundleContent);
+                  toast.success("Bundle code copied to clipboard");
+                }}
+              >
+                Copy Bundle Code
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -167,7 +177,6 @@ export function WidgetTestPage() {
         <AlertDescription>
           The widget files are served from:
           <pre className="mt-2 bg-slate-100 p-2 rounded">{widgetJsUrl}</pre>
-          <pre className="mt-2 bg-slate-100 p-2 rounded">{widgetBundleUrl}</pre>
         </AlertDescription>
       </Alert>
       
