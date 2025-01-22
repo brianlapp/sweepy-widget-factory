@@ -1,8 +1,6 @@
 import React, { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { SweepstakesWidget } from '@/components/SweepstakesWidget';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { WidgetRoot } from '@/widget';
 
 export function EmbedPage() {
   const { id } = useParams<{ id: string }>();
@@ -24,39 +22,13 @@ export function EmbedPage() {
     return () => observer.disconnect();
   }, []);
 
-  const { data: sweepstakes, isLoading } = useQuery({
-    queryKey: ['sweepstakes', id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('sweepstakes')
-        .select('*')
-        .eq('id', id)
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  if (isLoading) {
-    return <div className="p-4">Loading...</div>;
-  }
-
-  if (!sweepstakes) {
-    return <div className="p-4">Sweepstakes not found</div>;
+  if (!id) {
+    return <div className="p-4">Sweepstakes ID not provided</div>;
   }
 
   return (
     <div className="p-4">
-      <SweepstakesWidget
-        sweepstakesId={sweepstakes.id}
-        title={sweepstakes.title}
-        imageUrl={sweepstakes.image_url}
-        disclaimer={sweepstakes.description}
-        thankYouHeadline={sweepstakes.thank_you_headline}
-        thankYouImageUrl={sweepstakes.thank_you_image_url}
-        trackingUrl={sweepstakes.tracking_url}
-      />
+      <WidgetRoot sweepstakesId={id} />
     </div>
   );
 }
