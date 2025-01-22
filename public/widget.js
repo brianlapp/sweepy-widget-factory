@@ -1,10 +1,30 @@
 (function() {
-  function log(message) {
-    console.log('[Widget]:', message);
+  const DEBUG = true;
+  
+  function log(message, type = 'info') {
+    if (!DEBUG) return;
+    
+    const prefix = '[Widget]';
     const debugOutput = document.getElementById('debug-output');
-    if (debugOutput) {
-      debugOutput.textContent += '[Widget]: ' + message + '\n';
+    
+    if (type === 'error') {
+      console.error(prefix, message);
+    } else {
+      console.log(prefix, message);
     }
+    
+    if (debugOutput) {
+      debugOutput.textContent += `${prefix} ${message}\n`;
+    }
+  }
+
+  function getBaseUrl() {
+    const currentScript = document.currentScript || 
+      document.querySelector('script[src*="widget.js"]');
+    if (!currentScript) {
+      throw new Error('Could not find widget script element');
+    }
+    return new URL(currentScript.src).origin + '/assets/';
   }
 
   // Create container div
@@ -12,13 +32,19 @@
   div.id = 'sweepstakes-widget-root';
   const currentScript = document.currentScript || 
     document.querySelector('script[src*="widget.js"]');
+  
+  if (!currentScript) {
+    log('Failed to find widget script element', 'error');
+    return;
+  }
+  
   currentScript.parentNode.insertBefore(div, currentScript);
   log('Created widget root element');
 
   // Add required styles
   const styles = document.createElement('link');
   styles.rel = 'stylesheet';
-  styles.href = currentScript.src.replace('widget.js', 'style.css');
+  styles.href = getBaseUrl() + 'widget.css';
   document.head.appendChild(styles);
   log('Added widget styles');
 
@@ -31,34 +57,36 @@
   // Load widget app script
   function loadAppScript() {
     const script = document.createElement('script');
-    script.src = currentScript.src.replace('widget.js', 'widget.bundle.js');
-    script.onload = initializeWidget;
+    script.src = getBaseUrl() + 'widget.bundle.js';
+    script.onload = () => {
+      log('Widget bundle loaded successfully');
+      initializeWidget();
+    };
     script.onerror = (error) => {
-      log('Error loading widget app: ' + error);
+      log(`Error loading widget bundle from ${script.src}: ${error}`, 'error');
     };
     document.head.appendChild(script);
-    log('Loading widget app script from: ' + script.src);
+    log('Loading widget bundle from: ' + script.src);
   }
 
   // Initialize widget when dependencies are loaded
   function initializeWidget() {
     const widgetContainer = document.getElementById('sweepstakes-widget');
     if (!widgetContainer) {
-      log('Error: Widget container not found');
+      log('Error: Widget container not found', 'error');
       return;
     }
 
     const sweepstakesId = widgetContainer.getAttribute('data-sweepstakes-id');
     if (!sweepstakesId) {
-      log('Error: No sweepstakes ID provided');
+      log('Error: No sweepstakes ID provided', 'error');
       return;
     }
 
     log('Initializing widget with ID: ' + sweepstakesId);
 
-    // Wait for React and ReactDOM to be available
     if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
-      log('Error: React or ReactDOM not loaded');
+      log('Error: React or ReactDOM not loaded', 'error');
       return;
     }
 
@@ -69,7 +97,7 @@
       }));
       log('Widget rendered successfully');
     } catch (error) {
-      log('Error rendering widget: ' + error.message);
+      log('Error rendering widget: ' + error.message, 'error');
     }
   }
 
@@ -86,7 +114,9 @@
       log(index === 0 ? 'React loaded' : 'ReactDOM loaded');
       loadScripts(index + 1);
     };
-    script.onerror = (error) => log('Error loading script: ' + error);
+    script.onerror = (error) => {
+      log(`Error loading ${scripts[index]}: ${error}`, 'error');
+    };
     document.head.appendChild(script);
   }
 

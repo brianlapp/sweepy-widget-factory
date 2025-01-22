@@ -14,6 +14,7 @@ export function WidgetTestPage() {
   const [embedCode, setEmbedCode] = useState('');
   const [iframeKey, setIframeKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isLoading && !session) {
@@ -36,6 +37,8 @@ export function WidgetTestPage() {
             border-radius: 4px;
             font-family: monospace;
             white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
         }
     </style>
 </head>
@@ -46,27 +49,55 @@ export function WidgetTestPage() {
         <h3>Debug Information:</h3>
         <pre id="debug-output"></pre>
     </div>
+    <script>
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'widgetLog') {
+                window.parent.postMessage({
+                    type: 'debugLog',
+                    message: event.data.message
+                }, '*');
+            }
+        });
+    </script>
 </body>
 </html>`;
 
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === 'debugLog') {
+        setDebugLogs(prev => [...prev, event.data.message]);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
   const handleTest = () => {
     setError(null);
+    setDebugLogs([]);
     setIframeKey(prev => prev + 1);
     
-    const blob = new Blob([embedCode], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    
-    const iframe = document.querySelector('iframe');
-    if (iframe) {
-      iframe.src = url;
+    try {
+      const blob = new Blob([embedCode], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      
+      const iframe = document.querySelector('iframe');
+      if (iframe) {
+        iframe.src = url;
+      }
+      
+      toast.success("Test environment refreshed");
+    } catch (err) {
+      setError(`Failed to create test environment: ${err instanceof Error ? err.message : String(err)}`);
+      toast.error("Failed to refresh test environment");
     }
-    
-    toast.success("Test environment refreshed");
   };
 
   const handleReset = () => {
     setEmbedCode(defaultEmbedCode);
     setError(null);
+    setDebugLogs([]);
     toast.info("Embed code reset to default");
   };
 
@@ -104,6 +135,19 @@ export function WidgetTestPage() {
                 <Button onClick={handleTest}>Test Widget</Button>
                 <Button variant="outline" onClick={handleReset}>Reset Code</Button>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Debug Logs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <pre className="bg-slate-100 p-4 rounded-lg text-sm overflow-auto max-h-[200px]">
+                {debugLogs.map((log, i) => (
+                  <div key={i}>{log}</div>
+                ))}
+              </pre>
             </CardContent>
           </Card>
         </div>
