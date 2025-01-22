@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Info } from "lucide-react";
 
 export function WidgetTestPage() {
   const { session, isLoading } = useAuth();
@@ -15,6 +15,10 @@ export function WidgetTestPage() {
   const [iframeKey, setIframeKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
+
+  // Get the public URL for the widget
+  const publicDomain = window.location.hostname.replace('lovable.dev', 'lovableproject.com');
+  const widgetUrl = `https://${publicDomain}/widget.js`;
 
   useEffect(() => {
     if (!isLoading && !session) {
@@ -44,7 +48,7 @@ export function WidgetTestPage() {
 </head>
 <body>
     <div id="sweepstakes-widget" data-sweepstakes-id="YOUR_SWEEPSTAKES_ID"></div>
-    <script src="${window.location.origin}/widget.js"></script>
+    <script src="${widgetUrl}"></script>
     <div>
         <h3>Debug Information:</h3>
         <pre id="debug-output"></pre>
@@ -142,6 +146,16 @@ export function WidgetTestPage() {
   return (
     <div className="container py-8 space-y-6">
       <h1 className="text-2xl font-bold">Widget Test Environment</h1>
+      
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          The widget files (widget.js and widget.bundle.js) must be publicly accessible. 
+          They will be available at:
+          <pre className="mt-2 bg-slate-100 p-2 rounded">{widgetUrl}</pre>
+          <pre className="mt-2 bg-slate-100 p-2 rounded">{widgetUrl.replace('widget.js', 'widget.bundle.js')}</pre>
+        </AlertDescription>
+      </Alert>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
