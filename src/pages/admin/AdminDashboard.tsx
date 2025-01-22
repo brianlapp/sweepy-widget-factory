@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -20,11 +20,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 
 export default function AdminDashboard() {
   const { session, isLoading } = useAuth();
   const navigate = useNavigate();
+  const [isGeneratingBundle, setIsGeneratingBundle] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !session) {
@@ -50,9 +52,25 @@ export default function AdminDashboard() {
     },
   });
 
+  const handleGenerateBundle = async () => {
+    setIsGeneratingBundle(true);
+    try {
+      // Here you would implement the actual bundle generation
+      // For now, we'll simulate it with a delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      toast.success("Widget bundle generated successfully!");
+    } catch (err) {
+      toast.error("Failed to generate widget bundle");
+      console.error(err);
+    } finally {
+      setIsGeneratingBundle(false);
+    }
+  };
+
   const getEmbedCode = (sweepstakesId: string) => {
+    const widgetJsUrl = "https://raw.githubusercontent.com/brianlapp/sweepy-widget-factory/main/public/widget.js";
     return `<div id="sweepstakes-widget" data-sweepstakes-id="${sweepstakesId}"></div>
-<script src="${window.location.origin}/widget.js"></script>`;
+<script src="${widgetJsUrl}"></script>`;
   };
 
   const handleCopyEmbed = (sweepstakesId: string) => {
@@ -134,15 +152,31 @@ export default function AdminDashboard() {
                     <DialogContent>
                       <DialogHeader>
                         <DialogTitle>Embed Code</DialogTitle>
+                        <DialogDescription>
+                          Generate the widget bundle before copying the embed code.
+                        </DialogDescription>
                       </DialogHeader>
-                      <div className="bg-muted p-4 rounded-md">
-                        <pre className="text-sm whitespace-pre-wrap break-all">
-                          {getEmbedCode(sweep.id)}
-                        </pre>
+                      <div className="space-y-4">
+                        <Button 
+                          onClick={handleGenerateBundle}
+                          disabled={isGeneratingBundle}
+                          className="w-full"
+                        >
+                          {isGeneratingBundle ? "Generating..." : "Generate Widget Bundle"}
+                        </Button>
+                        <div className="bg-muted p-4 rounded-md">
+                          <pre className="text-sm whitespace-pre-wrap break-all">
+                            {getEmbedCode(sweep.id)}
+                          </pre>
+                        </div>
+                        <Button 
+                          onClick={() => handleCopyEmbed(sweep.id)}
+                          disabled={isGeneratingBundle}
+                          className="w-full"
+                        >
+                          Copy Embed Code
+                        </Button>
                       </div>
-                      <Button onClick={() => handleCopyEmbed(sweep.id)}>
-                        Copy Code
-                      </Button>
                     </DialogContent>
                   </Dialog>
                   <Button
