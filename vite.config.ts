@@ -41,6 +41,7 @@ export default defineConfig(({ mode }) => ({
         assetFileNames: 'assets/[name]-[hash][extname]',
         chunkFileNames: 'assets/[name]-[hash].js',
       },
+      external: ['react', 'react-dom'], // Exclude React from bundle since we load it from CDN
     },
     sourcemap: true,
     minify: false,
