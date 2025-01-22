@@ -50,6 +50,30 @@ export function WidgetTestPage() {
         <pre id="debug-output"></pre>
     </div>
     <script>
+        console.log('Page loaded.');
+        console.log('Starting widget initialization test...');
+        
+        const widget = document.getElementById('sweepstakes-widget');
+        const sweepstakesId = widget.getAttribute('data-sweepstakes-id');
+        console.log('Sweepstakes ID found:', sweepstakesId);
+        
+        function handleError(error) {
+            console.error(error);
+            const debugOutput = document.getElementById('debug-output');
+            if (debugOutput) {
+                debugOutput.textContent += '\\nError: ' + error;
+            }
+            window.parent.postMessage({
+                type: 'debugLog',
+                message: 'Error: ' + error
+            }, '*');
+        }
+
+        window.onerror = function(msg, url, line, col, error) {
+            handleError(\`\${msg} at \${url}:\${line}:\${col}\`);
+            return false;
+        };
+
         window.addEventListener('message', function(event) {
             if (event.data.type === 'widgetLog') {
                 window.parent.postMessage({
