@@ -74,20 +74,18 @@ export function WidgetTestPage() {
   const handleGenerateBundle = async () => {
     setIsGeneratingBundle(true);
     try {
-      const { data: { url: functionUrl } } = await supabase.functions.invoke('build-widget');
-      const response = await fetch(functionUrl, {
+      const { data, error } = await supabase.functions.invoke('build-widget', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        body: {} // Empty body since we don't need to send any data
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate widget bundle');
+      
+      if (error) throw error;
+      
+      if (!data) {
+        throw new Error('No bundle data received');
       }
 
-      const bundle = await response.text();
-      setBundleContent(bundle);
+      setBundleContent(data);
       toast.success("Widget bundle generated successfully!");
       setShowEmbedDialog(true);
     } catch (err) {
