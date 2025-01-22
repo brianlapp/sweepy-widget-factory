@@ -22,8 +22,8 @@ export function WidgetTestPage() {
   const [bundleContent, setBundleContent] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
 
-  // Extract project ID from Supabase URL
-  const PROJECT_ID = supabase.supabaseUrl.match(/https:\/\/(.*?)\.supabase\.co/)?.[1] || '';
+  // Extract project ID from Supabase URL constant
+  const PROJECT_ID = "xrycgmzgskcbhvdclflj";
   const STORAGE_URL = `https://${PROJECT_ID}.supabase.co/storage/v1/object/public/static`;
   const widgetJsUrl = `${STORAGE_URL}/widget.js`;
 
