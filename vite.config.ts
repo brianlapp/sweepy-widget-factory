@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => ({
     strictPort: true,
   },
   build: {
-    outDir: 'dist',
+    outDir: 'public',
     assetsDir: '',
     rollupOptions: {
       input: {
@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => ({
       output: {
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === 'widget') {
-            return 'public/widget.bundle.js';
+            return 'widget.bundle.js';
           }
           return 'assets/[name]-[hash].js';
         },

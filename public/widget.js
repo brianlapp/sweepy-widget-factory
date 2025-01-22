@@ -15,7 +15,6 @@
     }
   }
 
-  // Load CSS from GitHub
   function loadCSS() {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
@@ -24,7 +23,6 @@
     log('Loading widget CSS...');
   }
 
-  // Load script with proper error handling
   function loadScript(src) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
@@ -43,7 +41,6 @@
     });
   }
 
-  // Initialize widget when dependencies are loaded
   async function initializeWidget() {
     try {
       const container = document.createElement('div');
@@ -58,10 +55,8 @@
       currentScript.parentNode.insertBefore(container, currentScript);
       log('Created widget root element');
 
-      // Load CSS
       loadCSS();
 
-      // Load dependencies
       log('Loading React and ReactDOM...');
       await Promise.all([
         loadScript('https://unpkg.com/react@18/umd/react.production.min.js'),
@@ -75,7 +70,6 @@
       await loadScript(widgetBundleUrl);
       log('Widget bundle loaded successfully');
 
-      // Get sweepstakes ID
       const widgetContainer = document.getElementById('sweepstakes-widget');
       if (!widgetContainer) {
         throw new Error('Widget container not found');
@@ -88,7 +82,6 @@
 
       log('Initializing widget with ID: ' + sweepstakesId);
 
-      // Render widget
       const root = ReactDOM.createRoot(document.getElementById('sweepstakes-widget-root'));
       root.render(React.createElement(window.SweepstakesWidget, { 
         sweepstakesId: sweepstakesId 
@@ -97,7 +90,6 @@
 
     } catch (error) {
       log(`Widget initialization failed: ${error.message}`, 'error');
-      // Display error in the widget container
       const container = document.getElementById('sweepstakes-widget-root');
       if (container) {
         container.innerHTML = `
@@ -112,7 +104,6 @@
     }
   }
 
-  // Start initialization
   initializeWidget().catch(error => {
     log(`Fatal error: ${error.message}`, 'error');
   });
