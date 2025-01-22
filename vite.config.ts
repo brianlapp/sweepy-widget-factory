@@ -8,7 +8,6 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
-    // Add this to handle client-side routing during development
     middlewareMode: false,
   },
   plugins: [
@@ -27,9 +26,15 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: 'dist',
-    // Add this to ensure all routes redirect to index.html
     rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        widget: path.resolve(__dirname, 'src/widget.tsx'),
+      },
       output: {
+        entryFileNames: (chunkInfo) => {
+          return chunkInfo.name === 'widget' ? 'widget-app.js' : 'assets/[name]-[hash].js';
+        },
         manualChunks: undefined,
       },
     },
