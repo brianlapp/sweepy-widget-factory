@@ -1,17 +1,20 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/components/auth/AuthProvider";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import Index from "@/pages/Index";
-import AuthPage from "@/pages/auth/AuthPage";
-import ReadmePage from "@/pages/ReadmePage";
-import { PreviewPage } from "@/pages/preview/PreviewPage";
+
+// Pages
+import { Index } from "@/pages/Index";
+import { ReadmePage } from "@/pages/ReadmePage";
+import { AuthPage } from "@/pages/auth/AuthPage";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import { EditSweepstakesPage } from "@/pages/admin/EditSweepstakesPage";
 import { SweepstakesAnalyticsPage } from "@/pages/admin/SweepstakesAnalyticsPage";
+import { PreviewPage } from "@/pages/preview/PreviewPage";
+import { WidgetTestPage } from "@/pages/admin/WidgetTestPage";
 
+// Create a client
 const queryClient = new QueryClient();
 
 function App() {
@@ -19,28 +22,24 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Router>
-          <SidebarProvider>
-            <div className="flex min-h-screen w-full">
-              <AppSidebar />
-              <main className="flex-1">
-                <div className="container">
-                  <SidebarTrigger className="my-4" />
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/auth" element={<AuthPage />} />
-                    <Route path="/readme" element={<ReadmePage />} />
-                    <Route path="/preview/:id" element={<PreviewPage />} />
-                    <Route path="/admin/sweepstakes" element={<AdminDashboard />} />
-                    <Route path="/admin/sweepstakes/new" element={<EditSweepstakesPage />} />
-                    <Route path="/admin/sweepstakes/:id/edit" element={<EditSweepstakesPage />} />
-                    <Route path="/admin/sweepstakes/:id/analytics" element={<SweepstakesAnalyticsPage />} />
-                  </Routes>
-                </div>
-              </main>
-            </div>
-          </SidebarProvider>
+          <div className="flex min-h-screen">
+            <AppSidebar />
+            <main className="flex-1 overflow-y-auto bg-muted/10">
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/readme" element={<ReadmePage />} />
+                <Route path="/auth" element={<AuthPage />} />
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/sweepstakes/new" element={<EditSweepstakesPage />} />
+                <Route path="/admin/sweepstakes/:id/edit" element={<EditSweepstakesPage />} />
+                <Route path="/admin/sweepstakes/:id/analytics" element={<SweepstakesAnalyticsPage />} />
+                <Route path="/preview/:id" element={<PreviewPage />} />
+                <Route path="/admin/widget-test" element={<WidgetTestPage />} />
+              </Routes>
+            </main>
+          </div>
+          <Toaster />
         </Router>
-        <Toaster />
       </AuthProvider>
     </QueryClientProvider>
   );
