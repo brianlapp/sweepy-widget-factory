@@ -40,7 +40,12 @@ export default defineConfig(({ mode }) => ({
         },
         assetFileNames: mode === 'development' ? '[name][extname]' : 'assets/[name]-[hash][extname]',
         chunkFileNames: mode === 'development' ? '[name].js' : 'assets/[name]-[hash].js',
+        manualChunks: undefined,
+        inlineDynamicImports: false,
       },
     },
+    sourcemap: mode === 'development',
+    minify: mode !== 'development',
+    target: 'es2015',
   },
 }));
