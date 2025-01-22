@@ -28,6 +28,12 @@ export async function uploadWidgetFiles() {
 
     console.log('Starting widget files upload...');
 
+    // First, delete existing files
+    console.log('Removing existing files...');
+    await supabase.storage
+      .from('static')
+      .remove(['embed.html', 'widget.js', 'widget.bundle.js']);
+
     // Upload embed.html - this should be a minimal HTML file
     const embedHtml = `
 <!DOCTYPE html>
