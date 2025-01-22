@@ -27,9 +27,13 @@ export function SweepstakesWidget({
         .eq('id', sweepstakesId)
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching sweepstakes:', error);
+        throw error;
+      }
       return data;
     },
+    enabled: !!sweepstakesId, // Only run query if we have a valid ID
   });
 
   const showProgress = sweepstakes?.draw_type === 'entries' && !isSubmitted;

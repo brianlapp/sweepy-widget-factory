@@ -29,6 +29,13 @@ function initializeWidget() {
     return;
   }
 
+  // Validate that we have a valid UUID format
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(sweepstakesId)) {
+    console.error('Invalid sweepstakes ID format');
+    return;
+  }
+
   const root = createRoot(container);
   root.render(
     <React.StrictMode>
