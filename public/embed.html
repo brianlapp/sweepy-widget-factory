@@ -4,13 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sweepstakes Widget</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="widget.bundle.js" defer></script>
-</head>
-<body>
-    <div id="root"></div>
+    <!-- Primary CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" 
+            crossorigin
+            onerror="loadFallbackScript('react')">
+    </script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" 
+            crossorigin
+            onerror="loadFallbackScript('react-dom')">
+    </script>
+    
     <script>
+        // Fallback mechanism
+        function loadFallbackScript(library) {
+            const fallbackUrls = {
+                'react': 'https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js',
+                'react-dom': 'https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js'
+            };
+            
+            const script = document.createElement('script');
+            script.src = fallbackUrls[library];
+            script.crossOrigin = 'anonymous';
+            document.head.appendChild(script);
+        }
+
         // Get sweepstakes ID from URL
         const params = new URLSearchParams(window.location.search);
         const sweepstakesId = params.get('id');
@@ -22,5 +39,9 @@
             }
         });
     </script>
+    <script src="widget.bundle.js" defer></script>
+</head>
+<body>
+    <div id="root"></div>
 </body>
 </html>

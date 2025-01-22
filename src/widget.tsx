@@ -6,8 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // Create a client
 const queryClient = new QueryClient();
 
-// Create the root component that includes the QueryClientProvider
-export function WidgetRoot({ sweepstakesId }: { sweepstakesId: string }) {
+function WidgetRoot({ sweepstakesId }: { sweepstakesId: string }) {
   return (
     <QueryClientProvider client={queryClient}>
       <SweepstakesWidget sweepstakesId={sweepstakesId} />

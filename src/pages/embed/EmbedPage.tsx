@@ -1,34 +1,44 @@
 import React, { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { WidgetRoot } from '@/widget';
 
 export function EmbedPage() {
   const { id } = useParams<{ id: string }>();
 
-  // Send height updates to parent
   useEffect(() => {
     const sendHeight = () => {
       const height = document.documentElement.scrollHeight;
       window.parent.postMessage({ type: 'setHeight', height }, '*');
     };
 
-    // Send initial height
-    sendHeight();
+    // Create and append the widget container
+    const container = document.createElement('div');
+    container.id = 'sweepstakes-widget';
+    if (id) {
+      container.setAttribute('data-sweepstakes-id', id);
+    }
+    document.body.appendChild(container);
 
-    // Set up observer for height changes
+    // Load the widget script
+    const script = document.createElement('script');
+    script.src = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static/widget.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    // Set up height observer
     const observer = new ResizeObserver(sendHeight);
     observer.observe(document.body);
 
-    return () => observer.disconnect();
-  }, []);
+    // Cleanup
+    return () => {
+      observer.disconnect();
+      container.remove();
+      script.remove();
+    };
+  }, [id]);
 
   if (!id) {
     return <div className="p-4">Sweepstakes ID not provided</div>;
   }
 
-  return (
-    <div className="p-4">
-      <WidgetRoot sweepstakesId={id} />
-    </div>
-  );
+  return <div className="p-4" />;
 }
