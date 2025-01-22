@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => ({
       output: {
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === 'widget') {
-            return 'widget-app.js';
+            return 'widget.bundle.js';
           }
           return 'assets/[name]-[hash].js';
         },

@@ -31,13 +31,10 @@
   // Load widget app script
   function loadAppScript() {
     const script = document.createElement('script');
-    script.src = currentScript.src.replace('widget.js', 'assets/widget-[hash].js');
+    script.src = currentScript.src.replace('widget.js', 'widget.bundle.js');
     script.onload = initializeWidget;
     script.onerror = (error) => {
       log('Error loading widget app: ' + error);
-      // Fallback to direct path if hashed file not found
-      script.src = currentScript.src.replace('widget.js', 'widget-app.js');
-      script.onload = initializeWidget;
     };
     document.head.appendChild(script);
     log('Loading widget app script from: ' + script.src);
