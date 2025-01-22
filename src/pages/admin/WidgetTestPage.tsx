@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { AlertCircle, Info, Code } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export function WidgetTestPage() {
   const { session, isLoading } = useAuth();
@@ -73,8 +74,12 @@ export function WidgetTestPage() {
   const handleGenerateBundle = async () => {
     setIsGeneratingBundle(true);
     try {
-      const response = await fetch('/build-widget', {
+      const { data: { url: functionUrl } } = await supabase.functions.invoke('build-widget');
+      const response = await fetch(functionUrl, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
       if (!response.ok) {
@@ -86,8 +91,8 @@ export function WidgetTestPage() {
       toast.success("Widget bundle generated successfully!");
       setShowEmbedDialog(true);
     } catch (err) {
+      console.error('Bundle generation error:', err);
       toast.error("Failed to generate widget bundle");
-      console.error(err);
     } finally {
       setIsGeneratingBundle(false);
     }
