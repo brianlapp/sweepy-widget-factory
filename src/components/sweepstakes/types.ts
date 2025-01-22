@@ -24,3 +24,12 @@ export interface SweepstakesWidgetProps {
   thankYouImageUrl?: string;
   trackingUrl?: string;
 }
+
+export interface SweepstakesFormProps {
+  sweepstakesId: string;
+  thankYouHeadline?: string;
+  thankYouImageUrl?: string;
+  trackingUrl?: string;
+  onSubmitSuccess?: () => void;
+  buttonColor?: string;
+}

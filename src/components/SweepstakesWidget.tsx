@@ -54,7 +54,7 @@ export function SweepstakesWidget({
           thankYouImageUrl={thankYouImageUrl}
           trackingUrl={trackingUrl}
           onSubmitSuccess={() => setIsSubmitted(true)}
-          buttonColor={sweepstakes?.button_color || '#8B5CF6'}
+          buttonColor={sweepstakes?.button_color}
         />
       </CardContent>
 

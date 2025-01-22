@@ -12,6 +12,7 @@ export type Database = {
       sweepstakes: {
         Row: {
           beehiiv_tag: string | null
+          button_color: string | null
           created_at: string | null
           current_entries: number | null
           description: string | null
@@ -25,6 +26,7 @@ export type Database = {
           is_active: boolean | null
           prize_info: string | null
           prize_value: number | null
+          progress_theme: string | null
           start_date: string
           thank_you_headline: string | null
           thank_you_image_url: string | null
@@ -34,6 +36,7 @@ export type Database = {
         }
         Insert: {
           beehiiv_tag?: string | null
+          button_color?: string | null
           created_at?: string | null
           current_entries?: number | null
           description?: string | null
@@ -47,6 +50,7 @@ export type Database = {
           is_active?: boolean | null
           prize_info?: string | null
           prize_value?: number | null
+          progress_theme?: string | null
           start_date?: string
           thank_you_headline?: string | null
           thank_you_image_url?: string | null
@@ -56,6 +60,7 @@ export type Database = {
         }
         Update: {
           beehiiv_tag?: string | null
+          button_color?: string | null
           created_at?: string | null
           current_entries?: number | null
           description?: string | null
@@ -69,6 +74,7 @@ export type Database = {
           is_active?: boolean | null
           prize_info?: string | null
           prize_value?: number | null
+          progress_theme?: string | null
           start_date?: string
           thank_you_headline?: string | null
           thank_you_image_url?: string | null

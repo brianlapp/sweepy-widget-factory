@@ -5,24 +5,17 @@ import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { FormFields } from "./FormFields";
-import { formSchema, FormData } from "./types";
+import { formSchema, FormData, SweepstakesFormProps } from "./types";
 import { submitEntry } from "./api";
 import { ThankYouPage } from "./ThankYouPage";
-
-interface SweepstakesFormProps {
-  sweepstakesId: string;
-  thankYouHeadline?: string;
-  thankYouImageUrl?: string;
-  trackingUrl?: string;
-  onSubmitSuccess?: () => void;
-}
 
 export function SweepstakesForm({ 
   sweepstakesId,
   thankYouHeadline,
   thankYouImageUrl,
   trackingUrl,
-  onSubmitSuccess
+  onSubmitSuccess,
+  buttonColor = '#8B5CF6'
 }: SweepstakesFormProps) {
   const [isSubmitted, setIsSubmitted] = React.useState(false);
   
@@ -62,7 +55,11 @@ export function SweepstakesForm({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
         <FormFields form={form} />
-        <Button type="submit" className="w-full h-11 sm:h-10 text-base sm:text-sm">
+        <Button 
+          type="submit" 
+          className="w-full h-11 sm:h-10 text-base sm:text-sm"
+          style={{ backgroundColor: buttonColor }}
+        >
           Enter Sweepstakes
         </Button>
       </form>
