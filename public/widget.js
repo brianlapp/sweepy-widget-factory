@@ -1,5 +1,7 @@
 (function() {
   const DEBUG = true;
+  const SUPABASE_PROJECT_ID = 'xrycgmzgskcbhvdclflj';
+  const STORAGE_URL = `https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/static`;
   
   function log(message, type = 'info') {
     if (!DEBUG) return;
@@ -30,7 +32,7 @@
   function addStyles() {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = 'https://cdn.jsdelivr.net/gh/brianlapp/sweepy-widget-factory@main/public/widget.css';
+    link.href = `${STORAGE_URL}/widget.css`;
     document.head.appendChild(link);
     log('Added widget styles');
   }
@@ -59,7 +61,7 @@
       ]);
       log('Dependencies loaded successfully');
 
-      const bundleUrl = 'https://cdn.jsdelivr.net/gh/brianlapp/sweepy-widget-factory@main/public/widget.bundle.js';
+      const bundleUrl = `${STORAGE_URL}/widget.bundle.js`;
       log('Loading widget bundle from: ' + bundleUrl);
       await loadScript(bundleUrl);
       log('Widget bundle loaded successfully');
