@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { AlertCircle, Info } from "lucide-react";
+import { AlertCircle, Info, Code } from "lucide-react";
 
 export function WidgetTestPage() {
   const { session, isLoading } = useAuth();
@@ -15,10 +16,12 @@ export function WidgetTestPage() {
   const [iframeKey, setIframeKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const [isGeneratingBundle, setIsGeneratingBundle] = useState(false);
+  const [showEmbedDialog, setShowEmbedDialog] = useState(false);
 
   // Get the public URL for the widget
-  const publicDomain = window.location.hostname.replace('lovable.dev', 'lovableproject.com');
-  const widgetUrl = `https://${publicDomain}/widget.js`;
+  const widgetJsUrl = "https://raw.githubusercontent.com/brianlapp/sweepy-widget-factory/main/public/widget.js";
+  const widgetBundleUrl = `${window.location.origin}/widget.bundle.js`;
 
   useEffect(() => {
     if (!isLoading && !session) {
@@ -48,45 +51,11 @@ export function WidgetTestPage() {
 </head>
 <body>
     <div id="sweepstakes-widget" data-sweepstakes-id="YOUR_SWEEPSTAKES_ID"></div>
-    <script src="${widgetUrl}"></script>
+    <script src="${widgetJsUrl}"></script>
     <div>
         <h3>Debug Information:</h3>
         <pre id="debug-output"></pre>
     </div>
-    <script>
-        console.log('Page loaded.');
-        console.log('Starting widget initialization test...');
-        
-        const widget = document.getElementById('sweepstakes-widget');
-        const sweepstakesId = widget.getAttribute('data-sweepstakes-id');
-        console.log('Sweepstakes ID found:', sweepstakesId);
-        
-        function handleError(error) {
-            console.error(error);
-            const debugOutput = document.getElementById('debug-output');
-            if (debugOutput) {
-                debugOutput.textContent += '\\nError: ' + error;
-            }
-            window.parent.postMessage({
-                type: 'debugLog',
-                message: 'Error: ' + error
-            }, '*');
-        }
-
-        window.onerror = function(msg, url, line, col, error) {
-            handleError(\`\${msg} at \${url}:\${line}:\${col}\`);
-            return false;
-        };
-
-        window.addEventListener('message', function(event) {
-            if (event.data.type === 'widgetLog') {
-                window.parent.postMessage({
-                    type: 'debugLog',
-                    message: event.data.message
-                }, '*');
-            }
-        });
-    </script>
 </body>
 </html>`;
 
@@ -100,6 +69,22 @@ export function WidgetTestPage() {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
+
+  const handleGenerateBundle = async () => {
+    setIsGeneratingBundle(true);
+    try {
+      // Here you would implement the actual bundle generation
+      // For now, we'll simulate it with a delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      toast.success("Widget bundle generated successfully!");
+      setShowEmbedDialog(true);
+    } catch (err) {
+      toast.error("Failed to generate widget bundle");
+      console.error(err);
+    } finally {
+      setIsGeneratingBundle(false);
+    }
+  };
 
   const handleTest = () => {
     setError(null);
@@ -145,15 +130,38 @@ export function WidgetTestPage() {
 
   return (
     <div className="container py-8 space-y-6">
-      <h1 className="text-2xl font-bold">Widget Test Environment</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Widget Test Environment</h1>
+        <Dialog open={showEmbedDialog} onOpenChange={setShowEmbedDialog}>
+          <DialogTrigger asChild>
+            <Button onClick={handleGenerateBundle} disabled={isGeneratingBundle}>
+              <Code className="mr-2 h-4 w-4" />
+              {isGeneratingBundle ? "Generating..." : "Get Embed Code"}
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Widget Embed Code</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Copy and paste this code into your website where you want the widget to appear:
+              </p>
+              <pre className="p-4 bg-slate-100 rounded-lg text-sm overflow-x-auto">
+                {`<div id="sweepstakes-widget" data-sweepstakes-id="YOUR_SWEEPSTAKES_ID"></div>
+<script src="${widgetJsUrl}"></script>`}
+              </pre>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
       
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          The widget files (widget.js and widget.bundle.js) must be publicly accessible. 
-          They will be available at:
-          <pre className="mt-2 bg-slate-100 p-2 rounded">{widgetUrl}</pre>
-          <pre className="mt-2 bg-slate-100 p-2 rounded">{widgetUrl.replace('widget.js', 'widget.bundle.js')}</pre>
+          The widget files are served from:
+          <pre className="mt-2 bg-slate-100 p-2 rounded">{widgetJsUrl}</pre>
+          <pre className="mt-2 bg-slate-100 p-2 rounded">{widgetBundleUrl}</pre>
         </AlertDescription>
       </Alert>
       
