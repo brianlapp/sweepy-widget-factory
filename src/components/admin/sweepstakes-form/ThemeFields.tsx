@@ -4,10 +4,39 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UseFormReturn } from "react-hook-form";
 import { FormData } from "../types";
+import { Progress } from "@/components/ui/progress";
 
 interface ThemeFieldsProps {
   form: UseFormReturn<FormData>;
 }
+
+const ThemePreview = ({ theme, value = 75 }: { theme: "green" | "blue" | "orange", value?: number }) => {
+  const gradients = {
+    green: 'linear-gradient(90deg, rgb(134, 239, 172), rgb(59, 130, 246))',
+    blue: 'linear-gradient(90deg, rgb(96, 165, 250), rgb(99, 102, 241))',
+    orange: 'linear-gradient(90deg, rgb(251, 146, 60), rgb(251, 191, 36))'
+  };
+
+  const backgrounds = {
+    green: 'bg-green-100 dark:bg-green-950/50',
+    blue: 'bg-blue-100 dark:bg-blue-950/50',
+    orange: 'bg-orange-100 dark:bg-orange-950/50'
+  };
+
+  return (
+    <div className="w-full h-2.5">
+      <Progress 
+        value={value} 
+        className={`h-2.5 ${backgrounds[theme]}`}
+        style={{
+          backgroundImage: gradients[theme],
+          backgroundSize: `${value}% 100%`,
+          backgroundRepeat: 'no-repeat'
+        }}
+      />
+    </div>
+  );
+};
 
 export function ThemeFields({ form }: ThemeFieldsProps) {
   return (
@@ -52,9 +81,18 @@ export function ThemeFields({ form }: ThemeFieldsProps) {
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                <SelectItem value="green">Green (Default)</SelectItem>
-                <SelectItem value="blue">Blue</SelectItem>
-                <SelectItem value="orange">Orange</SelectItem>
+                <SelectItem value="green" className="space-y-2">
+                  <span>Green (Default)</span>
+                  <ThemePreview theme="green" />
+                </SelectItem>
+                <SelectItem value="blue" className="space-y-2">
+                  <span>Blue</span>
+                  <ThemePreview theme="blue" />
+                </SelectItem>
+                <SelectItem value="orange" className="space-y-2">
+                  <span>Orange</span>
+                  <ThemePreview theme="orange" />
+                </SelectItem>
               </SelectContent>
             </Select>
             <FormDescription>
