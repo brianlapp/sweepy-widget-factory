@@ -1,5 +1,7 @@
 (function() {
   const DEBUG = true;
+  const GITHUB_REPO = 'your-username/your-repo';
+  const GITHUB_BRANCH = 'main';
   
   function log(message, type = 'info') {
     if (!DEBUG) return;
@@ -13,35 +15,32 @@
     }
   }
 
-  // Load React and ReactDOM with proper error handling
+  // Load CSS from GitHub
+  function loadCSS() {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/public/widget.css`;
+    document.head.appendChild(link);
+    log('Loading widget CSS...');
+  }
+
+  // Load script with proper error handling
   function loadScript(src) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
       script.src = src;
       script.async = true;
-      script.onload = resolve;
+      script.onload = () => {
+        log(`Script loaded successfully: ${src}`);
+        resolve();
+      };
       script.onerror = (e) => {
-        log(`Error loading script from ${src}: ${e}`, 'error');
-        reject(e);
+        const error = `Error loading script from ${src}: ${e}`;
+        log(error, 'error');
+        reject(new Error(error));
       };
       document.head.appendChild(script);
     });
-  }
-
-  // Get widget URL from current script
-  function getWidgetUrl() {
-    const currentScript = document.currentScript || 
-      document.querySelector('script[src*="widget.js"]');
-    if (!currentScript) {
-      throw new Error('Could not find widget script element');
-    }
-    
-    // Get the base URL from the widget.js script src
-    const scriptUrl = new URL(currentScript.src);
-    const baseUrl = `${scriptUrl.protocol}//${scriptUrl.host}`;
-    
-    // Return the full path to widget.bundle.js
-    return `${baseUrl}/widget.bundle.js`;
   }
 
   // Initialize widget when dependencies are loaded
@@ -59,6 +58,9 @@
       currentScript.parentNode.insertBefore(container, currentScript);
       log('Created widget root element');
 
+      // Load CSS
+      loadCSS();
+
       // Load dependencies
       log('Loading React and ReactDOM...');
       await Promise.all([
@@ -67,10 +69,10 @@
       ]);
       log('React and ReactDOM loaded successfully');
 
-      // Load widget bundle
-      const widgetUrl = getWidgetUrl();
-      log('Loading widget bundle from: ' + widgetUrl);
-      await loadScript(widgetUrl);
+      // Load widget bundle from GitHub
+      const widgetBundleUrl = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/dist/widget.bundle.js`;
+      log('Loading widget bundle from: ' + widgetBundleUrl);
+      await loadScript(widgetBundleUrl);
       log('Widget bundle loaded successfully');
 
       // Get sweepstakes ID
@@ -95,6 +97,17 @@
 
     } catch (error) {
       log(`Widget initialization failed: ${error.message}`, 'error');
+      // Display error in the widget container
+      const container = document.getElementById('sweepstakes-widget-root');
+      if (container) {
+        container.innerHTML = `
+          <div style="padding: 1rem; border: 1px solid #f87171; border-radius: 0.375rem; background-color: #fee2e2; color: #991b1b;">
+            <p style="margin: 0; font-family: system-ui, sans-serif;">
+              Widget failed to load: ${error.message}
+            </p>
+          </div>
+        `;
+      }
       throw error;
     }
   }

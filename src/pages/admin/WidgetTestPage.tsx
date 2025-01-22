@@ -8,6 +8,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { AlertCircle, Info } from "lucide-react";
 
+// Constants for GitHub repository details
+const GITHUB_REPO = 'your-username/your-repo';
+const GITHUB_BRANCH = 'main';
+
 export function WidgetTestPage() {
   const { session, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -17,8 +21,8 @@ export function WidgetTestPage() {
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
   // Use GitHub raw URLs for the widget files
-  const widgetUrl = 'https://raw.githubusercontent.com/your-username/your-repo/main/public/widget.js';
-  const widgetBundleUrl = 'https://raw.githubusercontent.com/your-username/your-repo/main/dist/widget.bundle.js';
+  const widgetUrl = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/public/widget.js`;
+  const widgetBundleUrl = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/dist/widget.bundle.js`;
 
   useEffect(() => {
     if (!isLoading && !session) {
