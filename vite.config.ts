@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: 'dist',
-    assetsDir: '',  // Changed to empty string to put assets in root
+    assetsDir: '',
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => ({
       output: {
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === 'widget') {
-            return 'widget.bundle.js';
+            return 'public/widget.bundle.js';
           }
           return 'assets/[name]-[hash].js';
         },

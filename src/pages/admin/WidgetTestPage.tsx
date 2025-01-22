@@ -22,7 +22,7 @@ export function WidgetTestPage() {
 
   // Use jsDelivr URLs for the widget files
   const widgetUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@${GITHUB_BRANCH}/public/widget.js`;
-  const widgetBundleUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@${GITHUB_BRANCH}/dist/widget.bundle.js`;
+  const widgetBundleUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@${GITHUB_BRANCH}/public/widget.bundle.js`;
 
   useEffect(() => {
     if (!isLoading && !session) {
