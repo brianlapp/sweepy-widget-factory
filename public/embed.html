@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sweepstakes Widget</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="widget-bundle.js" defer></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+        // Get sweepstakes ID from URL
+        const params = new URLSearchParams(window.location.search);
+        const sweepstakesId = params.get('id');
+        
+        // Initialize widget when bundle loads
+        window.addEventListener('load', () => {
+            if (window.initializeWidget) {
+                window.initializeWidget(sweepstakesId);
+            }
+        });
+    </script>
+</body>
+</html>
