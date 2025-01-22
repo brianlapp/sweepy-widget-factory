@@ -15,6 +15,8 @@ export const formSchema = z.object({
 
 export type FormData = z.infer<typeof formSchema>;
 
+export type ProgressTheme = "green" | "blue" | "orange";
+
 export interface SweepstakesWidgetProps {
   sweepstakesId: string;
   title?: string;

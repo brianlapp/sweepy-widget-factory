@@ -1,13 +1,14 @@
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
+import type { ProgressTheme } from "./types";
 
 interface EntriesProgressProps {
   currentEntries: number;
   entriesToDraw: number;
   entryValue: number;
   prizeValue: number;
-  theme?: 'green' | 'blue' | 'orange';
+  theme?: ProgressTheme;
 }
 
 const themeStyles = {
