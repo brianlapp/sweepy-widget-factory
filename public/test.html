@@ -3,40 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sweepstakes Widget Debug</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-        }
-        #status-message {
-            margin: 20px 0;
-            padding: 10px;
-            border-radius: 4px;
-            background-color: #f0f0f0;
-        }
-        .debug-info {
-            margin-top: 10px;
-            padding: 10px;
-            background-color: #fff3cd;
-            border: 1px solid #ffeeba;
-            border-radius: 4px;
-        }
-        .error {
-            color: red;
-        }
-    </style>
+    <title>Widget Test Page</title>
 </head>
 <body>
-    <h1>Sweepstakes Widget Debug Test</h1>
-    <div id="status-message">Initializing widget...</div>
-    <div id="sweepstakes-widget" data-sweepstakes-id="ca57dbfb-024e-44ae-bcb2-83cc67d56c53"></div>
+    <h1>Widget Test Page</h1>
     
-    <div id="debug-info">
-        <h3>Debug Logs:</h3>
-        <pre id="debug-output"></pre>
-    </div>
+    <!-- Widget container -->
+    <div id="sweepstakes-widget" data-sweepstakes-id="your-sweepstakes-id-here"></div>
+    
+    <!-- Widget script -->
+    <script src="/widget.bundle.js"></script>
 
-    <script src="https://cdn.jsdelivr.net/gh/brianlapp/sweepy-widget-factory@main/public/widget.js"></script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 2rem;
+        }
+    </style>
 </body>
 </html>
