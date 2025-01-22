@@ -28,22 +28,6 @@
     });
   }
 
-  // Get widget URL from current script
-  function getWidgetUrl() {
-    const currentScript = document.currentScript || 
-      document.querySelector('script[src*="widget.js"]');
-    if (!currentScript) {
-      throw new Error('Could not find widget script element');
-    }
-    
-    // Get the base URL from the widget.js script src
-    const scriptUrl = new URL(currentScript.src);
-    const baseUrl = `${scriptUrl.protocol}//${scriptUrl.host}`;
-    
-    // Return the full path to widget.bundle.js in the same directory
-    return `${baseUrl}/widget.bundle.js`;
-  }
-
   // Initialize widget when dependencies are loaded
   async function initializeWidget() {
     try {
@@ -67,10 +51,11 @@
       ]);
       log('React and ReactDOM loaded successfully');
 
-      // Load widget bundle
-      const widgetUrl = getWidgetUrl();
-      log('Loading widget bundle from: ' + widgetUrl);
-      await loadScript(widgetUrl);
+      // Load widget bundle from the same location as widget.js
+      const scriptUrl = new URL(currentScript.src);
+      const bundleUrl = new URL('widget.bundle.js', scriptUrl.origin + '/').href;
+      log('Loading widget bundle from: ' + bundleUrl);
+      await loadScript(bundleUrl);
       log('Widget bundle loaded successfully');
 
       // Get sweepstakes ID
