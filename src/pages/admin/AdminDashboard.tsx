@@ -68,7 +68,7 @@ export default function AdminDashboard() {
   };
 
   const getEmbedCode = (sweepstakesId: string) => {
-    const widgetJsUrl = "https://raw.githubusercontent.com/brianlapp/sweepy-widget-factory/main/public/widget.js";
+    const widgetJsUrl = "https://cdn.jsdelivr.net/gh/brianlapp/sweepy-widget-factory@main/public/widget.js";
     return `<div id="sweepstakes-widget" data-sweepstakes-id="${sweepstakesId}"></div>
 <script src="${widgetJsUrl}"></script>`;
   };

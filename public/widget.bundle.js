@@ -1,11 +1,20 @@
 (function() {
+  // Export the full SweepstakesWidget component
   window.SweepstakesWidget = function(props) {
-    return React.createElement('div', {
-      className: 'sweepstakes-widget',
-      style: { fontFamily: 'system-ui, sans-serif' }
-    }, [
-      React.createElement('h2', { key: 'title' }, props.title || 'Enter to Win!'),
-      React.createElement('p', { key: 'description' }, props.description || 'Complete the form below to enter.')
-    ]);
+    const containerStyle = {
+      fontFamily: 'system-ui, sans-serif',
+      width: '100%',
+      maxWidth: '24rem',
+      margin: '0 auto'
+    };
+
+    return React.createElement(
+      'div',
+      { className: 'sweepstakes-widget', style: containerStyle },
+      React.createElement(window.SweepstakesForm, {
+        sweepstakesId: props.sweepstakesId,
+        onSubmitSuccess: props.onSubmitSuccess
+      })
+    );
   };
 })();
