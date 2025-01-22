@@ -20,7 +20,7 @@ export function WidgetTestPage() {
   const [showEmbedDialog, setShowEmbedDialog] = useState(false);
 
   // Get the public URL for the widget
-  const widgetJsUrl = "https://raw.githubusercontent.com/brianlapp/sweepy-widget-factory/main/public/widget.js";
+  const widgetJsUrl = `${window.location.origin}/widget.js`;
   const widgetBundleUrl = `${window.location.origin}/widget.bundle.js`;
 
   useEffect(() => {
@@ -73,9 +73,15 @@ export function WidgetTestPage() {
   const handleGenerateBundle = async () => {
     setIsGeneratingBundle(true);
     try {
-      // Here you would implement the actual bundle generation
-      // For now, we'll simulate it with a delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Trigger a build through Vite's development server
+      const response = await fetch('/build-widget', {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate widget bundle');
+      }
+
       toast.success("Widget bundle generated successfully!");
       setShowEmbedDialog(true);
     } catch (err) {
