@@ -28,7 +28,8 @@ export async function uploadWidgetFiles() {
     const { error: embedError } = await supabase.storage
       .from('static')
       .upload('embed.html', embedHtmlBlob, {
-        contentType: 'text/html',
+        contentType: 'text/html; charset=utf-8',
+        cacheControl: '3600',
         upsert: true
       });
     
@@ -44,7 +45,8 @@ export async function uploadWidgetFiles() {
     const { error: widgetError } = await supabase.storage
       .from('static')
       .upload('widget.js', widgetJsBlob, {
-        contentType: 'application/javascript',
+        contentType: 'application/javascript; charset=utf-8',
+        cacheControl: '3600',
         upsert: true
       });
 
@@ -60,7 +62,8 @@ export async function uploadWidgetFiles() {
     const { error: bundleError } = await supabase.storage
       .from('static')
       .upload('widget.bundle.js', widgetBundleBlob, {
-        contentType: 'application/javascript',
+        contentType: 'application/javascript; charset=utf-8',
+        cacheControl: '3600',
         upsert: true
       });
 
