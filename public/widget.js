@@ -1,6 +1,6 @@
 (function() {
   const DEBUG = true;
-  const GITHUB_REPO = 'your-username/your-repo';
+  const GITHUB_REPO = 'brianlapp/sweepy-widget-factory';
   const GITHUB_BRANCH = 'main';
   
   function log(message, type = 'info') {
