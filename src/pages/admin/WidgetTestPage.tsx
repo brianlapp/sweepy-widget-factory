@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { AlertCircle, Info, Code } from "lucide-react";
+import { AlertCircle, Info, Code, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export function WidgetTestPage() {
@@ -20,9 +20,11 @@ export function WidgetTestPage() {
   const [isGeneratingBundle, setIsGeneratingBundle] = useState(false);
   const [showEmbedDialog, setShowEmbedDialog] = useState(false);
   const [bundleContent, setBundleContent] = useState<string>('');
+  const [isUploading, setIsUploading] = useState(false);
 
-  // Get the public URL for the widget using jsDelivr
-  const widgetJsUrl = `https://cdn.jsdelivr.net/gh/brianlapp/sweepy-widget-factory@main/public/widget.js`;
+  // Get the storage URL for the widget
+  const STORAGE_URL = `https://${supabase.projectId}.supabase.co/storage/v1/object/public/static`;
+  const widgetJsUrl = `${STORAGE_URL}/widget.js`;
 
   useEffect(() => {
     if (!isLoading && !session) {
@@ -70,6 +72,45 @@ export function WidgetTestPage() {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
+
+  const handleUploadWidgetFiles = async () => {
+    setIsUploading(true);
+    try {
+      // Upload widget.js
+      const widgetJsResponse = await fetch('/widget.js');
+      const widgetJsBlob = await widgetJsResponse.blob();
+      const { error: widgetJsError } = await supabase.storage
+        .from('static')
+        .upload('widget.js', widgetJsBlob, { upsert: true });
+      
+      if (widgetJsError) throw widgetJsError;
+
+      // Upload widget.css
+      const widgetCssResponse = await fetch('/widget.css');
+      const widgetCssBlob = await widgetCssResponse.blob();
+      const { error: widgetCssError } = await supabase.storage
+        .from('static')
+        .upload('widget.css', widgetCssBlob, { upsert: true });
+      
+      if (widgetCssError) throw widgetCssError;
+
+      // Upload widget.bundle.js
+      const widgetBundleResponse = await fetch('/widget.bundle.js');
+      const widgetBundleBlob = await widgetBundleResponse.blob();
+      const { error: widgetBundleError } = await supabase.storage
+        .from('static')
+        .upload('widget.bundle.js', widgetBundleBlob, { upsert: true });
+      
+      if (widgetBundleError) throw widgetBundleError;
+
+      toast.success("Widget files uploaded successfully!");
+    } catch (err) {
+      console.error('Upload error:', err);
+      toast.error("Failed to upload widget files");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleGenerateBundle = async () => {
     setIsGeneratingBundle(true);
@@ -142,44 +183,50 @@ export function WidgetTestPage() {
     <div className="container py-8 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Widget Test Environment</h1>
-        <Dialog open={showEmbedDialog} onOpenChange={setShowEmbedDialog}>
-          <DialogTrigger asChild>
-            <Button onClick={handleGenerateBundle} disabled={isGeneratingBundle}>
-              <Code className="mr-2 h-4 w-4" />
-              {isGeneratingBundle ? "Generating..." : "Get Widget Bundle"}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>Widget Embed Code</DialogTitle>
-              <DialogDescription>
-                Copy and paste this code into your website where you want the widget to appear:
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <Textarea 
-                value={`<div id="sweepstakes-widget" data-sweepstakes-id="YOUR_SWEEPSTAKES_ID"></div>\n<script src="${widgetJsUrl}"></script>`}
-                className="h-24 font-mono text-sm"
-                readOnly
-              />
-              <Button 
-                onClick={() => {
-                  navigator.clipboard.writeText(`<div id="sweepstakes-widget" data-sweepstakes-id="YOUR_SWEEPSTAKES_ID"></div>\n<script src="${widgetJsUrl}"></script>`);
-                  toast.success("Embed code copied to clipboard");
-                }}
-              >
-                Copy Embed Code
+        <div className="flex space-x-2">
+          <Button onClick={handleUploadWidgetFiles} disabled={isUploading}>
+            <Upload className="mr-2 h-4 w-4" />
+            {isUploading ? "Uploading..." : "Upload Widget Files"}
+          </Button>
+          <Dialog open={showEmbedDialog} onOpenChange={setShowEmbedDialog}>
+            <DialogTrigger asChild>
+              <Button onClick={handleGenerateBundle} disabled={isGeneratingBundle}>
+                <Code className="mr-2 h-4 w-4" />
+                {isGeneratingBundle ? "Generating..." : "Get Widget Bundle"}
               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl">
+              <DialogHeader>
+                <DialogTitle>Widget Embed Code</DialogTitle>
+                <DialogDescription>
+                  Copy and paste this code into your website where you want the widget to appear:
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Textarea 
+                  value={`<div id="sweepstakes-widget" data-sweepstakes-id="YOUR_SWEEPSTAKES_ID"></div>\n<script src="${widgetJsUrl}"></script>`}
+                  className="h-24 font-mono text-sm"
+                  readOnly
+                />
+                <Button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(`<div id="sweepstakes-widget" data-sweepstakes-id="YOUR_SWEEPSTAKES_ID"></div>\n<script src="${widgetJsUrl}"></script>`);
+                    toast.success("Embed code copied to clipboard");
+                  }}
+                >
+                  Copy Embed Code
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
       
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
           The widget files are served from:
-          <pre className="mt-2 bg-slate-100 p-2 rounded">{widgetJsUrl}</pre>
+          <pre className="mt-2 bg-slate-100 p-2 rounded">{STORAGE_URL}</pre>
         </AlertDescription>
       </Alert>
       
