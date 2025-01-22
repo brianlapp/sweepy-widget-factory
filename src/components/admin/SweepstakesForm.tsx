@@ -91,6 +91,7 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
         draw_type: sweepstakes.draw_type as "date" | "entries",
         entry_value: Number(sweepstakes.entry_value) || 0.10,
         prize_value: Number(sweepstakes.prize_value) || 25.00,
+        progress_theme: (sweepstakes.progress_theme || 'green') as "green" | "blue" | "orange",
       };
       form.reset(formattedSweepstakes);
     }
@@ -108,7 +109,6 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
     } else {
       const result = await createMutation.mutateAsync(values);
       if (result) {
-        // Update settings after creating sweepstakes
         await supabase
           .from('sweepstakes_settings')
           .insert({
