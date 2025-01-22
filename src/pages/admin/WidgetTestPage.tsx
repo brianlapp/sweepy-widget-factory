@@ -22,8 +22,9 @@ export function WidgetTestPage() {
   const [bundleContent, setBundleContent] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
 
-  // Get the storage URL for the widget
-  const STORAGE_URL = `https://${supabase.projectId}.supabase.co/storage/v1/object/public/static`;
+  // Extract project ID from Supabase URL
+  const PROJECT_ID = supabase.supabaseUrl.match(/https:\/\/(.*?)\.supabase\.co/)?.[1] || '';
+  const STORAGE_URL = `https://${PROJECT_ID}.supabase.co/storage/v1/object/public/static`;
   const widgetJsUrl = `${STORAGE_URL}/widget.js`;
 
   useEffect(() => {
