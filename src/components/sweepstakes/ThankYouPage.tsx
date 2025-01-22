@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ArrowRight } from "lucide-react";
 
 interface ThankYouPageProps {
   headline?: string;
@@ -12,11 +13,11 @@ export function ThankYouPage({
   imageUrl,
   trackingUrl
 }: ThankYouPageProps) {
-  React.useEffect(() => {
+  const handleContinue = () => {
     if (trackingUrl) {
       window.location.href = trackingUrl;
     }
-  }, [trackingUrl]);
+  };
 
   return (
     <div className="text-center space-y-6">
@@ -30,6 +31,15 @@ export function ThankYouPage({
             className="max-w-full h-auto rounded-lg shadow-md"
           />
         </div>
+      )}
+
+      {trackingUrl && (
+        <Button 
+          onClick={handleContinue}
+          className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg text-lg font-medium"
+        >
+          Continue <ArrowRight className="ml-2 h-5 w-5" />
+        </Button>
       )}
     </div>
   );

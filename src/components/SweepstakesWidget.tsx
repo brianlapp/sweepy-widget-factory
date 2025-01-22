@@ -45,6 +45,7 @@ export function SweepstakesWidget({
             entriesToDraw={sweepstakes.entries_to_draw}
             entryValue={sweepstakes.entry_value || 0.10}
             prizeValue={sweepstakes.prize_value || 25.00}
+            theme={sweepstakes.progress_theme || 'green'}
           />
         )}
         <SweepstakesForm 
@@ -53,6 +54,7 @@ export function SweepstakesWidget({
           thankYouImageUrl={thankYouImageUrl}
           trackingUrl={trackingUrl}
           onSubmitSuccess={() => setIsSubmitted(true)}
+          buttonColor={sweepstakes?.button_color || '#8B5CF6'}
         />
       </CardContent>
 

@@ -17,6 +17,8 @@ export const formSchema = z.object({
   entry_value: z.number().min(0.01, "Entry value must be at least $0.01").default(0.10),
   prize_value: z.number().min(1, "Prize value must be at least $1").default(25.00),
   beehiiv_tag: z.string().optional(),
+  button_color: z.string().default('#8B5CF6'),
+  progress_theme: z.enum(['green', 'blue', 'orange']).default('green'),
 });
 
 export type FormData = z.infer<typeof formSchema>;

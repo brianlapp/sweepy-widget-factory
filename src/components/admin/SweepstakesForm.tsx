@@ -15,6 +15,7 @@ import { DateFields } from "./sweepstakes-form/DateFields";
 import { DrawTypeFields } from "./sweepstakes-form/DrawTypeFields";
 import { ThankYouFields } from "./sweepstakes-form/ThankYouFields";
 import { TrackingFields } from "./sweepstakes-form/TrackingFields";
+import { ThemeFields } from "./sweepstakes-form/ThemeFields";
 import { useSweepstakesMutations } from "./sweepstakes-form/useSweepstakesMutations";
 
 interface SweepstakesFormProps {
@@ -76,6 +77,8 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
       draw_type: "date",
       entry_value: 0.10,
       prize_value: 25.00,
+      button_color: '#8B5CF6',
+      progress_theme: 'green',
     },
   });
 
@@ -140,6 +143,7 @@ export function SweepstakesForm({ sweepstakesId }: SweepstakesFormProps) {
             <BasicInfoFields form={form} />
             <DrawTypeFields form={form} />
             {form.watch('draw_type') === 'date' && <DateFields form={form} />}
+            <ThemeFields form={form} />
             
             <div className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
