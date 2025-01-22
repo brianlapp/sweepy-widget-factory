@@ -73,7 +73,7 @@ export function EntriesProgress({
         </div>
 
         <div className="flex items-center gap-2 mb-1.5">
-          <div className={`bg-gradient-to-br ${styles.bg} rounded-md p-1.5 shadow-lg`}>
+          <div className={`bg-gradient-to-br from-primary to-primary/80 rounded-md p-1.5 shadow-lg`}>
             <span className="text-xl font-bold text-white">
               {percentage}%
             </span>
