@@ -9,7 +9,8 @@ import {
   LogIn, 
   LogOut,
   PlusCircle,
-  TestTube2
+  TestTube2,
+  Code2
 } from "lucide-react";
 
 export function AppSidebar() {
@@ -57,13 +58,13 @@ export function AppSidebar() {
                     New Sweepstakes
                   </Button>
                 </Link>
-                <Link to="/admin/widget-test">
+                <Link to="/admin/widget-versions">
                   <Button
-                    variant={isActive("/admin/widget-test") ? "secondary" : "ghost"}
+                    variant={isActive("/admin/widget-versions") ? "secondary" : "ghost"}
                     className="w-full justify-start"
                   >
-                    <TestTube2 className="mr-2 h-4 w-4" />
-                    Test Widget
+                    <Code2 className="mr-2 h-4 w-4" />
+                    Widget Versions
                   </Button>
                 </Link>
                 <Button

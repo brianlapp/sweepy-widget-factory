@@ -13,6 +13,7 @@ import { EditSweepstakesPage } from "@/pages/admin/EditSweepstakesPage";
 import { SweepstakesAnalyticsPage } from "@/pages/admin/SweepstakesAnalyticsPage";
 import { PreviewPage } from "@/pages/preview/PreviewPage";
 import { EmbedPage } from "@/pages/embed/EmbedPage";
+import { WidgetVersionManager } from "@/components/admin/WidgetVersionManager";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ function App() {
                         <Route path="/admin/sweepstakes/new" element={<EditSweepstakesPage />} />
                         <Route path="/admin/sweepstakes/:id/edit" element={<EditSweepstakesPage />} />
                         <Route path="/admin/sweepstakes/:id/analytics" element={<SweepstakesAnalyticsPage />} />
+                        <Route path="/admin/widget-versions" element={<WidgetVersionManager />} />
                         <Route path="/preview/:id" element={<PreviewPage />} />
                       </Routes>
                     </main>
