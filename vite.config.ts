@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => ({
     strictPort: true,
   },
   build: {
-    outDir: 'dist',
+    outDir: mode === 'development' ? 'public' : 'dist',
     assetsDir: '',  // Changed to empty string to put assets in root
     rollupOptions: {
       input: {
@@ -36,10 +36,10 @@ export default defineConfig(({ mode }) => ({
           if (chunkInfo.name === 'widget') {
             return 'widget.bundle.js';
           }
-          return 'assets/[name]-[hash].js';
+          return mode === 'development' ? '[name].js' : 'assets/[name]-[hash].js';
         },
-        assetFileNames: 'assets/[name]-[hash][extname]',
-        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: mode === 'development' ? '[name][extname]' : 'assets/[name]-[hash][extname]',
+        chunkFileNames: mode === 'development' ? '[name].js' : 'assets/[name]-[hash].js',
       },
     },
   },

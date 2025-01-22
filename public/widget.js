@@ -40,7 +40,7 @@
     const scriptUrl = new URL(currentScript.src);
     const baseUrl = `${scriptUrl.protocol}//${scriptUrl.host}`;
     
-    // Return the full path to widget.bundle.js
+    // Return the full path to widget.bundle.js in the same directory
     return `${baseUrl}/widget.bundle.js`;
   }
 
