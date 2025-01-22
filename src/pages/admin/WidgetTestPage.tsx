@@ -14,7 +14,6 @@ import { WidgetVersionManager } from "@/components/admin/WidgetVersionManager";
 // Constants
 const PROJECT_ID = "xrycgmzgskcbhvdclflj";
 const STORAGE_URL = `https://${PROJECT_ID}.supabase.co/storage/v1/object/public/static`;
-const widgetJsUrl = `${STORAGE_URL}/widget.js`;
 
 export function WidgetTestPage() {
   const { session, isLoading } = useAuth();
@@ -25,8 +24,8 @@ export function WidgetTestPage() {
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [isGeneratingBundle, setIsGeneratingBundle] = useState(false);
   const [showEmbedDialog, setShowEmbedDialog] = useState(false);
-  const [bundleContent, setBundleContent] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
     if (!isLoading && !session) {
@@ -56,7 +55,7 @@ export function WidgetTestPage() {
 </head>
 <body>
     <div id="sweepstakes-widget" data-sweepstakes-id="YOUR_SWEEPSTAKES_ID"></div>
-    <script src="${widgetJsUrl}"></script>
+    <script src="${STORAGE_URL}/widget.js"></script>
     <div>
         <h3>Debug Information:</h3>
         <pre id="debug-output"></pre>
@@ -70,67 +69,58 @@ export function WidgetTestPage() {
     }
   }, []);
 
+  const uploadFile = async (fileName: string, content: string, contentType: string = 'text/javascript') => {
+    try {
+      setUploadStatus(prev => ({ ...prev, [fileName]: false }));
+      
+      const blob = new Blob([content], { type: contentType });
+      const { error: uploadError } = await supabase.storage
+        .from('static')
+        .upload(fileName, blob, { 
+          upsert: true,
+          contentType 
+        });
+
+      if (uploadError) throw uploadError;
+      
+      setUploadStatus(prev => ({ ...prev, [fileName]: true }));
+      return true;
+    } catch (err) {
+      console.error(`Error uploading ${fileName}:`, err);
+      toast.error(`Failed to upload ${fileName}`);
+      return false;
+    }
+  };
+
   const handleUploadWidgetFiles = async () => {
     setIsUploading(true);
     try {
       // Upload widget.js
       const widgetJsResponse = await fetch('/widget.js');
-      const widgetJsBlob = await widgetJsResponse.blob();
-      const { error: widgetJsError } = await supabase.storage
-        .from('static')
-        .upload('widget.js', widgetJsBlob, { upsert: true });
-      
-      if (widgetJsError) throw widgetJsError;
+      const widgetJs = await widgetJsResponse.text();
+      await uploadFile('widget.js', widgetJs);
 
       // Upload widget.css
       const widgetCssResponse = await fetch('/widget.css');
-      const widgetCssBlob = await widgetCssResponse.blob();
-      const { error: widgetCssError } = await supabase.storage
-        .from('static')
-        .upload('widget.css', widgetCssBlob, { upsert: true });
-      
-      if (widgetCssError) throw widgetCssError;
+      const widgetCss = await widgetCssResponse.text();
+      await uploadFile('widget.css', widgetCss, 'text/css');
 
       // Upload widget.bundle.js
       const widgetBundleResponse = await fetch('/widget.bundle.js');
-      const widgetBundleBlob = await widgetBundleResponse.blob();
-      const { error: widgetBundleError } = await supabase.storage
-        .from('static')
-        .upload('widget.bundle.js', widgetBundleBlob, { upsert: true });
-      
-      if (widgetBundleError) throw widgetBundleError;
+      const widgetBundle = await widgetBundleResponse.text();
+      await uploadFile('widget.bundle.js', widgetBundle);
 
-      toast.success("Widget files uploaded successfully!");
+      const allUploaded = Object.values(uploadStatus).every(status => status);
+      if (allUploaded) {
+        toast.success("All widget files uploaded successfully!");
+      } else {
+        toast.error("Some files failed to upload. Please try again.");
+      }
     } catch (err) {
       console.error('Upload error:', err);
       toast.error("Failed to upload widget files");
     } finally {
       setIsUploading(false);
-    }
-  };
-
-  const handleGenerateBundle = async () => {
-    setIsGeneratingBundle(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('build-widget', {
-        method: 'POST',
-        body: {} // Empty body since we don't need to send any data
-      });
-      
-      if (error) throw error;
-      
-      if (!data) {
-        throw new Error('No bundle data received');
-      }
-
-      setBundleContent(data);
-      toast.success("Widget bundle generated successfully!");
-      setShowEmbedDialog(true);
-    } catch (err) {
-      console.error('Bundle generation error:', err);
-      toast.error("Failed to generate widget bundle");
-    } finally {
-      setIsGeneratingBundle(false);
     }
   };
 
@@ -174,43 +164,14 @@ export function WidgetTestPage() {
     <div className="container py-8 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Widget Test Environment</h1>
-        <div className="flex space-x-2">
-          <Button onClick={handleUploadWidgetFiles} disabled={isUploading}>
-            <Upload className="mr-2 h-4 w-4" />
-            {isUploading ? "Uploading..." : "Upload Widget Files"}
-          </Button>
-          <Dialog open={showEmbedDialog} onOpenChange={setShowEmbedDialog}>
-            <DialogTrigger asChild>
-              <Button onClick={handleGenerateBundle} disabled={isGeneratingBundle}>
-                <Code className="mr-2 h-4 w-4" />
-                {isGeneratingBundle ? "Generating..." : "Get Widget Bundle"}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl">
-              <DialogHeader>
-                <DialogTitle>Widget Embed Code</DialogTitle>
-                <DialogDescription>
-                  Copy and paste this code into your website where you want the widget to appear:
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <Textarea 
-                  value={`<div id="sweepstakes-widget" data-sweepstakes-id="YOUR_SWEEPSTAKES_ID"></div>\n<script src="${widgetJsUrl}"></script>`}
-                  className="h-24 font-mono text-sm"
-                  readOnly
-                />
-                <Button 
-                  onClick={() => {
-                    navigator.clipboard.writeText(`<div id="sweepstakes-widget" data-sweepstakes-id="YOUR_SWEEPSTAKES_ID"></div>\n<script src="${widgetJsUrl}"></script>`);
-                    toast.success("Embed code copied to clipboard");
-                  }}
-                >
-                  Copy Embed Code
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+        <Button 
+          onClick={handleUploadWidgetFiles} 
+          disabled={isUploading}
+          className="flex items-center"
+        >
+          <Upload className="mr-2 h-4 w-4" />
+          {isUploading ? "Uploading..." : "Upload Widget Files"}
+        </Button>
       </div>
       
       <Alert>
@@ -221,8 +182,6 @@ export function WidgetTestPage() {
         </AlertDescription>
       </Alert>
 
-      <WidgetVersionManager />
-      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
           <Card>
