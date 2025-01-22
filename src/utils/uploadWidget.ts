@@ -7,11 +7,17 @@ export async function uploadWidgetFiles() {
       try {
         // Try dist directory first (production build)
         const response = await fetch(`/dist/${filename}`);
-        if (response.ok) return response;
+        if (response.ok) {
+          console.log(`Found ${filename} in dist directory`);
+          return response;
+        }
         
         // Fallback to public directory (development)
         const devResponse = await fetch(`/${filename}`);
-        if (devResponse.ok) return devResponse;
+        if (devResponse.ok) {
+          console.log(`Found ${filename} in public directory`);
+          return devResponse;
+        }
         
         throw new Error(`Failed to fetch ${filename}`);
       } catch (error) {
@@ -22,12 +28,32 @@ export async function uploadWidgetFiles() {
 
     console.log('Starting widget files upload...');
 
-    // Upload embed.html
-    const embedHtmlResponse = await fetchFile('embed.html');
-    const embedHtmlBlob = await embedHtmlResponse.blob();
+    // Upload embed.html - this should be a minimal HTML file
+    const embedHtml = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sweepstakes Widget</title>
+</head>
+<body>
+    <div id="root"></div>
+    <script src="widget.bundle.js"></script>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const sweepstakesId = params.get('id');
+        if (sweepstakesId && window.initializeWidget) {
+            window.initializeWidget(sweepstakesId);
+        }
+    </script>
+</body>
+</html>`;
+
+    const embedBlob = new Blob([embedHtml], { type: 'text/html' });
     const { error: embedError } = await supabase.storage
       .from('static')
-      .upload('embed.html', embedHtmlBlob, {
+      .upload('embed.html', embedBlob, {
         contentType: 'text/html',
         cacheControl: '3600',
         upsert: true
