@@ -20,9 +20,9 @@ export function WidgetTestPage() {
   const [error, setError] = useState<string | null>(null);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
-  // Use GitHub raw URLs for the widget files
-  const widgetUrl = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/public/widget.js`;
-  const widgetBundleUrl = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/dist/widget.bundle.js`;
+  // Use jsDelivr URLs for the widget files
+  const widgetUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@${GITHUB_BRANCH}/public/widget.js`;
+  const widgetBundleUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@${GITHUB_BRANCH}/dist/widget.bundle.js`;
 
   useEffect(() => {
     if (!isLoading && !session) {
@@ -95,14 +95,9 @@ export function WidgetTestPage() {
 </html>`;
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data.type === 'debugLog') {
-        setDebugLogs(prev => [...prev, event.data.message]);
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    if (!embedCode) {
+      setEmbedCode(defaultEmbedCode);
+    }
   }, []);
 
   const handleTest = () => {
@@ -132,12 +127,6 @@ export function WidgetTestPage() {
     setDebugLogs([]);
     toast.info("Embed code reset to default");
   };
-
-  useEffect(() => {
-    if (!embedCode) {
-      setEmbedCode(defaultEmbedCode);
-    }
-  }, []);
 
   if (isLoading) {
     return <div className="container py-8">Loading...</div>;

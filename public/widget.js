@@ -19,7 +19,8 @@
   function loadCSS() {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/public/widget.css`;
+    // Use jsDelivr for CSS
+    link.href = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@${GITHUB_BRANCH}/public/widget.css`;
     document.head.appendChild(link);
     log('Loading widget CSS...');
   }
@@ -69,8 +70,8 @@
       ]);
       log('React and ReactDOM loaded successfully');
 
-      // Load widget bundle from GitHub
-      const widgetBundleUrl = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/dist/widget.bundle.js`;
+      // Load widget bundle from jsDelivr
+      const widgetBundleUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@${GITHUB_BRANCH}/dist/widget.bundle.js`;
       log('Loading widget bundle from: ' + widgetBundleUrl);
       await loadScript(widgetBundleUrl);
       log('Widget bundle loaded successfully');
