@@ -51,8 +51,8 @@
       ]);
       log('React and ReactDOM loaded successfully');
 
-      // Load widget bundle from GitHub
-      const bundleUrl = 'https://raw.githubusercontent.com/brianlapp/sweepy-widget-factory/25425398c05c370937a8ff6783c77bf96a04600d/public/widget.bundle.js';
+      // Load widget bundle from GitHub via jsDelivr
+      const bundleUrl = 'https://cdn.jsdelivr.net/gh/brianlapp/sweepy-widget-factory@25425398c05c370937a8ff6783c77bf96a04600d/public/widget.bundle.js';
       log('Loading widget bundle from: ' + bundleUrl);
       await loadScript(bundleUrl);
       log('Widget bundle loaded successfully');
