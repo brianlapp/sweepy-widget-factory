@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,6 @@ export function WidgetTestPage() {
   const [embedCode, setEmbedCode] = useState('');
   const [iframeKey, setIframeKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     if (!isLoading && !session) {
@@ -28,30 +27,25 @@ export function WidgetTestPage() {
 <head>
     <meta charset="UTF-8">
     <title>Widget Test</title>
+    <style>
+        body { font-family: system-ui, sans-serif; padding: 20px; }
+        #debug-output { 
+            margin-top: 20px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
 </head>
 <body>
     <div id="sweepstakes-widget" data-sweepstakes-id="YOUR_SWEEPSTAKES_ID"></div>
     <script src="${window.location.origin}/widget.js"></script>
-    <div id="debug-info" style="margin-top: 20px; padding: 10px; background: #f0f0f0;">
+    <div>
         <h3>Debug Information:</h3>
         <pre id="debug-output"></pre>
     </div>
-    <script>
-        // Debug logging
-        const debugOutput = document.getElementById('debug-output');
-        function log(message) {
-            console.log(message);
-            debugOutput.textContent += message + '\\n';
-        }
-
-        // Monitor widget initialization
-        window.addEventListener('load', () => {
-            log('Page loaded');
-            const widget = document.getElementById('sweepstakes-widget');
-            log('Widget element found: ' + !!widget);
-            log('Sweepstakes ID: ' + (widget?.getAttribute('data-sweepstakes-id') || 'not set'));
-        });
-    </script>
 </body>
 </html>`;
 
@@ -59,12 +53,12 @@ export function WidgetTestPage() {
     setError(null);
     setIframeKey(prev => prev + 1);
     
-    // Create a blob URL from the embed code
     const blob = new Blob([embedCode], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     
-    if (iframeRef.current) {
-      iframeRef.current.src = url;
+    const iframe = document.querySelector('iframe');
+    if (iframe) {
+      iframe.src = url;
     }
     
     toast.success("Test environment refreshed");
@@ -80,23 +74,6 @@ export function WidgetTestPage() {
     if (!embedCode) {
       setEmbedCode(defaultEmbedCode);
     }
-  }, []);
-
-  // Handle iframe load errors
-  const handleIframeError = () => {
-    setError("Failed to load the preview. Check the embed code for errors.");
-  };
-
-  // Handle iframe messages from the test environment
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data.type === 'widget-error') {
-        setError(event.data.message);
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
   }, []);
 
   if (isLoading) {
@@ -145,11 +122,9 @@ export function WidgetTestPage() {
               )}
               <div className="bg-white rounded-lg overflow-hidden border">
                 <iframe
-                  ref={iframeRef}
                   key={iframeKey}
                   className="w-full h-[600px]"
                   title="Widget Test Environment"
-                  onError={handleIframeError}
                   sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
                 />
               </div>

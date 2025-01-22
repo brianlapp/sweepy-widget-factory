@@ -1,7 +1,7 @@
 (function() {
   function log(message) {
     console.log('[Widget]:', message);
-    // If we're in the test environment, also log to the debug output
+    // Log to debug output if available
     const debugOutput = document.getElementById('debug-output');
     if (debugOutput) {
       debugOutput.textContent += '[Widget]: ' + message + '\n';
@@ -11,101 +11,62 @@
   // Create container div
   const div = document.createElement('div');
   div.id = 'sweepstakes-widget-root';
-  document.currentScript.parentNode.insertBefore(div, document.currentScript);
+  const currentScript = document.currentScript || 
+    document.querySelector('script[src*="widget.js"]');
+  currentScript.parentNode.insertBefore(div, currentScript);
   log('Created widget root element');
 
-  // Load required React and ReactDOM scripts
-  const scripts = [
-    { src: 'https://unpkg.com/react@18/umd/react.production.min.js', global: 'React' },
-    { src: 'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js', global: 'ReactDOM' }
-  ];
-
-  let loadedScripts = 0;
-
-  // Function to load app script after React is loaded
-  function loadAppScript() {
-    log('Loading widget app script');
-    const script = document.createElement('script');
-    script.src = document.currentScript.src.replace('widget.js', 'widget-app.js');
-    script.onload = () => {
-      log('Widget app script loaded');
-      initializeWidget();
-    };
-    script.onerror = (error) => {
-      log('Error loading widget app script: ' + error);
-    };
-    document.head.appendChild(script);
-  }
-
-  // Load React scripts sequentially
-  function loadNextScript() {
-    if (loadedScripts < scripts.length) {
-      const script = document.createElement('script');
-      script.src = scripts[loadedScripts].src;
-      log('Loading ' + scripts[loadedScripts].global);
-      script.onload = () => {
-        log(scripts[loadedScripts].global + ' loaded');
-        loadedScripts++;
-        if (loadedScripts === scripts.length) {
-          loadAppScript();
-        } else {
-          loadNextScript();
-        }
-      };
-      script.onerror = (error) => {
-        log('Error loading ' + scripts[loadedScripts].global + ': ' + error);
-      };
-      document.head.appendChild(script);
-    }
-  }
-
-  // Initialize widget when all scripts are loaded
-  function initializeWidget() {
-    // Get sweepstakes ID from data attribute
-    const widgetContainer = document.getElementById('sweepstakes-widget');
-    if (widgetContainer) {
-      const sweepstakesId = widgetContainer.getAttribute('data-sweepstakes-id');
-      if (sweepstakesId) {
-        log('Initializing sweepstakes widget with ID: ' + sweepstakesId);
-        window.initSweepstakesWidget(sweepstakesId);
-      } else {
-        log('Error: No sweepstakes ID provided');
-      }
-    } else {
-      log('Error: Widget container not found');
-    }
-  }
-
-  // Load required styles
+  // Add required styles
   const styles = document.createElement('link');
   styles.rel = 'stylesheet';
-  styles.href = document.currentScript.src.replace('widget.js', 'widget.css');
+  styles.href = currentScript.src.replace('widget.js', 'widget.css');
   document.head.appendChild(styles);
   log('Added widget styles');
 
-  // Start loading scripts
-  loadNextScript();
+  // Load React and ReactDOM
+  const scripts = [
+    'https://unpkg.com/react@18/umd/react.production.min.js',
+    'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js'
+  ];
 
-  // Expose initialization function globally
-  window.initSweepstakesWidget = function(sweepstakesId) {
+  // Load scripts sequentially
+  function loadScripts(index = 0) {
+    if (index >= scripts.length) {
+      initializeWidget();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = scripts[index];
+    script.onload = () => loadScripts(index + 1);
+    script.onerror = (error) => log('Error loading script: ' + error);
+    document.head.appendChild(script);
+    log('Loading ' + (index === 0 ? 'React' : 'ReactDOM'));
+  }
+
+  // Initialize widget when dependencies are loaded
+  function initializeWidget() {
+    const widgetContainer = document.getElementById('sweepstakes-widget');
+    if (!widgetContainer) {
+      log('Error: Widget container not found');
+      return;
+    }
+
+    const sweepstakesId = widgetContainer.getAttribute('data-sweepstakes-id');
     if (!sweepstakesId) {
-      log('Error: Sweepstakes ID is required');
-      return;
-    }
-    
-    if (!window.React || !window.ReactDOM) {
-      log('Error: React is not loaded yet');
+      log('Error: No sweepstakes ID provided');
       return;
     }
 
-    const rootElement = document.getElementById('sweepstakes-widget-root');
-    if (!rootElement) {
-      log('Error: Root element not found');
-      return;
-    }
+    log('Initializing widget with ID: ' + sweepstakesId);
 
-    log('Initializing widget app');
-    // Initialize the widget app
-    window.initSweepstakesApp(rootElement, sweepstakesId);
-  };
+    // Create and render the widget component
+    const root = ReactDOM.createRoot(document.getElementById('sweepstakes-widget-root'));
+    root.render(React.createElement(window.SweepstakesWidget, { 
+      sweepstakesId: sweepstakesId 
+    }));
+  }
+
+  // Start loading scripts
+  loadScripts();
 })();
