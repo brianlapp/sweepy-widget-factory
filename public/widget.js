@@ -28,6 +28,15 @@
     });
   }
 
+  // Add CSS to the page
+  function addStyles() {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://cdn.jsdelivr.net/gh/brianlapp/sweepy-widget-factory@main/public/widget.css';
+    document.head.appendChild(link);
+    log('Added widget styles');
+  }
+
   // Initialize widget when dependencies are loaded
   async function initializeWidget() {
     try {
@@ -42,6 +51,9 @@
       
       currentScript.parentNode.insertBefore(container, currentScript);
       log('Created widget root element');
+
+      // Add widget styles
+      addStyles();
 
       // Load dependencies
       log('Loading React and ReactDOM...');
