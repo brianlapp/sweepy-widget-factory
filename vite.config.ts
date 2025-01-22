@@ -41,7 +41,7 @@ export default defineConfig(({ mode }) => ({
         assetFileNames: 'assets/[name]-[hash][extname]',
         chunkFileNames: 'assets/[name]-[hash].js',
       },
-      external: ['react', 'react-dom'], // Only exclude React and ReactDOM
+      external: ['react', 'react-dom'], // Only exclude React and ReactDOM, include everything else in the bundle
     },
     sourcemap: true,
     minify: false,
