@@ -1,7 +1,6 @@
 (function() {
   function log(message) {
     console.log('[Widget]:', message);
-    // Log to debug output if available
     const debugOutput = document.getElementById('debug-output');
     if (debugOutput) {
       debugOutput.textContent += '[Widget]: ' + message + '\n';
@@ -25,23 +24,18 @@
 
   // Load React and ReactDOM
   const scripts = [
-    'https://unpkg.com/react@18/umd/react.production.min.js',
-    'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js'
+    'https://unpkg.com/react@18/umd/react.development.js',
+    'https://unpkg.com/react-dom@18/umd/react-dom.development.js'
   ];
 
-  // Load scripts sequentially
-  function loadScripts(index = 0) {
-    if (index >= scripts.length) {
-      initializeWidget();
-      return;
-    }
-
+  // Load widget app script
+  function loadAppScript() {
     const script = document.createElement('script');
-    script.src = scripts[index];
-    script.onload = () => loadScripts(index + 1);
-    script.onerror = (error) => log('Error loading script: ' + error);
+    script.src = currentScript.src.replace('widget.js', 'widget-app.js');
+    script.onload = initializeWidget;
+    script.onerror = (error) => log('Error loading widget app: ' + error);
     document.head.appendChild(script);
-    log('Loading ' + (index === 0 ? 'React' : 'ReactDOM'));
+    log('Loading widget app script');
   }
 
   // Initialize widget when dependencies are loaded
@@ -60,11 +54,38 @@
 
     log('Initializing widget with ID: ' + sweepstakesId);
 
-    // Create and render the widget component
-    const root = ReactDOM.createRoot(document.getElementById('sweepstakes-widget-root'));
-    root.render(React.createElement(window.SweepstakesWidget, { 
-      sweepstakesId: sweepstakesId 
-    }));
+    // Wait for React and ReactDOM to be available
+    if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
+      log('Error: React or ReactDOM not loaded');
+      return;
+    }
+
+    try {
+      const root = ReactDOM.createRoot(document.getElementById('sweepstakes-widget-root'));
+      root.render(React.createElement(window.SweepstakesWidget, { 
+        sweepstakesId: sweepstakesId 
+      }));
+      log('Widget rendered successfully');
+    } catch (error) {
+      log('Error rendering widget: ' + error.message);
+    }
+  }
+
+  // Load scripts sequentially
+  function loadScripts(index = 0) {
+    if (index >= scripts.length) {
+      loadAppScript();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = scripts[index];
+    script.onload = () => {
+      log(index === 0 ? 'React loaded' : 'ReactDOM loaded');
+      loadScripts(index + 1);
+    };
+    script.onerror = (error) => log('Error loading script: ' + error);
+    document.head.appendChild(script);
   }
 
   // Start loading scripts
