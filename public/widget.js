@@ -2,14 +2,18 @@
   const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
   
   function createIframe(sweepstakesId) {
+    console.log('[Widget] Creating iframe with sweepstakes ID:', sweepstakesId);
+    
     const iframe = document.createElement('iframe');
     iframe.style.width = '100%';
     iframe.style.border = 'none';
     iframe.style.minHeight = '600px';
     iframe.setAttribute('scrolling', 'no');
     
-    // Use the storage URL for loading the widget
-    iframe.src = `${STORAGE_URL}/embed.html?id=${sweepstakesId}`;
+    // Construct the full URL for the embed
+    const embedUrl = `${STORAGE_URL}/embed.html?id=${sweepstakesId}`;
+    console.log('[Widget] Setting iframe src to:', embedUrl);
+    iframe.src = embedUrl;
     
     // Add message listener for iframe height adjustments
     window.addEventListener('message', (event) => {
