@@ -1,7 +1,5 @@
 (function() {
   const DEBUG = true;
-  const GITHUB_REPO = 'brianlapp/sweepy-widget-factory';
-  const GITHUB_BRANCH = 'main';
   
   function log(message, type = 'info') {
     if (!DEBUG) return;
@@ -18,7 +16,7 @@
   function loadCSS() {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@${GITHUB_BRANCH}/public/widget.css`;
+    link.href = '/widget.css';
     document.head.appendChild(link);
     log('Loading widget CSS...');
   }
@@ -65,7 +63,7 @@
       log('React and ReactDOM loaded successfully');
 
       // Load widget bundle from public folder
-      const widgetBundleUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@${GITHUB_BRANCH}/public/widget.bundle.js`;
+      const widgetBundleUrl = '/widget.bundle.js';
       log('Loading widget bundle from: ' + widgetBundleUrl);
       await loadScript(widgetBundleUrl);
       log('Widget bundle loaded successfully');
