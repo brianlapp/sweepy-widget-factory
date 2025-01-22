@@ -24,8 +24,8 @@ export default defineConfig(({ mode }) => ({
     strictPort: true,
   },
   build: {
-    outDir: 'public',
-    emptyOutDir: false,
+    outDir: 'dist',
+    assetsDir: '',  // Changed to empty string to put assets in root
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),

@@ -13,32 +13,38 @@
     }
   }
 
-  function loadCSS() {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = '/widget.css';
-    document.head.appendChild(link);
-    log('Loading widget CSS...');
-  }
-
+  // Load React and ReactDOM with proper error handling
   function loadScript(src) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
       script.src = src;
       script.async = true;
-      script.onload = () => {
-        log(`Script loaded successfully: ${src}`);
-        resolve();
-      };
+      script.onload = resolve;
       script.onerror = (e) => {
-        const error = `Error loading script from ${src}: ${e}`;
-        log(error, 'error');
-        reject(new Error(error));
+        log(`Error loading script from ${src}: ${e}`, 'error');
+        reject(e);
       };
       document.head.appendChild(script);
     });
   }
 
+  // Get widget URL from current script
+  function getWidgetUrl() {
+    const currentScript = document.currentScript || 
+      document.querySelector('script[src*="widget.js"]');
+    if (!currentScript) {
+      throw new Error('Could not find widget script element');
+    }
+    
+    // Get the base URL from the widget.js script src
+    const scriptUrl = new URL(currentScript.src);
+    const baseUrl = `${scriptUrl.protocol}//${scriptUrl.host}`;
+    
+    // Return the full path to widget.bundle.js
+    return `${baseUrl}/widget.bundle.js`;
+  }
+
+  // Initialize widget when dependencies are loaded
   async function initializeWidget() {
     try {
       const container = document.createElement('div');
@@ -53,8 +59,7 @@
       currentScript.parentNode.insertBefore(container, currentScript);
       log('Created widget root element');
 
-      loadCSS();
-
+      // Load dependencies
       log('Loading React and ReactDOM...');
       await Promise.all([
         loadScript('https://unpkg.com/react@18/umd/react.production.min.js'),
@@ -62,12 +67,13 @@
       ]);
       log('React and ReactDOM loaded successfully');
 
-      // Load widget bundle from public folder
-      const widgetBundleUrl = '/widget.bundle.js';
-      log('Loading widget bundle from: ' + widgetBundleUrl);
-      await loadScript(widgetBundleUrl);
+      // Load widget bundle
+      const widgetUrl = getWidgetUrl();
+      log('Loading widget bundle from: ' + widgetUrl);
+      await loadScript(widgetUrl);
       log('Widget bundle loaded successfully');
 
+      // Get sweepstakes ID
       const widgetContainer = document.getElementById('sweepstakes-widget');
       if (!widgetContainer) {
         throw new Error('Widget container not found');
@@ -80,6 +86,7 @@
 
       log('Initializing widget with ID: ' + sweepstakesId);
 
+      // Render widget
       const root = ReactDOM.createRoot(document.getElementById('sweepstakes-widget-root'));
       root.render(React.createElement(window.SweepstakesWidget, { 
         sweepstakesId: sweepstakesId 
@@ -88,20 +95,11 @@
 
     } catch (error) {
       log(`Widget initialization failed: ${error.message}`, 'error');
-      const container = document.getElementById('sweepstakes-widget-root');
-      if (container) {
-        container.innerHTML = `
-          <div style="padding: 1rem; border: 1px solid #f87171; border-radius: 0.375rem; background-color: #fee2e2; color: #991b1b;">
-            <p style="margin: 0; font-family: system-ui, sans-serif;">
-              Widget failed to load: ${error.message}
-            </p>
-          </div>
-        `;
-      }
       throw error;
     }
   }
 
+  // Start initialization
   initializeWidget().catch(error => {
     log(`Fatal error: ${error.message}`, 'error');
   });

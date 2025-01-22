@@ -8,10 +8,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { AlertCircle, Info } from "lucide-react";
 
-// Constants for GitHub repository details
-const GITHUB_REPO = 'brianlapp/sweepy-widget-factory';
-const GITHUB_BRANCH = 'main';
-
 export function WidgetTestPage() {
   const { session, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -20,9 +16,9 @@ export function WidgetTestPage() {
   const [error, setError] = useState<string | null>(null);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
-  // Use jsDelivr URLs for the widget files
-  const widgetUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@${GITHUB_BRANCH}/public/widget.js`;
-  const widgetBundleUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@${GITHUB_BRANCH}/public/widget.bundle.js`;
+  // Get the public URL for the widget
+  const publicDomain = window.location.hostname.replace('lovable.dev', 'lovableproject.com');
+  const widgetUrl = `https://${publicDomain}/widget.js`;
 
   useEffect(() => {
     if (!isLoading && !session) {
@@ -95,9 +91,14 @@ export function WidgetTestPage() {
 </html>`;
 
   useEffect(() => {
-    if (!embedCode) {
-      setEmbedCode(defaultEmbedCode);
-    }
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === 'debugLog') {
+        setDebugLogs(prev => [...prev, event.data.message]);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, []);
 
   const handleTest = () => {
@@ -128,6 +129,12 @@ export function WidgetTestPage() {
     toast.info("Embed code reset to default");
   };
 
+  useEffect(() => {
+    if (!embedCode) {
+      setEmbedCode(defaultEmbedCode);
+    }
+  }, []);
+
   if (isLoading) {
     return <div className="container py-8">Loading...</div>;
   }
@@ -143,13 +150,10 @@ export function WidgetTestPage() {
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          The widget files must be publicly accessible via GitHub. 
+          The widget files (widget.js and widget.bundle.js) must be publicly accessible. 
           They will be available at:
           <pre className="mt-2 bg-slate-100 p-2 rounded">{widgetUrl}</pre>
-          <pre className="mt-2 bg-slate-100 p-2 rounded">{widgetBundleUrl}</pre>
-          <p className="mt-2">
-            Note: You'll need to update these URLs with your actual GitHub repository details.
-          </p>
+          <pre className="mt-2 bg-slate-100 p-2 rounded">{widgetUrl.replace('widget.js', 'widget.bundle.js')}</pre>
         </AlertDescription>
       </Alert>
       
