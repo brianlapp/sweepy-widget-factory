@@ -20,6 +20,8 @@ export async function uploadWidgetFiles() {
       }
     }
 
+    console.log('Starting widget files upload...');
+
     // Upload embed.html
     const embedHtmlResponse = await fetchFile('embed.html');
     const embedHtmlBlob = await embedHtmlResponse.blob();
@@ -30,7 +32,10 @@ export async function uploadWidgetFiles() {
         upsert: true
       });
     
-    if (embedError) throw embedError;
+    if (embedError) {
+      console.error('Error uploading embed.html:', embedError);
+      throw embedError;
+    }
     console.log('Successfully uploaded embed.html');
 
     // Upload widget.js
@@ -43,7 +48,10 @@ export async function uploadWidgetFiles() {
         upsert: true
       });
 
-    if (widgetError) throw widgetError;
+    if (widgetError) {
+      console.error('Error uploading widget.js:', widgetError);
+      throw widgetError;
+    }
     console.log('Successfully uploaded widget.js');
 
     // Upload widget bundle
@@ -56,7 +64,10 @@ export async function uploadWidgetFiles() {
         upsert: true
       });
 
-    if (bundleError) throw bundleError;
+    if (bundleError) {
+      console.error('Error uploading widget.bundle.js:', bundleError);
+      throw bundleError;
+    }
     console.log('Successfully uploaded widget.bundle.js');
 
   } catch (error) {

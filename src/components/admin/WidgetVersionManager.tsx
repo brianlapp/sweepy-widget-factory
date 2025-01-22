@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Info } from 'lucide-react';
+import { Info, Copy, Check } from 'lucide-react';
 import { uploadWidgetFiles } from '@/utils/uploadWidget';
 
 interface Version {
@@ -20,6 +20,8 @@ interface Version {
 
 export function WidgetVersionManager() {
   const queryClient = useQueryClient();
+  const [copied, setCopied] = React.useState(false);
+  const [selectedSweepstakesId, setSelectedSweepstakesId] = React.useState('');
 
   const { data: versions, isLoading } = useQuery({
     queryKey: ['widget-versions'],
@@ -34,10 +36,27 @@ export function WidgetVersionManager() {
     },
   });
 
+  const { data: sweepstakes } = useQuery({
+    queryKey: ['sweepstakes'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('sweepstakes')
+        .select('id, title')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const deployMutation = useMutation({
     mutationFn: async (versionId: string) => {
       try {
-        // First upload the widget files
+        // First build the widget files
+        toast.info('Building widget files...');
+        
+        // Upload the widget files
+        toast.info('Uploading widget files...');
         await uploadWidgetFiles();
 
         // Generate bundle hash
@@ -110,56 +129,138 @@ export function WidgetVersionManager() {
     },
   });
 
+  const getEmbedCode = (sweepstakesId: string) => {
+    return `<!-- Add this code right before the closing </head> tag -->
+<script src="https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static/widget.js"></script>
+
+<!-- Add this code where you want the widget to appear -->
+<div id="sweepstakes-widget" data-sweepstakes-id="${sweepstakesId}"></div>`;
+  };
+
+  const handleCopyCode = async () => {
+    if (!selectedSweepstakesId) {
+      toast.error('Please select a sweepstakes first');
+      return;
+    }
+    
+    try {
+      await navigator.clipboard.writeText(getEmbedCode(selectedSweepstakesId));
+      setCopied(true);
+      toast.success('Embed code copied to clipboard');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast.error('Failed to copy code');
+    }
+  };
+
   if (isLoading) {
     return <div>Loading versions...</div>;
   }
 
+  const activeVersion = versions?.find(v => v.is_active);
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Widget Versions</CardTitle>
-        <Button 
-          size="sm" 
-          onClick={() => createVersionMutation.mutate()}
-          disabled={createVersionMutation.isPending}
-        >
-          Create Version
-        </Button>
-      </CardHeader>
-      <CardContent>
-        {versions?.length === 0 ? (
-          <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
-            <Info className="mr-2 h-4 w-4" />
-            No versions found
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {versions?.map((version) => (
-              <div
-                key={version.id}
-                className="flex items-center justify-between rounded-lg border p-2"
-              >
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium">{version.version}</span>
-                  {version.is_active && (
-                    <Badge variant="secondary">Active</Badge>
-                  )}
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Widget Versions</CardTitle>
+          <Button 
+            size="sm" 
+            onClick={() => createVersionMutation.mutate()}
+            disabled={createVersionMutation.isPending}
+          >
+            Create Version
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {versions?.length === 0 ? (
+            <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
+              <Info className="mr-2 h-4 w-4" />
+              No versions found
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {versions?.map((version) => (
+                <div
+                  key={version.id}
+                  className="flex items-center justify-between rounded-lg border p-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium">{version.version}</span>
+                    {version.is_active && (
+                      <Badge variant="secondary">Active</Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      size="sm"
+                      variant={version.is_active ? "secondary" : "default"}
+                      onClick={() => deployMutation.mutate(version.id)}
+                      disabled={version.is_active || deployMutation.isPending}
+                    >
+                      {version.is_active ? 'Deployed' : 'Deploy'}
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {activeVersion && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Embed Instructions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Sweepstakes:</label>
+              <select 
+                className="w-full rounded-md border p-2"
+                value={selectedSweepstakesId}
+                onChange={(e) => setSelectedSweepstakesId(e.target.value)}
+              >
+                <option value="">Select a sweepstakes...</option>
+                {sweepstakes?.map((sweep) => (
+                  <option key={sweep.id} value={sweep.id}>
+                    {sweep.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedSweepstakesId && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Embed Code:</label>
                   <Button
                     size="sm"
-                    variant={version.is_active ? "secondary" : "default"}
-                    onClick={() => deployMutation.mutate(version.id)}
-                    disabled={version.is_active || deployMutation.isPending}
+                    variant="outline"
+                    onClick={handleCopyCode}
+                    className="flex items-center gap-1"
                   >
-                    {version.is_active ? 'Deployed' : 'Deploy'}
+                    {copied ? (
+                      <>
+                        <Check className="h-4 w-4" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" />
+                        Copy Code
+                      </>
+                    )}
                   </Button>
                 </div>
+                <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">
+                  {getEmbedCode(selectedSweepstakesId)}
+                </pre>
               </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }
