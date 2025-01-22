@@ -39,6 +39,3 @@ function initializeWidget(sweepstakesId: string) {
 
 // Export for use in iframe
 (window as any).initializeWidget = initializeWidget;
-
-// Export the WidgetRoot component as a named export
-export { WidgetRoot };
