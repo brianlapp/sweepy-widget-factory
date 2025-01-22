@@ -16,16 +16,10 @@ function WidgetRoot({ sweepstakesId }: { sweepstakesId: string }) {
 }
 
 // Initialize the widget when the script loads
-function initializeWidget() {
-  const container = document.getElementById('sweepstakes-widget');
-  if (!container) {
-    console.error('Widget container not found');
-    return;
-  }
-
-  const sweepstakesId = container.getAttribute('data-sweepstakes-id');
-  if (!sweepstakesId) {
-    console.error('No sweepstakes ID provided');
+function initializeWidget(sweepstakesId: string) {
+  const root = document.getElementById('root');
+  if (!root) {
+    console.error('Root element not found');
     return;
   }
 
@@ -36,8 +30,7 @@ function initializeWidget() {
     return;
   }
 
-  const root = createRoot(container);
-  root.render(
+  createRoot(root).render(
     <React.StrictMode>
       <WidgetRoot sweepstakesId={sweepstakesId} />
     </React.StrictMode>
@@ -45,9 +38,4 @@ function initializeWidget() {
 }
 
 // Export for use in iframe
-export { WidgetRoot };
-
-// Initialize if we're not in an iframe
-if (window.top === window.self) {
-  initializeWidget();
-}
+(window as any).initializeWidget = initializeWidget;
