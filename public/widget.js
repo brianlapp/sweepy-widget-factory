@@ -13,7 +13,6 @@
     }
   }
 
-  // Load React and ReactDOM with proper error handling
   function loadScript(src) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
@@ -28,7 +27,6 @@
     });
   }
 
-  // Add CSS to the page
   function addStyles() {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
@@ -37,7 +35,6 @@
     log('Added widget styles');
   }
 
-  // Initialize widget when dependencies are loaded
   async function initializeWidget() {
     try {
       const container = document.createElement('div');
@@ -52,24 +49,21 @@
       currentScript.parentNode.insertBefore(container, currentScript);
       log('Created widget root element');
 
-      // Add widget styles
       addStyles();
 
-      // Load dependencies
-      log('Loading React and ReactDOM...');
+      log('Loading dependencies...');
       await Promise.all([
         loadScript('https://unpkg.com/react@18/umd/react.production.min.js'),
-        loadScript('https://unpkg.com/react-dom@18/umd/react-dom.production.min.js')
+        loadScript('https://unpkg.com/react-dom@18/umd/react-dom.production.min.js'),
+        loadScript('https://unpkg.com/@tanstack/react-query@5.0.0/build/umd/index.production.js')
       ]);
-      log('React and ReactDOM loaded successfully');
+      log('Dependencies loaded successfully');
 
-      // Load widget bundle from GitHub via jsDelivr
-      const bundleUrl = 'https://cdn.jsdelivr.net/gh/brianlapp/sweepy-widget-factory@25425398c05c370937a8ff6783c77bf96a04600d/public/widget.bundle.js';
+      const bundleUrl = 'https://cdn.jsdelivr.net/gh/brianlapp/sweepy-widget-factory@main/public/widget.bundle.js';
       log('Loading widget bundle from: ' + bundleUrl);
       await loadScript(bundleUrl);
       log('Widget bundle loaded successfully');
 
-      // Get sweepstakes ID
       const widgetContainer = document.getElementById('sweepstakes-widget');
       if (!widgetContainer) {
         throw new Error('Widget container not found');
@@ -82,7 +76,6 @@
 
       log('Initializing widget with ID: ' + sweepstakesId);
 
-      // Render widget
       const root = ReactDOM.createRoot(document.getElementById('sweepstakes-widget-root'));
       root.render(React.createElement(window.SweepstakesWidget, { 
         sweepstakesId: sweepstakesId 
@@ -95,7 +88,6 @@
     }
   }
 
-  // Start initialization
   initializeWidget().catch(error => {
     log(`Fatal error: ${error.message}`, 'error');
   });
