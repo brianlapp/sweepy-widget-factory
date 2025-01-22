@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: 'dist',
-    assetsDir: 'assets',
+    assetsDir: '',  // Changed to empty string to put assets in root
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),

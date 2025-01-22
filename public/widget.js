@@ -20,20 +20,28 @@
       script.src = src;
       script.async = true;
       script.onload = resolve;
-      script.onerror = reject;
+      script.onerror = (e) => {
+        log(`Error loading script from ${src}: ${e}`, 'error');
+        reject(e);
+      };
       document.head.appendChild(script);
     });
   }
 
-  // Get widget script URL
+  // Get widget URL from current script
   function getWidgetUrl() {
     const currentScript = document.currentScript || 
       document.querySelector('script[src*="widget.js"]');
     if (!currentScript) {
       throw new Error('Could not find widget script element');
     }
+    
+    // Get the base URL from the widget.js script src
     const scriptUrl = new URL(currentScript.src);
-    return scriptUrl.href.replace('widget.js', 'widget.bundle.js');
+    const baseUrl = `${scriptUrl.protocol}//${scriptUrl.host}`;
+    
+    // Return the full path to widget.bundle.js
+    return `${baseUrl}/widget.bundle.js`;
   }
 
   // Initialize widget when dependencies are loaded
