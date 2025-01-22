@@ -5,9 +5,9 @@ import { AuthProvider } from "@/components/auth/AuthProvider";
 import { AppSidebar } from "@/components/AppSidebar";
 
 // Pages
-import { Index } from "@/pages/Index";
-import { ReadmePage } from "@/pages/ReadmePage";
-import { AuthPage } from "@/pages/auth/AuthPage";
+import Index from "@/pages/Index";
+import ReadmePage from "@/pages/ReadmePage";
+import AuthPage from "@/pages/auth/AuthPage";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import { EditSweepstakesPage } from "@/pages/admin/EditSweepstakesPage";
 import { SweepstakesAnalyticsPage } from "@/pages/admin/SweepstakesAnalyticsPage";

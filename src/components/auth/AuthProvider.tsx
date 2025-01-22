@@ -5,11 +5,13 @@ import { supabase } from "@/integrations/supabase/client";
 interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   session: null,
   isLoading: true,
+  signOut: async () => {},
 });
 
 interface AuthProviderProps {
@@ -19,6 +21,10 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps): React.ReactElement {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+  };
 
   useEffect(() => {
     // Get initial session
@@ -41,7 +47,7 @@ export function AuthProvider({ children }: AuthProviderProps): React.ReactElemen
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, isLoading }}>
+    <AuthContext.Provider value={{ session, isLoading, signOut }}>
       {children}
     </AuthContext.Provider>
   );
