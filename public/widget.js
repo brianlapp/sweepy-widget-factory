@@ -7,7 +7,11 @@
     iframe.style.border = 'none';
     iframe.style.minHeight = '600px';
     iframe.setAttribute('scrolling', 'no');
-    iframe.src = `${window.location.protocol}//${window.location.hostname}:8080/embed/${sweepstakesId}`;
+    
+    // Always use HTTPS for the iframe source
+    const protocol = 'https:';
+    const hostname = window.location.hostname;
+    iframe.src = `${protocol}//${hostname}/embed/${sweepstakesId}`;
     
     // Add message listener for iframe height adjustments
     window.addEventListener('message', (event) => {
