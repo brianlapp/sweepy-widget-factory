@@ -15,6 +15,24 @@
     }
   }
 
+  async function getActiveVersion() {
+    try {
+      const response = await fetch(
+        `https://${SUPABASE_PROJECT_ID}.supabase.co/rest/v1/widget_versions?select=*&is_active=eq.true&limit=1`,
+        {
+          headers: {
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhyeWNnbXpnc2tjYmh2ZGNsZmxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzczOTgzMDgsImV4cCI6MjA1Mjk3NDMwOH0.9_abIKE2UBX8AUB3R3VDLtYCR6MtrE6C1SAIAOy0CgA'
+          }
+        }
+      );
+      const versions = await response.json();
+      return versions[0];
+    } catch (error) {
+      log(`Error fetching active version: ${error}`, 'error');
+      return null;
+    }
+  }
+
   function loadScript(src) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
@@ -61,7 +79,8 @@
       ]);
       log('Dependencies loaded successfully');
 
-      const bundleUrl = `${STORAGE_URL}/widget.bundle.js`;
+      const activeVersion = await getActiveVersion();
+      const bundleUrl = `${STORAGE_URL}/widget.bundle.js${activeVersion ? '?v=' + activeVersion.version : ''}`;
       log('Loading widget bundle from: ' + bundleUrl);
       await loadScript(bundleUrl);
       log('Widget bundle loaded successfully');

@@ -9,6 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { toast } from "sonner";
 import { AlertCircle, Info, Code, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { WidgetVersionManager } from "@/components/admin/WidgetVersionManager";
+
+// Constants
+const PROJECT_ID = "xrycgmzgskcbhvdclflj";
+const STORAGE_URL = `https://${PROJECT_ID}.supabase.co/storage/v1/object/public/static`;
+const widgetJsUrl = `${STORAGE_URL}/widget.js`;
 
 export function WidgetTestPage() {
   const { session, isLoading } = useAuth();
@@ -21,11 +27,6 @@ export function WidgetTestPage() {
   const [showEmbedDialog, setShowEmbedDialog] = useState(false);
   const [bundleContent, setBundleContent] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
-
-  // Extract project ID from Supabase URL constant
-  const PROJECT_ID = "xrycgmzgskcbhvdclflj";
-  const STORAGE_URL = `https://${PROJECT_ID}.supabase.co/storage/v1/object/public/static`;
-  const widgetJsUrl = `${STORAGE_URL}/widget.js`;
 
   useEffect(() => {
     if (!isLoading && !session) {
@@ -64,14 +65,9 @@ export function WidgetTestPage() {
 </html>`;
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data.type === 'debugLog') {
-        setDebugLogs(prev => [...prev, event.data.message]);
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    if (!embedCode) {
+      setEmbedCode(defaultEmbedCode);
+    }
   }, []);
 
   const handleUploadWidgetFiles = async () => {
@@ -166,12 +162,6 @@ export function WidgetTestPage() {
     toast.info("Embed code reset to default");
   };
 
-  useEffect(() => {
-    if (!embedCode) {
-      setEmbedCode(defaultEmbedCode);
-    }
-  }, []);
-
   if (isLoading) {
     return <div className="container py-8">Loading...</div>;
   }
@@ -230,6 +220,8 @@ export function WidgetTestPage() {
           <pre className="mt-2 bg-slate-100 p-2 rounded">{STORAGE_URL}</pre>
         </AlertDescription>
       </Alert>
+
+      <WidgetVersionManager />
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">

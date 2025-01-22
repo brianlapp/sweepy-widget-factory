@@ -178,6 +178,39 @@ export type Database = {
           },
         ]
       }
+      widget_versions: {
+        Row: {
+          bundle_hash: string
+          changelog: string | null
+          created_at: string | null
+          deployed_at: string | null
+          deployed_by: string | null
+          id: string
+          is_active: boolean | null
+          version: string
+        }
+        Insert: {
+          bundle_hash: string
+          changelog?: string | null
+          created_at?: string | null
+          deployed_at?: string | null
+          deployed_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          version: string
+        }
+        Update: {
+          bundle_hash?: string
+          changelog?: string | null
+          created_at?: string | null
+          deployed_at?: string | null
+          deployed_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          version?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
