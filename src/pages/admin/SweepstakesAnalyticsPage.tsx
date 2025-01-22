@@ -21,7 +21,7 @@ export function SweepstakesAnalyticsPage() {
   const [showInactive, setShowInactive] = useState(true);
 
   // Fetch all sweepstakes for the list view
-  const { data: allSweepstakes } = useQuery({
+  const { data: allSweepstakes, isLoading: isLoadingAll } = useQuery({
     queryKey: ['all-sweepstakes'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -35,7 +35,7 @@ export function SweepstakesAnalyticsPage() {
   });
 
   // Fetch current sweepstakes details
-  const { data: sweepstakes } = useQuery({
+  const { data: sweepstakes, isLoading: isLoadingSweepstakes } = useQuery({
     queryKey: ['sweepstakes', id],
     queryFn: async () => {
       if (!id) throw new Error("No sweepstakes ID provided");
@@ -44,7 +44,7 @@ export function SweepstakesAnalyticsPage() {
         .from('sweepstakes')
         .select('*')
         .eq('id', id)
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
       return data;
@@ -53,7 +53,7 @@ export function SweepstakesAnalyticsPage() {
   });
 
   // Fetch entries for current sweepstakes
-  const { data: entries, refetch: refetchEntries } = useQuery({
+  const { data: entries, refetch: refetchEntries, isLoading: isLoadingEntries } = useQuery({
     queryKey: ['sweepstakes-entries', id],
     queryFn: async () => {
       if (!id) throw new Error("No sweepstakes ID provided");
@@ -123,40 +123,48 @@ export function SweepstakesAnalyticsPage() {
           </Button>
         </div>
 
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Status</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Entries</TableHead>
-                <TableHead>Start Date</TableHead>
-                <TableHead>End Date</TableHead>
-                <TableHead>Draw Type</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredSweepstakes?.map((sweep) => (
-                <TableRow key={sweep.id} className={!sweep.is_active ? "opacity-60" : ""}>
-                  <TableCell>
-                    {sweep.is_active ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-gray-500" />
-                    )}
-                  </TableCell>
-                  <TableCell className="font-medium">{sweep.title}</TableCell>
-                  <TableCell>{sweep.current_entries || 0}</TableCell>
-                  <TableCell>{format(new Date(sweep.start_date), 'MMM d, yyyy')}</TableCell>
-                  <TableCell>{format(new Date(sweep.end_date), 'MMM d, yyyy')}</TableCell>
-                  <TableCell className="capitalize">{sweep.draw_type}</TableCell>
+        {isLoadingAll ? (
+          <div>Loading sweepstakes...</div>
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Entries</TableHead>
+                  <TableHead>Start Date</TableHead>
+                  <TableHead>End Date</TableHead>
+                  <TableHead>Draw Type</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {filteredSweepstakes?.map((sweep) => (
+                  <TableRow key={sweep.id} className={!sweep.is_active ? "opacity-60" : ""}>
+                    <TableCell>
+                      {sweep.is_active ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <XCircle className="h-5 w-5 text-gray-500" />
+                      )}
+                    </TableCell>
+                    <TableCell className="font-medium">{sweep.title}</TableCell>
+                    <TableCell>{sweep.current_entries || 0}</TableCell>
+                    <TableCell>{format(new Date(sweep.start_date), 'MMM d, yyyy')}</TableCell>
+                    <TableCell>{format(new Date(sweep.end_date), 'MMM d, yyyy')}</TableCell>
+                    <TableCell className="capitalize">{sweep.draw_type}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
     );
+  }
+
+  if (isLoadingSweepstakes || isLoadingEntries) {
+    return <div className="container py-8">Loading...</div>;
   }
 
   return (
