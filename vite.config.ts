@@ -30,6 +30,7 @@ export default defineConfig(({ mode }) => ({
       input: {
         main: path.resolve(__dirname, 'index.html'),
         widget: path.resolve(__dirname, 'src/widget.tsx'),
+        embed: path.resolve(__dirname, 'public/embed.html'),
       },
       output: {
         entryFileNames: (chunkInfo) => {
@@ -38,10 +39,15 @@ export default defineConfig(({ mode }) => ({
           }
           return 'assets/[name]-[hash].js';
         },
-        assetFileNames: 'assets/[name]-[hash][extname]',
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name === 'embed.html' || assetInfo.name === 'widget.js') {
+            return '[name]';
+          }
+          return 'assets/[name]-[hash][extname]';
+        },
         chunkFileNames: 'assets/[name]-[hash].js',
       },
-      external: ['react', 'react-dom'], // Only exclude React and ReactDOM, include everything else in the bundle
+      external: ['react', 'react-dom'], // Only exclude React and ReactDOM
     },
     sourcemap: true,
     minify: false,

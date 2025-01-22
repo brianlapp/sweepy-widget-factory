@@ -2,8 +2,26 @@ import { supabase } from '@/integrations/supabase/client';
 
 export async function uploadWidgetFiles() {
   try {
+    // Helper function to fetch file with fallback paths
+    async function fetchFile(filename: string) {
+      try {
+        // Try dist directory first (production build)
+        const response = await fetch(`/dist/${filename}`);
+        if (response.ok) return response;
+        
+        // Fallback to public directory (development)
+        const devResponse = await fetch(`/${filename}`);
+        if (devResponse.ok) return devResponse;
+        
+        throw new Error(`Failed to fetch ${filename}`);
+      } catch (error) {
+        console.error(`Error fetching ${filename}:`, error);
+        throw error;
+      }
+    }
+
     // Upload embed.html
-    const embedHtmlResponse = await fetch('/embed.html');
+    const embedHtmlResponse = await fetchFile('embed.html');
     const embedHtmlBlob = await embedHtmlResponse.blob();
     const { error: embedError } = await supabase.storage
       .from('static')
@@ -16,7 +34,7 @@ export async function uploadWidgetFiles() {
     console.log('Successfully uploaded embed.html');
 
     // Upload widget.js
-    const widgetJsResponse = await fetch('/widget.js');
+    const widgetJsResponse = await fetchFile('widget.js');
     const widgetJsBlob = await widgetJsResponse.blob();
     const { error: widgetError } = await supabase.storage
       .from('static')
@@ -29,7 +47,7 @@ export async function uploadWidgetFiles() {
     console.log('Successfully uploaded widget.js');
 
     // Upload widget bundle
-    const widgetBundleResponse = await fetch('/widget.bundle.js');
+    const widgetBundleResponse = await fetchFile('widget.bundle.js');
     const widgetBundleBlob = await widgetBundleResponse.blob();
     const { error: bundleError } = await supabase.storage
       .from('static')
