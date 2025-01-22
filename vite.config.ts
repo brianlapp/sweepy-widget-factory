@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: 'public',
-    assetsDir: '',
+    emptyOutDir: false,
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
