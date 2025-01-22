@@ -28,6 +28,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [isGeneratingBundle, setIsGeneratingBundle] = useState(false);
 
+  // Redirect if not authenticated
   useEffect(() => {
     if (!isLoading && !session) {
       console.log("No session, redirecting to auth");
@@ -35,6 +36,7 @@ export default function AdminDashboard() {
     }
   }, [session, isLoading, navigate]);
 
+  // Fetch sweepstakes data
   const { data: sweepstakes, isLoading: isSweepstakesLoading } = useQuery({
     queryKey: ["sweepstakes"],
     queryFn: async () => {
@@ -44,6 +46,7 @@ export default function AdminDashboard() {
         .order("created_at", { ascending: false });
 
       if (error) {
+        console.error("Error fetching sweepstakes:", error);
         toast.error("Failed to load sweepstakes");
         throw error;
       }
@@ -55,22 +58,19 @@ export default function AdminDashboard() {
   const handleGenerateBundle = async () => {
     setIsGeneratingBundle(true);
     try {
-      // Here you would implement the actual bundle generation
-      // For now, we'll simulate it with a delay
       await new Promise(resolve => setTimeout(resolve, 2000));
       toast.success("Widget bundle generated successfully!");
     } catch (err) {
+      console.error("Bundle generation error:", err);
       toast.error("Failed to generate widget bundle");
-      console.error(err);
     } finally {
       setIsGeneratingBundle(false);
     }
   };
 
   const getEmbedCode = (sweepstakesId: string) => {
-    const widgetJsUrl = "https://cdn.jsdelivr.net/gh/brianlapp/sweepy-widget-factory@main/public/widget.js";
     return `<div id="sweepstakes-widget" data-sweepstakes-id="${sweepstakesId}"></div>
-<script src="${widgetJsUrl}"></script>`;
+<script src="https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static/widget.js"></script>`;
   };
 
   const handleCopyEmbed = (sweepstakesId: string) => {
@@ -78,7 +78,7 @@ export default function AdminDashboard() {
     toast.success("Embed code copied to clipboard!");
   };
 
-  if (isLoading) {
+  if (isLoading || isSweepstakesLoading) {
     return <div className="p-8">Loading...</div>;
   }
 
@@ -153,17 +153,10 @@ export default function AdminDashboard() {
                       <DialogHeader>
                         <DialogTitle>Embed Code</DialogTitle>
                         <DialogDescription>
-                          Generate the widget bundle before copying the embed code.
+                          Copy this code and paste it into your website where you want the widget to appear.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
-                        <Button 
-                          onClick={handleGenerateBundle}
-                          disabled={isGeneratingBundle}
-                          className="w-full"
-                        >
-                          {isGeneratingBundle ? "Generating..." : "Generate Widget Bundle"}
-                        </Button>
                         <div className="bg-muted p-4 rounded-md">
                           <pre className="text-sm whitespace-pre-wrap break-all">
                             {getEmbedCode(sweep.id)}
@@ -171,7 +164,6 @@ export default function AdminDashboard() {
                         </div>
                         <Button 
                           onClick={() => handleCopyEmbed(sweep.id)}
-                          disabled={isGeneratingBundle}
                           className="w-full"
                         >
                           Copy Embed Code
@@ -191,11 +183,7 @@ export default function AdminDashboard() {
                     size="icon"
                     className="text-destructive"
                     onClick={async () => {
-                      if (
-                        window.confirm(
-                          "Are you sure you want to delete this sweepstakes?"
-                        )
-                      ) {
+                      if (window.confirm("Are you sure you want to delete this sweepstakes?")) {
                         const { error } = await supabase
                           .from("sweepstakes")
                           .delete()
