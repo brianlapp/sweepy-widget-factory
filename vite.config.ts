@@ -33,9 +33,13 @@ export default defineConfig(({ mode }) => ({
       },
       output: {
         entryFileNames: (chunkInfo) => {
-          return chunkInfo.name === 'widget' ? 'widget-app.js' : 'assets/[name]-[hash].js';
+          if (chunkInfo.name === 'widget') {
+            return 'widget-app.js';
+          }
+          return 'assets/[name]-[hash].js';
         },
-        manualChunks: undefined,
+        assetFileNames: 'assets/[name]-[hash][extname]',
+        chunkFileNames: 'assets/[name]-[hash].js',
       },
     },
   },

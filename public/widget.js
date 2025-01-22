@@ -18,7 +18,7 @@
   // Add required styles
   const styles = document.createElement('link');
   styles.rel = 'stylesheet';
-  styles.href = currentScript.src.replace('widget.js', 'widget.css');
+  styles.href = currentScript.src.replace('widget.js', 'style.css');
   document.head.appendChild(styles);
   log('Added widget styles');
 
@@ -31,11 +31,16 @@
   // Load widget app script
   function loadAppScript() {
     const script = document.createElement('script');
-    script.src = currentScript.src.replace('widget.js', 'widget-app.js');
+    script.src = currentScript.src.replace('widget.js', 'assets/widget-[hash].js');
     script.onload = initializeWidget;
-    script.onerror = (error) => log('Error loading widget app: ' + error);
+    script.onerror = (error) => {
+      log('Error loading widget app: ' + error);
+      // Fallback to direct path if hashed file not found
+      script.src = currentScript.src.replace('widget.js', 'widget-app.js');
+      script.onload = initializeWidget;
+    };
     document.head.appendChild(script);
-    log('Loading widget app script');
+    log('Loading widget app script from: ' + script.src);
   }
 
   // Initialize widget when dependencies are loaded
