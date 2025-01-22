@@ -22,29 +22,34 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Router>
-          <Routes>
-            {/* Embed route without sidebar */}
-            <Route path="/embed/:id" element={<EmbedPage />} />
-            
-            {/* All other routes with sidebar */}
-            <Route path="/" element={
-              <div className="flex min-h-screen">
-                <AppSidebar />
-                <main className="flex-1 overflow-y-auto bg-muted/10">
-                  <Routes>
-                    <Route index element={<Index />} />
-                    <Route path="/readme" element={<ReadmePage />} />
-                    <Route path="/auth" element={<AuthPage />} />
-                    <Route path="/admin" element={<AdminDashboard />} />
-                    <Route path="/admin/sweepstakes/new" element={<EditSweepstakesPage />} />
-                    <Route path="/admin/sweepstakes/:id/edit" element={<EditSweepstakesPage />} />
-                    <Route path="/admin/sweepstakes/:id/analytics" element={<SweepstakesAnalyticsPage />} />
-                    <Route path="/preview/:id" element={<PreviewPage />} />
-                  </Routes>
-                </main>
-              </div>
-            } />
-          </Routes>
+          <div className="flex min-h-screen">
+            <Routes>
+              {/* Embed route without sidebar */}
+              <Route path="/embed/:id" element={<EmbedPage />} />
+              
+              {/* All other routes with sidebar */}
+              <Route
+                path="*"
+                element={
+                  <div className="flex min-h-screen w-full">
+                    <AppSidebar />
+                    <main className="flex-1 overflow-y-auto bg-muted/10">
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/readme" element={<ReadmePage />} />
+                        <Route path="/auth" element={<AuthPage />} />
+                        <Route path="/admin" element={<AdminDashboard />} />
+                        <Route path="/admin/sweepstakes/new" element={<EditSweepstakesPage />} />
+                        <Route path="/admin/sweepstakes/:id/edit" element={<EditSweepstakesPage />} />
+                        <Route path="/admin/sweepstakes/:id/analytics" element={<SweepstakesAnalyticsPage />} />
+                        <Route path="/preview/:id" element={<PreviewPage />} />
+                      </Routes>
+                    </main>
+                  </div>
+                }
+              />
+            </Routes>
+          </div>
           <Toaster />
         </Router>
       </AuthProvider>
