@@ -9,8 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 export function SweepstakesWidget({ 
   sweepstakesId, 
-  title = "Enter to Win!", 
-  imageUrl = "/placeholder.svg",
+  title: defaultTitle = "Enter to Win!", 
+  imageUrl: defaultImageUrl = "/placeholder.svg",
   disclaimer,
   thankYouHeadline,
   thankYouImageUrl,
@@ -18,7 +18,7 @@ export function SweepstakesWidget({
 }: SweepstakesWidgetProps) {
   const [isSubmitted, setIsSubmitted] = React.useState(false);
 
-  const { data: sweepstakes } = useQuery({
+  const { data: sweepstakes, isLoading } = useQuery({
     queryKey: ['sweepstakes', sweepstakesId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -36,11 +36,18 @@ export function SweepstakesWidget({
     enabled: !!sweepstakesId, // Only run query if we have a valid ID
   });
 
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
   const showProgress = sweepstakes?.draw_type === 'entries' && !isSubmitted;
+  const displayTitle = sweepstakes?.title || defaultTitle;
+  const displayImage = sweepstakes?.image_url || defaultImageUrl;
+  const displayDisclaimer = sweepstakes?.description || disclaimer;
 
   return (
     <Card className="w-full max-w-md mx-auto sm:w-[95%] md:w-full">
-      {!isSubmitted && <SweepstakesHeader title={title} imageUrl={imageUrl} />}
+      {!isSubmitted && <SweepstakesHeader title={displayTitle} imageUrl={displayImage} />}
       
       <CardContent className="p-4 sm:p-6 space-y-4">
         {showProgress && sweepstakes && (
@@ -54,17 +61,17 @@ export function SweepstakesWidget({
         )}
         <SweepstakesForm 
           sweepstakesId={sweepstakesId}
-          thankYouHeadline={thankYouHeadline}
-          thankYouImageUrl={thankYouImageUrl}
-          trackingUrl={trackingUrl}
+          thankYouHeadline={sweepstakes?.thank_you_headline || thankYouHeadline}
+          thankYouImageUrl={sweepstakes?.thank_you_image_url || thankYouImageUrl}
+          trackingUrl={sweepstakes?.tracking_url || trackingUrl}
           onSubmitSuccess={() => setIsSubmitted(true)}
           buttonColor={sweepstakes?.button_color}
         />
       </CardContent>
 
-      {!isSubmitted && disclaimer && (
+      {!isSubmitted && displayDisclaimer && (
         <CardFooter className="text-sm text-muted-foreground text-center px-4 sm:px-6">
-          {disclaimer}
+          {displayDisclaimer}
         </CardFooter>
       )}
     </Card>
