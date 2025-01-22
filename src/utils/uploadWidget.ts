@@ -36,6 +36,8 @@ export async function uploadWidgetFiles() {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sweepstakes Widget</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 </head>
 <body>
     <div id="root"></div>
@@ -56,7 +58,8 @@ export async function uploadWidgetFiles() {
       .upload('embed.html', embedBlob, {
         contentType: 'text/html',
         cacheControl: '3600',
-        upsert: true
+        upsert: true,
+        duplex: 'half'
       });
     
     if (embedError) {
@@ -73,7 +76,8 @@ export async function uploadWidgetFiles() {
       .upload('widget.js', widgetJsBlob, {
         contentType: 'application/javascript',
         cacheControl: '3600',
-        upsert: true
+        upsert: true,
+        duplex: 'half'
       });
 
     if (widgetError) {
@@ -90,7 +94,8 @@ export async function uploadWidgetFiles() {
       .upload('widget.bundle.js', widgetBundleBlob, {
         contentType: 'application/javascript',
         cacheControl: '3600',
-        upsert: true
+        upsert: true,
+        duplex: 'half'
       });
 
     if (bundleError) {
