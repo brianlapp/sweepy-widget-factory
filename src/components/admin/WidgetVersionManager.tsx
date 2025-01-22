@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Info } from 'lucide-react';
+import { uploadWidgetFiles } from '@/utils/uploadWidget';
 
 interface Version {
   id: string;
@@ -35,33 +36,41 @@ export function WidgetVersionManager() {
 
   const deployMutation = useMutation({
     mutationFn: async (versionId: string) => {
-      // Generate bundle hash
-      const bundleResponse = await fetch('/widget.bundle.js');
-      const bundleText = await bundleResponse.text();
-      const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(bundleText))
-        .then(hash => Array.from(new Uint8Array(hash))
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join(''));
+      try {
+        // First upload the widget files
+        await uploadWidgetFiles();
 
-      // Update version record
-      const { error } = await supabase
-        .from('widget_versions')
-        .update({ 
-          deployed_at: new Date().toISOString(),
-          bundle_hash: bundleHash,
-          is_active: true 
-        })
-        .eq('id', versionId);
+        // Generate bundle hash
+        const bundleResponse = await fetch('/widget.bundle.js');
+        const bundleText = await bundleResponse.text();
+        const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(bundleText))
+          .then(hash => Array.from(new Uint8Array(hash))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join(''));
 
-      if (error) throw error;
+        // Update version record
+        const { error } = await supabase
+          .from('widget_versions')
+          .update({ 
+            deployed_at: new Date().toISOString(),
+            bundle_hash: bundleHash,
+            is_active: true 
+          })
+          .eq('id', versionId);
 
-      // Deactivate other versions
-      const { error: deactivateError } = await supabase
-        .from('widget_versions')
-        .update({ is_active: false })
-        .neq('id', versionId);
+        if (error) throw error;
 
-      if (deactivateError) throw deactivateError;
+        // Deactivate other versions
+        const { error: deactivateError } = await supabase
+          .from('widget_versions')
+          .update({ is_active: false })
+          .neq('id', versionId);
+
+        if (deactivateError) throw deactivateError;
+      } catch (error) {
+        console.error('Deployment error:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['widget-versions'] });
