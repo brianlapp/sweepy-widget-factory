@@ -16,9 +16,9 @@ export function WidgetTestPage() {
   const [error, setError] = useState<string | null>(null);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
-  // Get the public URL for the widget
-  const publicDomain = window.location.hostname.replace('lovable.dev', 'lovableproject.com');
-  const widgetUrl = `https://${publicDomain}/widget.js`;
+  // Use GitHub raw URLs for the widget files
+  const widgetUrl = 'https://raw.githubusercontent.com/your-username/your-repo/main/public/widget.js';
+  const widgetBundleUrl = 'https://raw.githubusercontent.com/your-username/your-repo/main/dist/widget.bundle.js';
 
   useEffect(() => {
     if (!isLoading && !session) {
@@ -150,10 +150,13 @@ export function WidgetTestPage() {
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          The widget files (widget.js and widget.bundle.js) must be publicly accessible. 
+          The widget files must be publicly accessible via GitHub. 
           They will be available at:
           <pre className="mt-2 bg-slate-100 p-2 rounded">{widgetUrl}</pre>
-          <pre className="mt-2 bg-slate-100 p-2 rounded">{widgetUrl.replace('widget.js', 'widget.bundle.js')}</pre>
+          <pre className="mt-2 bg-slate-100 p-2 rounded">{widgetBundleUrl}</pre>
+          <p className="mt-2">
+            Note: You'll need to update these URLs with your actual GitHub repository details.
+          </p>
         </AlertDescription>
       </Alert>
       
