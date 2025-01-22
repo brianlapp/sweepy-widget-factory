@@ -21,8 +21,8 @@ export function WidgetTestPage() {
   const [showEmbedDialog, setShowEmbedDialog] = useState(false);
   const [bundleContent, setBundleContent] = useState<string>('');
 
-  // Get the public URL for the widget
-  const widgetJsUrl = `${window.location.origin}/widget.js`;
+  // Get the public URL for the widget using jsDelivr
+  const widgetJsUrl = `https://cdn.jsdelivr.net/gh/brianlapp/sweepy-widget-factory@main/public/widget.js`;
 
   useEffect(() => {
     if (!isLoading && !session) {
@@ -151,24 +151,24 @@ export function WidgetTestPage() {
           </DialogTrigger>
           <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle>Widget Bundle Code</DialogTitle>
+              <DialogTitle>Widget Embed Code</DialogTitle>
+              <DialogDescription>
+                Copy and paste this code into your website where you want the widget to appear:
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Copy this bundle code and host it on a public URL. Then update the widget.js script to point to your hosted bundle:
-              </p>
               <Textarea 
-                value={bundleContent}
-                className="h-[400px] font-mono text-sm"
+                value={`<div id="sweepstakes-widget" data-sweepstakes-id="YOUR_SWEEPSTAKES_ID"></div>\n<script src="${widgetJsUrl}"></script>`}
+                className="h-24 font-mono text-sm"
                 readOnly
               />
               <Button 
                 onClick={() => {
-                  navigator.clipboard.writeText(bundleContent);
-                  toast.success("Bundle code copied to clipboard");
+                  navigator.clipboard.writeText(`<div id="sweepstakes-widget" data-sweepstakes-id="YOUR_SWEEPSTAKES_ID"></div>\n<script src="${widgetJsUrl}"></script>`);
+                  toast.success("Embed code copied to clipboard");
                 }}
               >
-                Copy Bundle Code
+                Copy Embed Code
               </Button>
             </div>
           </DialogContent>
