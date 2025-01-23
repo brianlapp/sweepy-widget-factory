@@ -44,27 +44,30 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
         .join(''));
     console.log('[Widget Upload] Generated bundle hash:', bundleHash);
 
-    // Delete existing files first
+    // Delete existing files first to ensure clean upload
     console.log('[Widget Upload] Removing existing widget files...');
     await supabase.storage
       .from('static')
       .remove(['widget.js', 'embed.html']);
 
-    // Upload both files
+    // Add a small delay to ensure files are properly removed
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Upload both files with cache control headers
     console.log('[Widget Upload] Uploading widget files...');
     const uploads = await Promise.all([
       supabase.storage
         .from('static')
-        .upload('widget.js', widgetContent, {
+        .upload('widget.js', new Blob([widgetContent], { type: 'application/javascript' }), {
           contentType: 'application/javascript; charset=utf-8',
-          cacheControl: '3600',
+          cacheControl: 'no-cache',
           upsert: true,
         }),
       supabase.storage
         .from('static')
-        .upload('embed.html', embedContent, {
+        .upload('embed.html', new Blob([embedContent], { type: 'text/html' }), {
           contentType: 'text/html; charset=utf-8',
-          cacheControl: '3600',
+          cacheControl: 'no-cache',
           upsert: true,
         })
     ]);
@@ -75,7 +78,14 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
       throw new Error(`File upload failed: ${uploadErrors[0].error.message}`);
     }
 
+    // Verify the files were uploaded
+    const { data: files } = await supabase.storage
+      .from('static')
+      .list();
+    
+    console.log('[Widget Upload] Current files in storage:', files);
     console.log('[Widget Upload] Upload completed successfully');
+    
     return { success: true, bundleHash };
 
   } catch (error) {
