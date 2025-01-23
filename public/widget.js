@@ -228,9 +228,11 @@
       // Track resource loading within iframe
       const observer = new PerformanceObserver((list) => {
         list.getEntries().forEach(entry => {
-          if (entry.initiatorType === 'iframe' && entry.name.includes(STORAGE_URL)) {
-            this.resourcesLoaded.add(entry.name);
-            logger.info('Resource loaded:', entry.name);
+          // Strip query parameters for comparison
+          const cleanUrl = entry.name.split('?')[0];
+          if (entry.initiatorType === 'iframe' || entry.initiatorType === 'script') {
+            this.resourcesLoaded.add(cleanUrl);
+            logger.info('Resource loaded:', cleanUrl);
           }
         });
       });
@@ -245,20 +247,24 @@
           throw new Error('Cannot access iframe content window');
         }
 
-        // Update resource verification to use correct paths
+        // Update resource verification to use correct paths and strip query params
         const requiredResources = [
-          `${STORAGE_URL}/widget.js`,
-          `${STORAGE_URL}/embed.html`
+          `${STORAGE_URL}/static/widget.js`,
+          `${STORAGE_URL}/static/embed.html`
         ];
         
+        const loadedResources = Array.from(this.resourcesLoaded).map(url => url.split('?')[0]);
         const missingResources = requiredResources.filter(resource => 
-          !Array.from(this.resourcesLoaded).some(loaded => loaded.includes(resource))
+          !loadedResources.some(loaded => loaded.includes(resource))
         );
 
         if (missingResources.length > 0) {
+          logger.warn('Missing resources:', missingResources);
+          logger.warn('Loaded resources:', loadedResources);
           throw new Error(`Missing required resources: ${missingResources.map(r => r.split('/').pop()).join(', ')}`);
         }
 
+        logger.info('All required resources verified');
         this.isReady = true;
         this.processMessageQueue();
       } catch (error) {
