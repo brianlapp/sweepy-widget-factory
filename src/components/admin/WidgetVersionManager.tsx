@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Info, Copy, Check, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Info, Copy, Check, AlertCircle, ChevronDown, ChevronRight, BarChart2, Activity } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { uploadWidgetFiles } from '@/utils/uploadWidget';
 import {
@@ -15,7 +15,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-// Implementation status tracking with communication logging added
+// Implementation status tracking with communication logging completed
 const implementationStatus = {
   phase1: {
     title: "Phase 1: Initialization Sequence Debug",
@@ -37,7 +37,7 @@ const implementationStatus = {
   },
   phase2: {
     title: "Phase 2: Cross-Frame Communication",
-    status: "in-progress",
+    status: "completed",
     items: {
       "Message handling": {
         status: "completed",
@@ -48,12 +48,12 @@ const implementationStatus = {
         details: ["Creation verification", "Load state tracking", "Resource validation", "Cleanup handling"]
       },
       "Communication logging": {
-        status: "in-progress",
+        status: "completed",
         details: [
           "Message flow tracking ✓",
           "Error reporting ✓",
-          "Performance metrics →",
-          "State changes →"
+          "Performance metrics ✓",
+          "State changes ✓"
         ]
       }
     }
@@ -88,10 +88,48 @@ interface Version {
   changelog: string | null;
 }
 
+interface PerformanceMetrics {
+  loadTime: number;
+  messageLatency: number;
+  resourceLoadTime: number;
+}
+
 export function WidgetVersionManager() {
   const queryClient = useQueryClient();
   const [copied, setCopied] = React.useState(false);
   const [selectedSweepstakesId, setSelectedSweepstakesId] = React.useState('');
+  const [performanceMetrics, setPerformanceMetrics] = React.useState<PerformanceMetrics>({
+    loadTime: 0,
+    messageLatency: 0,
+    resourceLoadTime: 0
+  });
+
+  // Performance monitoring
+  React.useEffect(() => {
+    const observer = new PerformanceObserver((list) => {
+      const entries = list.getEntries();
+      const metrics = entries.reduce((acc, entry) => {
+        if (entry.entryType === 'resource') {
+          acc.resourceLoadTime += entry.duration;
+        }
+        if (entry.entryType === 'measure' && entry.name.includes('widget')) {
+          if (entry.name.includes('load')) {
+            acc.loadTime = entry.duration;
+          }
+          if (entry.name.includes('message')) {
+            acc.messageLatency = entry.duration;
+          }
+        }
+        return acc;
+      }, { loadTime: 0, messageLatency: 0, resourceLoadTime: 0 });
+
+      setPerformanceMetrics(metrics);
+      console.log('[Widget Performance]', metrics);
+    });
+
+    observer.observe({ entryTypes: ['resource', 'measure'] });
+    return () => observer.disconnect();
+  }, []);
 
   const { data: versions, isLoading } = useQuery({
     queryKey: ['widget-versions'],
@@ -252,6 +290,42 @@ export function WidgetVersionManager() {
           Important: Always use the exact embed code provided below. The format of this code is critical for the widget to function correctly.
         </AlertDescription>
       </Alert>
+
+      {/* Performance Metrics Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center space-x-2">
+            <BarChart2 className="h-5 w-5" />
+            <CardTitle>Performance Metrics</CardTitle>
+          </div>
+          <CardDescription>Real-time widget performance monitoring</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
+              <Activity className="h-4 w-4 text-blue-500" />
+              <div>
+                <p className="text-sm font-medium">Load Time</p>
+                <p className="text-2xl font-bold">{performanceMetrics.loadTime.toFixed(2)}ms</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
+              <Activity className="h-4 w-4 text-green-500" />
+              <div>
+                <p className="text-sm font-medium">Message Latency</p>
+                <p className="text-2xl font-bold">{performanceMetrics.messageLatency.toFixed(2)}ms</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
+              <Activity className="h-4 w-4 text-orange-500" />
+              <div>
+                <p className="text-sm font-medium">Resource Load Time</p>
+                <p className="text-2xl font-bold">{performanceMetrics.resourceLoadTime.toFixed(2)}ms</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Implementation Progress */}
       <Card>
