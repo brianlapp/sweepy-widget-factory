@@ -5,7 +5,6 @@
   const MAX_RETRIES = 3;
   const LOAD_TIMEOUT = 10000;
   
-  // Test environment detection
   const TEST_ENVIRONMENTS = {
     LOCAL: 'local',
     STAGING: 'staging',
@@ -14,8 +13,10 @@
 
   // Enhanced logging and monitoring utility
   const logger = {
-    _getTimestamp: () => new Date().toISOString(),
-    _environment: () => {
+    _getTimestamp: function() {
+      return new Date().toISOString();
+    },
+    _environment: function() {
       if (window.location.hostname.includes('localhost')) return TEST_ENVIRONMENTS.LOCAL;
       if (window.location.hostname.includes('staging')) return TEST_ENVIRONMENTS.STAGING;
       return TEST_ENVIRONMENTS.PRODUCTION;
@@ -42,15 +43,15 @@
           const measures = window.performance.getEntriesByName(`widget-${name}`);
           if (measures.length > 0) {
             const duration = measures[0].duration;
-            logger._metrics.performance.push({
+            this._metrics.performance.push({
               name,
               duration,
-              timestamp: logger._getTimestamp()
+              timestamp: this._getTimestamp()
             });
-            logger._log(`${name} took ${duration}ms`);
+            this._log(`${name} took ${duration}ms`);
           }
         } catch (e) {
-          logger._warn(`Error measuring ${name}:`, e);
+          this._warn(`Error measuring ${name}:`, e);
         }
       }
     },
@@ -102,9 +103,15 @@
         timestamp: this._getTimestamp()
       });
     },
-    info: function(...args) { this._log(...args); },
-    warn: function(...args) { this._warn(...args); },
-    error: function(...args) { this._error(...args); },
+    info: function(...args) { 
+      this._log.apply(this, args);
+    },
+    warn: function(...args) { 
+      this._warn.apply(this, args);
+    },
+    error: function(...args) { 
+      this._error.apply(this, args);
+    },
     trackInteraction: function(type, data) {
       this._metrics.interactions.push({
         type,
@@ -113,11 +120,12 @@
       });
     },
     performance: function(name) {
-      this._mark(name);
+      const self = this;
+      self._mark(name);
       return {
-        end: (endName) => {
-          this._mark(endName);
-          this._measure(`${name}-to-${endName}`, name, endName);
+        end: function(endName) {
+          self._mark(endName);
+          self._measure(`${name}-to-${endName}`, name, endName);
         }
       };
     }
