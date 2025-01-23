@@ -15,8 +15,10 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react({
-      // Configure React refresh for development only
-      fastRefresh: mode === 'development',
+      // Configure development options
+      development: mode === 'development',
+      // Enable React refresh for development
+      refresh: mode === 'development',
     }),
     mode === 'development' && componentTagger(),
   ].filter(Boolean),
