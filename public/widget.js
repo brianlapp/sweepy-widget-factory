@@ -11,6 +11,10 @@
     iframe.setAttribute('scrolling', 'no');
     
     // Add error handling for iframe load
+    iframe.onload = () => {
+      console.log('[Widget] Iframe loaded successfully');
+    };
+    
     iframe.onerror = () => {
       console.error('[Widget] Failed to load iframe');
       showError('Failed to load widget content');
@@ -23,10 +27,16 @@
     
     // Add message listener for iframe height adjustments and error handling
     window.addEventListener('message', (event) => {
+      console.log('[Widget] Received message from iframe:', event.data);
+      
       // Only accept messages from our own iframe
-      if (event.origin !== new URL(STORAGE_URL).origin) return;
+      if (event.origin !== new URL(STORAGE_URL).origin) {
+        console.log('[Widget] Ignored message from unknown origin:', event.origin);
+        return;
+      }
       
       if (event.data.type === 'setHeight') {
+        console.log('[Widget] Updating iframe height to:', event.data.height);
         iframe.style.height = `${event.data.height}px`;
       } else if (event.data.type === 'error') {
         console.error('[Widget] Error from iframe:', event.data.message);
@@ -38,6 +48,7 @@
   }
 
   function showError(message) {
+    console.error('[Widget] Showing error message:', message);
     const widgetContainer = document.getElementById('sweepstakes-widget');
     if (widgetContainer) {
       widgetContainer.innerHTML = `
@@ -49,8 +60,9 @@
   }
 
   function initializeWidget() {
+    console.log('[Widget] Starting widget initialization...');
+    
     try {
-      console.log('[Widget] Initializing widget...');
       const widgetContainer = document.getElementById('sweepstakes-widget');
       if (!widgetContainer) {
         throw new Error('Widget container not found');
@@ -60,6 +72,8 @@
       if (!sweepstakesId) {
         throw new Error('No sweepstakes ID provided');
       }
+
+      console.log('[Widget] Found sweepstakes ID:', sweepstakesId);
 
       // Validate that we have a valid UUID format
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -79,8 +93,10 @@
 
   // Initialize when the script loads
   if (document.readyState === 'loading') {
+    console.log('[Widget] Document still loading, waiting for DOMContentLoaded');
     document.addEventListener('DOMContentLoaded', initializeWidget);
   } else {
+    console.log('[Widget] Document already loaded, initializing immediately');
     initializeWidget();
   }
 })();

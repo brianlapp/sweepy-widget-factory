@@ -20,11 +20,12 @@ class ErrorBoundary extends React.Component<
   }
 
   static getDerivedStateFromError(error: Error) {
+    console.error('[Widget] Error caught in boundary:', error);
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('[Widget] Error caught by boundary:', error, errorInfo);
+    console.error('[Widget] Error details:', error, errorInfo);
     // Send error to parent window
     if (window !== window.parent) {
       try {
@@ -55,16 +56,19 @@ class ErrorBoundary extends React.Component<
 
 function WidgetRoot({ sweepstakesId }: { sweepstakesId: string }) {
   React.useEffect(() => {
+    console.log('[Widget] WidgetRoot mounted with ID:', sweepstakesId);
+    
     // Log widget version on mount
-    console.log('[Widget] Initializing widget version:', process.env.VITE_APP_VERSION || 'development');
+    console.log('[Widget] Widget version:', process.env.VITE_APP_VERSION || 'development');
 
     // Function to update iframe height
     const updateIframeHeight = () => {
       const height = document.documentElement.scrollHeight;
+      console.log('[Widget] Calculating new height:', height);
+      
       // Only send message if we're in an iframe
       if (window !== window.parent) {
         try {
-          // Get the origin from STORAGE_URL
           const storageOrigin = new URL(STORAGE_URL).origin;
           window.parent.postMessage({ type: 'setHeight', height }, storageOrigin);
           console.log('[Widget] Sent height update:', height, 'to origin:', storageOrigin);
@@ -76,15 +80,20 @@ function WidgetRoot({ sweepstakesId }: { sweepstakesId: string }) {
 
     // Set up height observer
     const observer = new ResizeObserver(() => {
+      console.log('[Widget] Size change detected');
       updateIframeHeight();
     });
 
     // Observe body for size changes
     observer.observe(document.body);
+    console.log('[Widget] ResizeObserver setup complete');
 
     // Cleanup
-    return () => observer.disconnect();
-  }, []);
+    return () => {
+      console.log('[Widget] WidgetRoot unmounting');
+      observer.disconnect();
+    };
+  }, [sweepstakesId]);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -97,7 +106,7 @@ function WidgetRoot({ sweepstakesId }: { sweepstakesId: string }) {
 
 // Initialize the widget when the script loads
 function initializeWidget(sweepstakesId: string) {
-  console.log('[Widget] Initializing widget...');
+  console.log('[Widget] Starting widget initialization with ID:', sweepstakesId);
   
   try {
     const root = document.getElementById('root');

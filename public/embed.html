@@ -4,44 +4,90 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sweepstakes Widget</title>
-    <!-- Primary CDN -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" 
-            crossorigin
-            onerror="loadFallbackScript('react')">
-    </script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" 
-            crossorigin
-            onerror="loadFallbackScript('react-dom')">
-    </script>
-    
     <script>
-        // Fallback mechanism
+        console.log('[Embed] Starting to load embed.html');
+        
+        // Error handling for script loading
+        function handleScriptError(scriptName, error) {
+            console.error(`[Embed] Failed to load ${scriptName}:`, error);
+        }
+
+        // Success handling for script loading
+        function handleScriptLoad(scriptName) {
+            console.log(`[Embed] Successfully loaded ${scriptName}`);
+        }
+
+        // Load React scripts with error handling
+        function loadScript(src, id) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.crossOrigin = "anonymous";
+                script.id = id;
+                script.onload = () => {
+                    handleScriptLoad(id);
+                    resolve();
+                };
+                script.onerror = (error) => {
+                    handleScriptError(id, error);
+                    loadFallbackScript(id);
+                };
+                document.head.appendChild(script);
+            });
+        }
+
+        // Fallback mechanism with logging
         function loadFallbackScript(library) {
+            console.log(`[Embed] Attempting to load fallback for ${library}`);
             const fallbackUrls = {
                 'react': 'https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js',
                 'react-dom': 'https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js'
             };
             
-            const script = document.createElement('script');
-            script.src = fallbackUrls[library];
-            script.crossOrigin = 'anonymous';
-            document.head.appendChild(script);
+            loadScript(fallbackUrls[library], `${library}-fallback`);
         }
 
-        // Get sweepstakes ID from URL
+        // Get sweepstakes ID from URL with logging
         const params = new URLSearchParams(window.location.search);
         const sweepstakesId = params.get('id');
+        console.log('[Embed] Sweepstakes ID from URL:', sweepstakesId);
         
         // Initialize widget when bundle loads
         window.addEventListener('load', () => {
+            console.log('[Embed] Window load event fired');
             if (window.initializeWidget) {
+                console.log('[Embed] Calling initializeWidget');
                 window.initializeWidget(sweepstakesId);
+            } else {
+                console.error('[Embed] initializeWidget function not found');
             }
         });
+
+        // Load React scripts
+        Promise.all([
+            loadScript('https://unpkg.com/react@18/umd/react.production.min.js', 'react'),
+            loadScript('https://unpkg.com/react-dom@18/umd/react-dom.production.min.js', 'react-dom')
+        ]).then(() => {
+            console.log('[Embed] All React scripts loaded successfully');
+        }).catch(error => {
+            console.error('[Embed] Error loading React scripts:', error);
+        });
     </script>
-    <script src="widget.bundle.js" defer></script>
+    <script src="widget.js" defer onload="console.log('[Embed] Widget bundle loaded')" 
+            onerror="console.error('[Embed] Failed to load widget bundle')"></script>
 </head>
 <body>
     <div id="root"></div>
+    <script>
+        // Monitor root element
+        const observer = new MutationObserver((mutations) => {
+            console.log('[Embed] Root element mutation detected:', mutations);
+        });
+        
+        observer.observe(document.getElementById('root'), {
+            childList: true,
+            subtree: true
+        });
+    </script>
 </body>
 </html>
