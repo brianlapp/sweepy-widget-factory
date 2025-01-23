@@ -5,12 +5,73 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Info, Copy, Check, AlertCircle } from 'lucide-react';
+import { Info, Copy, Check, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { uploadWidgetFiles } from '@/utils/uploadWidget';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
-// IMPORTANT: This is the source of truth for the widget embed code format.
-const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
+// Implementation status tracking
+const implementationStatus = {
+  phase1: {
+    title: "Phase 1: Initialization Sequence Debug",
+    status: "completed",
+    items: {
+      "widget.js logging": {
+        status: "completed",
+        details: ["Script load timing", "DOM ready states", "Iframe creation", "Resource loading sequence"]
+      },
+      "embed.html monitoring": {
+        status: "completed",
+        details: ["Bundle loading states", "React initialization", "Error capture", "Performance metrics"]
+      },
+      "widget.tsx initialization": {
+        status: "completed",
+        details: ["Component mounting", "Props validation", "State management", "Error boundaries"]
+      }
+    }
+  },
+  phase2: {
+    title: "Phase 2: Cross-Frame Communication",
+    status: "in-progress",
+    items: {
+      "Message handling": {
+        status: "in-progress",
+        details: ["Type validation", "Error recovery", "Retry logic", "Timeout handling"]
+      },
+      "Iframe management": {
+        status: "pending",
+        details: ["Creation verification", "Load state tracking", "Resource validation", "Cleanup handling"]
+      },
+      "Communication logging": {
+        status: "pending",
+        details: ["Message flow tracking", "Error reporting", "Performance metrics", "State changes"]
+      }
+    }
+  },
+  phase3: {
+    title: "Phase 3: Production Build Verification",
+    status: "pending",
+    items: {
+      "Production artifacts": {
+        status: "pending",
+        details: ["Remove development code", "Optimize bundles", "Validate URLs", "Check dependencies"]
+      },
+      "Monitoring": {
+        status: "pending",
+        details: ["Error tracking", "Performance metrics", "Usage analytics", "Health checks"]
+      },
+      "Testing infrastructure": {
+        status: "pending",
+        details: ["Integration tests", "Cross-browser testing", "Load testing", "Error scenarios"]
+      }
+    }
+  }
+};
 
 interface Version {
   id: string;
@@ -136,11 +197,10 @@ export function WidgetVersionManager() {
     },
   });
 
-  // This function returns the official embed code format.
   const getEmbedCode = (sweepstakesId: string) => {
     return `<!-- Sweepstakes Widget Embed Code -->
 <div id="sweepstakes-widget" data-sweepstakes-id="${sweepstakesId}"></div>
-<script src="${STORAGE_URL}/widget.js"></script>`;
+<script src="https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static/widget.js"></script>`;
   };
 
   const handleCopyCode = async () => {
@@ -149,6 +209,17 @@ export function WidgetVersionManager() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast.success('Embed code copied to clipboard');
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-green-500';
+      case 'in-progress':
+        return 'bg-blue-500';
+      default:
+        return 'bg-gray-500';
+    }
   };
 
   if (isLoading) {
@@ -165,6 +236,51 @@ export function WidgetVersionManager() {
           Important: Always use the exact embed code provided below. The format of this code is critical for the widget to function correctly.
         </AlertDescription>
       </Alert>
+
+      {/* Implementation Progress */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Implementation Progress</CardTitle>
+          <CardDescription>Current status of widget development phases</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Accordion type="single" collapsible className="w-full">
+            {Object.entries(implementationStatus).map(([phaseKey, phase]) => (
+              <AccordionItem value={phaseKey} key={phaseKey}>
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center space-x-2">
+                    <Badge className={getStatusColor(phase.status)} variant="secondary">
+                      {phase.status}
+                    </Badge>
+                    <span>{phase.title}</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4 pl-4">
+                    {Object.entries(phase.items).map(([itemKey, item]) => (
+                      <div key={itemKey} className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Badge className={getStatusColor(item.status)} variant="secondary">
+                            {item.status}
+                          </Badge>
+                          <span className="font-medium">{itemKey}</span>
+                        </div>
+                        <ul className="list-disc pl-6 space-y-1">
+                          {item.details.map((detail, index) => (
+                            <li key={index} className="text-sm text-muted-foreground">
+                              {detail}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
