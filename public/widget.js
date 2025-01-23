@@ -4,22 +4,11 @@
   const MESSAGE_TIMEOUT = 5000;
   const MAX_RETRIES = 3;
   const LOAD_TIMEOUT = 10000;
-  
-  const TEST_ENVIRONMENTS = {
-    LOCAL: 'local',
-    STAGING: 'staging',
-    PRODUCTION: 'production'
-  };
 
   // Enhanced logging and monitoring utility
   const logger = {
     _getTimestamp: function() {
       return new Date().toISOString();
-    },
-    _environment: function() {
-      if (window.location.hostname.includes('localhost')) return TEST_ENVIRONMENTS.LOCAL;
-      if (window.location.hostname.includes('staging')) return TEST_ENVIRONMENTS.STAGING;
-      return TEST_ENVIRONMENTS.PRODUCTION;
     },
     _metrics: {
       errors: [],
@@ -27,132 +16,17 @@
       resources: new Set(),
       interactions: []
     },
-    _mark: function(name) {
-      if (window.performance && window.performance.mark) {
-        window.performance.mark(`widget-${name}`);
-      }
+    info: function(msg, ...args) {
+      console.log(`[Widget ${VERSION}] ${this._getTimestamp()} - ${msg}`, ...args);
     },
-    _measure: function(name, startMark, endMark) {
-      if (window.performance && window.performance.measure) {
-        try {
-          window.performance.measure(
-            `widget-${name}`,
-            `widget-${startMark}`,
-            `widget-${endMark}`
-          );
-          const measures = window.performance.getEntriesByName(`widget-${name}`);
-          if (measures.length > 0) {
-            const duration = measures[0].duration;
-            this._metrics.performance.push({
-              name,
-              duration,
-              timestamp: this._getTimestamp()
-            });
-            this._log(`${name} took ${duration}ms`);
-          }
-        } catch (e) {
-          this._warn(`Error measuring ${name}:`, e);
-        }
-      }
-    },
-    _sendMetrics: function() {
-      if (this._environment() === TEST_ENVIRONMENTS.PRODUCTION) {
-        const metrics = {
-          ...this._metrics,
-          resources: Array.from(this._metrics.resources),
-          timestamp: this._getTimestamp(),
-          version: VERSION,
-          url: window.location.href,
-          userAgent: navigator.userAgent
-        };
-
-        try {
-          const storedMetrics = JSON.parse(localStorage.getItem('widget-metrics') || '[]');
-          storedMetrics.push(metrics);
-          localStorage.setItem('widget-metrics', JSON.stringify(storedMetrics.slice(-50)));
-        } catch (e) {
-          console.error('Error storing metrics:', e);
-        }
-
-        this._metrics.errors = [];
-        this._metrics.performance = [];
-        this._metrics.resources.clear();
-        this._metrics.interactions = [];
-      }
-    },
-    _log: function(message, ...args) {
-      if (this._environment() !== TEST_ENVIRONMENTS.PRODUCTION) {
-        console.log(`[Widget ${VERSION}] ${this._getTimestamp()} - ${message}`, ...args);
-      }
-    },
-    _warn: function(message, ...args) {
-      console.warn(`[Widget ${VERSION}] ${this._getTimestamp()} - Warning: ${message}`, ...args);
+    error: function(msg, ...args) {
+      console.error(`[Widget ${VERSION}] ${this._getTimestamp()} - Error:`, msg, ...args);
       this._metrics.errors.push({
-        level: 'warning',
-        message,
+        message: msg,
         args,
-        timestamp: this._getTimestamp()
+        timestamp: this._getTimestamp(),
+        stack: new Error().stack
       });
-    },
-    _error: function(message, ...args) {
-      console.error(`[Widget ${VERSION}] ${this._getTimestamp()} - Error: ${message}`, ...args);
-      this._metrics.errors.push({
-        level: 'error',
-        message,
-        args,
-        timestamp: this._getTimestamp()
-      });
-    },
-    info: function(...args) { 
-      this._log.apply(this, args);
-    },
-    warn: function(...args) { 
-      this._warn.apply(this, args);
-    },
-    error: function(...args) { 
-      this._error.apply(this, args);
-    },
-    trackInteraction: function(type, data) {
-      this._metrics.interactions.push({
-        type,
-        data,
-        timestamp: this._getTimestamp()
-      });
-    },
-    performance: function(name) {
-      const self = this;
-      self._mark(name);
-      return {
-        end: function(endName) {
-          self._mark(endName);
-          self._measure(`${name}-to-${endName}`, name, endName);
-        }
-      };
-    }
-  };
-
-  // Automated test helper functions
-  const testHelpers = {
-    simulateUserInteraction: (elementId, eventType) => {
-      const element = document.getElementById(elementId);
-      if (element) {
-        const event = new Event(eventType);
-        element.dispatchEvent(event);
-        logger.trackInteraction('test', { elementId, eventType });
-      }
-    },
-    verifyElementState: (elementId, expectedState) => {
-      const element = document.getElementById(elementId);
-      return element && Object.entries(expectedState).every(([key, value]) => 
-        element[key] === value
-      );
-    },
-    runIntegrationTests: () => {
-      if (logger._environment() !== TEST_ENVIRONMENTS.PRODUCTION) {
-        logger.info('Running integration tests...');
-        // Add your integration test cases here
-        logger.info('Integration tests completed');
-      }
     }
   };
 
@@ -160,68 +34,96 @@
     constructor() {
       this.retryCount = 0;
       this.iframe = null;
-      this.messageQueue = [];
       this.isReady = false;
       this.loadTimeout = null;
       this.resourcesLoaded = new Set();
       
-      // Add message event listener for debugging
       window.addEventListener('message', this.handleMessage.bind(this));
+      
+      // Track all resource loads
+      const observer = new PerformanceObserver((list) => {
+        list.getEntries().forEach(entry => {
+          logger.info('Resource loaded:', {
+            name: entry.name,
+            type: entry.initiatorType,
+            duration: entry.duration
+          });
+          this.resourcesLoaded.add(entry.name);
+        });
+      });
+      
+      observer.observe({ entryTypes: ['resource'] });
     }
 
     handleMessage(event) {
-      logger.info('Received message from iframe:', {
-        type: event.data.type,
-        origin: event.origin,
-        data: event.data
-      });
-
-      // Handle specific message types
+      logger.info('Message received:', event.data);
+      
       switch(event.data.type) {
         case 'WIDGET_ERROR':
-          logger.error('Widget error received:', event.data.error);
-          this.handleLoadError(new Error(event.data.error.message));
+          logger.error('Widget error:', event.data.error);
           break;
         case 'WIDGET_READY':
-          logger.info('Widget ready signal received');
+          logger.info('Widget ready');
           this.isReady = true;
-          this.processMessageQueue();
           break;
         case 'DEBUG_LOG':
-          logger.info('Debug log from iframe:', event.data.message);
+          logger.info('Debug:', event.data.message);
           break;
-        default:
-          logger.info('Unknown message type:', event.data.type);
       }
     }
 
     createIframe(sweepstakesId) {
-      logger.performance('iframe-creation-start');
       logger.info('Creating iframe for sweepstakes:', sweepstakesId);
       
       try {
         this.cleanup();
         this.iframe = document.createElement('iframe');
-        this.setupIframeAttributes();
-        this.setupLoadTracking();
-        this.setupResourceTracking();
-        this.setIframeSource();
+        
+        // Set iframe attributes
+        this.iframe.style.width = '100%';
+        this.iframe.style.border = 'none';
+        this.iframe.style.minHeight = '600px';
+        this.iframe.setAttribute('scrolling', 'no');
+        this.iframe.setAttribute('title', 'Sweepstakes Widget');
+        
+        // Set up load handlers
+        this.iframe.onload = () => {
+          logger.info('Iframe loaded');
+          clearTimeout(this.loadTimeout);
+          this.verifyIframeContent();
+        };
+        
+        this.iframe.onerror = (error) => {
+          logger.error('Iframe load error:', error);
+          this.handleLoadError(error);
+        };
+        
+        // Set source with cache busting
+        const embedUrl = `${STORAGE_URL}/embed.html?v=${VERSION}&t=${Date.now()}`;
+        this.iframe.src = embedUrl;
+        logger.info('Setting iframe src:', embedUrl);
+        
+        // Set load timeout
+        this.loadTimeout = setTimeout(() => {
+          if (!this.isReady) {
+            logger.error('Iframe load timeout');
+            this.handleLoadError(new Error('Load timeout'));
+          }
+        }, LOAD_TIMEOUT);
 
-        // Send initialization data to iframe
+        // Initialize widget after a short delay
         setTimeout(() => {
           if (this.iframe.contentWindow) {
-            logger.info('Sending init data to iframe:', { sweepstakesId });
-            this.iframe.contentWindow.postMessage({
+            const initMessage = {
               type: 'INIT_WIDGET',
               sweepstakesId,
               timestamp: Date.now()
-            }, '*');
-          } else {
-            logger.error('Cannot access iframe contentWindow');
+            };
+            logger.info('Sending init message:', initMessage);
+            this.iframe.contentWindow.postMessage(initMessage, '*');
           }
         }, 1000);
 
-        logger.performance('iframe-creation-start').end('iframe-creation-complete');
         return this.iframe;
       } catch (error) {
         logger.error('Error creating iframe:', error);
@@ -229,177 +131,65 @@
       }
     }
 
-    setupIframeAttributes() {
-      this.iframe.style.width = '100%';
-      this.iframe.style.border = 'none';
-      this.iframe.style.minHeight = '600px';
-      this.iframe.setAttribute('scrolling', 'no');
-      this.iframe.setAttribute('title', 'Sweepstakes Widget');
-      this.iframe.setAttribute('aria-label', 'Sweepstakes Entry Form');
-      this.iframe.setAttribute('data-widget-version', VERSION);
-    }
-
-    setupLoadTracking() {
-      // Set up load timeout
-      this.loadTimeout = setTimeout(() => {
-        if (!this.isReady) {
-          logger.error('Iframe load timeout reached');
-          this.handleLoadError(new Error('Iframe load timeout'));
-        }
-      }, LOAD_TIMEOUT);
-
-      const handleIframeLoad = () => {
-        clearTimeout(this.loadTimeout);
-        logger.info('Iframe loaded successfully');
-        logger.performance('iframe-load').end('iframe-loaded');
-        this.verifyIframeContent();
-      };
-      
-      const handleIframeError = (error) => {
-        clearTimeout(this.loadTimeout);
-        this.handleLoadError(error);
-      };
-      
-      this.iframe.onload = handleIframeLoad;
-      this.iframe.onerror = handleIframeError;
-    }
-
-    setupResourceTracking() {
-      // Track resource loading within iframe
-      const observer = new PerformanceObserver((list) => {
-        list.getEntries().forEach(entry => {
-          // Strip query parameters for comparison
-          const cleanUrl = entry.name.split('?')[0];
-          if (entry.initiatorType === 'iframe' || entry.initiatorType === 'script') {
-            this.resourcesLoaded.add(cleanUrl);
-            logger.info('Resource loaded:', cleanUrl);
-          }
-        });
-      });
-      
-      observer.observe({ entryTypes: ['resource'] });
-    }
-
     verifyIframeContent() {
       try {
-        // Verify iframe content is accessible
         if (!this.iframe.contentWindow) {
           throw new Error('Cannot access iframe content window');
         }
 
-        // Update resource verification to use correct paths
-        const requiredResources = [
-          'widget.js',
-          'embed.html'
-        ];
+        // Log all loaded resources
+        logger.info('Loaded resources:', Array.from(this.resourcesLoaded));
         
-        const loadedResources = Array.from(this.resourcesLoaded);
-        logger.info('Loaded resources:', loadedResources);
-        
-        const hasAllResources = requiredResources.every(required => {
-          return loadedResources.some(loaded => {
-            const cleanLoaded = loaded.split('?')[0].split('/').pop();
-            return cleanLoaded === required;
-          });
-        });
-
-        if (!hasAllResources) {
-          const missingResources = requiredResources.filter(required => {
-            return !loadedResources.some(loaded => {
-              const cleanLoaded = loaded.split('?')[0].split('/').pop();
-              return cleanLoaded === required;
-            });
-          });
-          
-          logger.warn('Missing resources:', missingResources);
-          throw new Error(`Missing required resources: ${missingResources.join(', ')}`);
+        // Check React availability
+        if (this.iframe.contentWindow.React) {
+          logger.info('React is available in iframe');
+        } else {
+          logger.error('React not found in iframe');
         }
 
-        logger.info('All required resources verified');
         this.isReady = true;
-        this.processMessageQueue();
+        logger.info('Iframe content verified successfully');
       } catch (error) {
+        logger.error('Content verification failed:', error);
         this.handleLoadError(error);
       }
     }
 
     handleLoadError(error) {
-      logger.error('Failed to load iframe:', error);
+      logger.error('Load error:', error);
       
       if (this.retryCount < MAX_RETRIES) {
         this.retryCount++;
-        logger.warn(`Retrying iframe load (${this.retryCount}/${MAX_RETRIES})...`);
+        logger.info(`Retrying (${this.retryCount}/${MAX_RETRIES})`);
+        
         setTimeout(() => {
-          logger.info(`Attempt ${this.retryCount + 1} to load iframe`);
           this.setIframeSource();
         }, 1000 * this.retryCount);
       } else {
-        logger.error('Max retries reached, showing error message');
+        logger.error('Max retries reached');
         this.showError('Failed to load widget content after multiple attempts');
       }
     }
 
     setIframeSource() {
       try {
-        // Construct the full URL to embed.html in the static bucket
-        const embedUrl = `${STORAGE_URL}/embed.html`;
-        const url = new URL(embedUrl);
-        
+        const url = new URL(`${STORAGE_URL}/embed.html`);
         url.searchParams.append('v', VERSION);
         url.searchParams.append('t', Date.now().toString());
         
         logger.info('Setting iframe src:', url.toString());
         this.iframe.src = url.toString();
       } catch (error) {
-        logger.error('Error constructing iframe URL:', error);
-        throw new Error('Failed to construct widget URL');
-      }
-    }
-
-    sendMessage(message, timeout = MESSAGE_TIMEOUT) {
-      return new Promise((resolve, reject) => {
-        if (!this.isReady) {
-          this.messageQueue.push({ message, resolve, reject });
-          return;
-        }
-
-        try {
-          validateMessage(message);
-          
-          const timeoutId = setTimeout(() => {
-            reject(new Error(`Message timeout: ${message.type}`));
-          }, timeout);
-
-          const handleResponse = (event) => {
-            if (event.data.type === `${message.type}_RESPONSE`) {
-              clearTimeout(timeoutId);
-              window.removeEventListener('message', handleResponse);
-              resolve(event.data);
-            }
-          };
-
-          window.addEventListener('message', handleResponse);
-          this.iframe.contentWindow.postMessage(message, '*');
-          logger.info('Message sent:', message);
-        } catch (error) {
-          logger.error('Error sending message:', error);
-          reject(error);
-        }
-      });
-    }
-
-    processMessageQueue() {
-      while (this.messageQueue.length > 0) {
-        const { message, resolve, reject } = this.messageQueue.shift();
-        this.sendMessage(message).then(resolve).catch(reject);
+        logger.error('Error setting iframe source:', error);
+        throw error;
       }
     }
 
     showError(message) {
       logger.error('Showing error message:', message);
-      const widgetContainer = document.getElementById('sweepstakes-widget');
-      if (widgetContainer) {
-        widgetContainer.innerHTML = `
+      const container = document.getElementById('sweepstakes-widget');
+      if (container) {
+        container.innerHTML = `
           <div style="padding: 20px; border: 1px solid #f0f0f0; border-radius: 8px; text-align: center;">
             <p style="color: #666; margin: 0;">Unable to load sweepstakes widget: ${message}</p>
           </div>
@@ -408,46 +198,35 @@
     }
 
     cleanup() {
-      logger.info('Cleaning up iframe manager');
+      logger.info('Cleaning up');
       clearTimeout(this.loadTimeout);
       
       if (this.iframe) {
-        // Remove event listeners
         this.iframe.onload = null;
         this.iframe.onerror = null;
-        
-        // Remove iframe from DOM
         this.iframe.remove();
         this.iframe = null;
       }
 
-      // Clear tracking state
       this.resourcesLoaded.clear();
-      this.messageQueue = [];
       this.isReady = false;
       this.retryCount = 0;
-      
-      logger.info('Iframe cleanup complete');
     }
   }
 
-  // Initialize when the script loads with enhanced timing logging
+  // Initialize when the script loads
   const initialize = () => {
-    const initPerf = logger.performance('script-init');
-    logger.info('Starting widget script initialization');
-
+    logger.info('Initializing widget');
+    
     const container = document.getElementById('sweepstakes-widget');
     if (!container) {
       logger.error('Widget container not found');
-      initPerf.end('init-error');
       return;
     }
 
     const sweepstakesId = container.getAttribute('data-sweepstakes-id');
     if (!sweepstakesId) {
       logger.error('No sweepstakes ID provided');
-      showError('No sweepstakes ID provided');
-      initPerf.end('init-error');
       return;
     }
 
@@ -457,25 +236,15 @@
     
     if (iframe) {
       container.appendChild(iframe);
-      initPerf.end('init-success');
+      logger.info('Widget initialized successfully');
     }
   };
 
   if (document.readyState === 'loading') {
-    logger.info('Document still loading, waiting for DOMContentLoaded');
+    logger.info('Document loading, waiting for DOMContentLoaded');
     document.addEventListener('DOMContentLoaded', initialize);
   } else {
-    logger.info('Document already loaded, initializing immediately');
+    logger.info('Document ready, initializing immediately');
     initialize();
-  }
-
-  // Periodic metrics collection
-  setInterval(() => {
-    logger._sendMetrics();
-  }, 60000); // Send metrics every minute
-
-  // Run tests in non-production environments
-  if (logger._environment() !== TEST_ENVIRONMENTS.PRODUCTION) {
-    testHelpers.runIntegrationTests();
   }
 })();
