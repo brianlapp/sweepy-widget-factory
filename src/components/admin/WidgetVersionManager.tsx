@@ -142,7 +142,8 @@ export function WidgetVersionManager() {
   };
 
   const getEmbedCode = (sweepstakesId: string) => {
-    return `<script src="${window.location.origin}/widget.js" data-sweepstakes-id="${sweepstakesId}"></script>`;
+    const storageUrl = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
+    return `<script src="${storageUrl}/widget.js" data-sweepstakes-id="${sweepstakesId}"></script>`;
   };
 
   if (isLoading) {
