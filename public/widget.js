@@ -26,12 +26,12 @@
       resources: new Set(),
       interactions: []
     },
-    _mark: (name) => {
+    _mark: function(name) {
       if (window.performance && window.performance.mark) {
         window.performance.mark(`widget-${name}`);
       }
     },
-    _measure: (name, startMark, endMark) => {
+    _measure: function(name, startMark, endMark) {
       if (window.performance && window.performance.measure) {
         try {
           window.performance.measure(
@@ -42,19 +42,19 @@
           const measures = window.performance.getEntriesByName(`widget-${name}`);
           if (measures.length > 0) {
             const duration = measures[0].duration;
-            this._metrics.performance.push({
+            logger._metrics.performance.push({
               name,
               duration,
-              timestamp: this._getTimestamp()
+              timestamp: logger._getTimestamp()
             });
-            this._log(`${name} took ${duration}ms`);
+            logger._log(`${name} took ${duration}ms`);
           }
         } catch (e) {
-          this._warn(`Error measuring ${name}:`, e);
+          logger._warn(`Error measuring ${name}:`, e);
         }
       }
     },
-    _sendMetrics: () => {
+    _sendMetrics: function() {
       if (this._environment() === TEST_ENVIRONMENTS.PRODUCTION) {
         const metrics = {
           ...this._metrics,
@@ -65,28 +65,26 @@
           userAgent: navigator.userAgent
         };
 
-        // Store metrics in localStorage for debugging and analysis
         try {
           const storedMetrics = JSON.parse(localStorage.getItem('widget-metrics') || '[]');
           storedMetrics.push(metrics);
-          localStorage.setItem('widget-metrics', JSON.stringify(storedMetrics.slice(-50))); // Keep last 50 metrics
+          localStorage.setItem('widget-metrics', JSON.stringify(storedMetrics.slice(-50)));
         } catch (e) {
           console.error('Error storing metrics:', e);
         }
 
-        // Reset metrics after sending
         this._metrics.errors = [];
         this._metrics.performance = [];
         this._metrics.resources.clear();
         this._metrics.interactions = [];
       }
     },
-    _log: (message, ...args) => {
+    _log: function(message, ...args) {
       if (this._environment() !== TEST_ENVIRONMENTS.PRODUCTION) {
         console.log(`[Widget ${VERSION}] ${this._getTimestamp()} - ${message}`, ...args);
       }
     },
-    _warn: (message, ...args) => {
+    _warn: function(message, ...args) {
       console.warn(`[Widget ${VERSION}] ${this._getTimestamp()} - Warning: ${message}`, ...args);
       this._metrics.errors.push({
         level: 'warning',
@@ -95,7 +93,7 @@
         timestamp: this._getTimestamp()
       });
     },
-    _error: (message, ...args) => {
+    _error: function(message, ...args) {
       console.error(`[Widget ${VERSION}] ${this._getTimestamp()} - Error: ${message}`, ...args);
       this._metrics.errors.push({
         level: 'error',
@@ -104,17 +102,17 @@
         timestamp: this._getTimestamp()
       });
     },
-    info: (...args) => this._log(...args),
-    warn: (...args) => this._warn(...args),
-    error: (...args) => this._error(...args),
-    trackInteraction: (type, data) => {
+    info: function(...args) { this._log(...args); },
+    warn: function(...args) { this._warn(...args); },
+    error: function(...args) { this._error(...args); },
+    trackInteraction: function(type, data) {
       this._metrics.interactions.push({
         type,
         data,
         timestamp: this._getTimestamp()
       });
     },
-    performance: (name) => {
+    performance: function(name) {
       this._mark(name);
       return {
         end: (endName) => {
