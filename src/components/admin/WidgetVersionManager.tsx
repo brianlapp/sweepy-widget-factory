@@ -55,53 +55,34 @@ export function WidgetVersionManager() {
   const deployMutation = useMutation({
     mutationFn: async (versionId: string) => {
       try {
-        console.log('Starting deployment for version:', versionId);
+        console.log('[Widget Deploy] Starting deployment for version:', versionId);
         
         // First build and upload the widget files
         toast.info('Building and uploading widget files...');
-        await uploadWidgetFiles();
+        const uploadResult = await uploadWidgetFiles();
+        
+        if (!uploadResult.success || !uploadResult.bundleHash) {
+          console.error('[Widget Deploy] Upload failed:', uploadResult.error);
+          throw new Error(`Upload failed: ${uploadResult.error}`);
+        }
 
-        // Generate bundle hash
-        const bundleResponse = await fetch('/widget.bundle.js');
-        const bundleText = await bundleResponse.text();
-        const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(bundleText))
-          .then(hash => Array.from(new Uint8Array(hash))
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join(''));
+        console.log('[Widget Deploy] Files uploaded successfully, bundle hash:', uploadResult.bundleHash);
 
-        console.log('Generated bundle hash:', bundleHash);
-
-        // First update the current version to be deployed
-        console.log('Updating current version:', versionId);
-        const { error: updateError } = await supabase
-          .from('widget_versions')
-          .update({ 
-            deployed_at: new Date().toISOString(),
-            bundle_hash: bundleHash,
-            is_active: true 
-          })
-          .eq('id', versionId);
+        // Start a transaction to update version statuses
+        const { error: updateError } = await supabase.rpc('deploy_widget_version', {
+          p_version_id: versionId,
+          p_bundle_hash: uploadResult.bundleHash
+        });
 
         if (updateError) {
-          console.error('Error updating version:', updateError);
+          console.error('[Widget Deploy] Database update failed:', updateError);
           throw updateError;
         }
 
-        // Then deactivate all other versions
-        console.log('Deactivating other versions...');
-        const { error: deactivateError } = await supabase
-          .from('widget_versions')
-          .update({ is_active: false })
-          .neq('id', versionId);
-
-        if (deactivateError) {
-          console.error('Error deactivating other versions:', deactivateError);
-          throw deactivateError;
-        }
-
-        console.log('Deployment completed successfully');
+        console.log('[Widget Deploy] Version deployed successfully');
+        return { success: true };
       } catch (error) {
-        console.error('Deployment error:', error);
+        console.error('[Widget Deploy] Deployment failed:', error);
         throw error;
       }
     },
@@ -110,62 +91,10 @@ export function WidgetVersionManager() {
       toast.success('Widget version deployed successfully');
     },
     onError: (error) => {
-      console.error('Deployment error:', error);
-      toast.error('Failed to deploy widget version');
+      console.error('[Widget Deploy] Deployment error:', error);
+      toast.error(`Failed to deploy widget version: ${error.message}`);
     },
   });
-
-  const createVersionMutation = useMutation({
-    mutationFn: async () => {
-      const version = new Date().toISOString().split('T')[0] + '-' + 
-                     Math.random().toString(36).substring(2, 7);
-      
-      const { data, error } = await supabase
-        .from('widget_versions')
-        .insert({
-          version,
-          bundle_hash: 'pending',
-          changelog: 'Initial version'
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['widget-versions'] });
-      toast.success('New version created');
-    },
-    onError: (error) => {
-      console.error('Version creation error:', error);
-      toast.error('Failed to create new version');
-    },
-  });
-
-  const getEmbedCode = (sweepstakesId: string) => {
-    return `<!-- Add this code right before the closing </head> tag -->
-<script src="https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static/widget.js"></script>
-
-<!-- Add this code where you want the widget to appear -->
-<div id="sweepstakes-widget" data-sweepstakes-id="${sweepstakesId}"></div>`;
-  };
-
-  const handleCopyCode = async () => {
-    if (!selectedSweepstakesId) {
-      toast.error('Please select a sweepstakes first');
-      return;
-    }
-    
-    try {
-      await navigator.clipboard.writeText(getEmbedCode(selectedSweepstakesId));
-      setCopied(true);
-      toast.success('Embed code copied to clipboard');
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      toast.error('Failed to copy code');
-    }
-  };
 
   if (isLoading) {
     return <div>Loading versions...</div>;
