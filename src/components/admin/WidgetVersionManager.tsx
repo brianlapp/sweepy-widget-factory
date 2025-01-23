@@ -57,11 +57,8 @@ export function WidgetVersionManager() {
       try {
         console.log('Starting deployment for version:', versionId);
         
-        // First build the widget files
-        toast.info('Building widget files...');
-        
-        // Upload the widget files
-        toast.info('Uploading widget files...');
+        // First build and upload the widget files
+        toast.info('Building and uploading widget files...');
         await uploadWidgetFiles();
 
         // Generate bundle hash
@@ -74,20 +71,8 @@ export function WidgetVersionManager() {
 
         console.log('Generated bundle hash:', bundleHash);
 
-        // First deactivate all versions
-        console.log('Deactivating all versions...');
-        const { error: deactivateError } = await supabase
-          .from('widget_versions')
-          .update({ is_active: false })
-          .neq('id', 'no-match'); // This ensures all rows are updated
-
-        if (deactivateError) {
-          console.error('Error deactivating versions:', deactivateError);
-          throw deactivateError;
-        }
-
-        // Then activate and update the current version
-        console.log('Activating current version:', versionId);
+        // First update the current version to be deployed
+        console.log('Updating current version:', versionId);
         const { error: updateError } = await supabase
           .from('widget_versions')
           .update({ 
@@ -100,6 +85,18 @@ export function WidgetVersionManager() {
         if (updateError) {
           console.error('Error updating version:', updateError);
           throw updateError;
+        }
+
+        // Then deactivate all other versions
+        console.log('Deactivating other versions...');
+        const { error: deactivateError } = await supabase
+          .from('widget_versions')
+          .update({ is_active: false })
+          .neq('id', versionId);
+
+        if (deactivateError) {
+          console.error('Error deactivating other versions:', deactivateError);
+          throw deactivateError;
         }
 
         console.log('Deployment completed successfully');
