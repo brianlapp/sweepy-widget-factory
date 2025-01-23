@@ -9,6 +9,10 @@ import { Info, Copy, Check, AlertCircle } from 'lucide-react';
 import { uploadWidgetFiles } from '@/utils/uploadWidget';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
+// IMPORTANT: This is the source of truth for the widget embed code format.
+// Any changes to this format must be carefully considered and documented.
+const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
+
 interface Version {
   id: string;
   version: string;
@@ -141,10 +145,11 @@ export function WidgetVersionManager() {
     toast.success('Embed code copied to clipboard');
   };
 
+  // This function returns the official embed code format.
+  // Any changes here must be carefully reviewed and documented.
   const getEmbedCode = (sweepstakesId: string) => {
-    const storageUrl = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
     return `<div id="sweepstakes-widget" data-sweepstakes-id="${sweepstakesId}"></div>
-<script src="${storageUrl}/widget.js"></script>`;
+<script src="${STORAGE_URL}/widget.js"></script>`;
   };
 
   if (isLoading) {
@@ -158,12 +163,7 @@ export function WidgetVersionManager() {
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          To make your widget available for embedding, follow these steps:
-          <ol className="list-decimal list-inside mt-2 space-y-1">
-            <li>Click "Create Version" to create a new widget version</li>
-            <li>Click "Deploy" on the new version to build and upload the widget files</li>
-            <li>Once deployed, select a sweepstakes and copy its embed code</li>
-          </ol>
+          Important: Always use the exact embed code provided below. The format of this code is critical for the widget to function correctly.
         </AlertDescription>
       </Alert>
 
