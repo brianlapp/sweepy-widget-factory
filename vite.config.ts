@@ -15,10 +15,8 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react({
-      // Configure development options
-      development: mode === 'development',
-      // Enable React refresh for development
-      refresh: mode === 'development',
+      // The only supported option for development mode is tsDecorators
+      tsDecorators: true,
     }),
     mode === 'development' && componentTagger(),
   ].filter(Boolean),
