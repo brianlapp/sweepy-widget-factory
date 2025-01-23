@@ -15,7 +15,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-// Implementation status tracking
+// Implementation status tracking with communication logging added
 const implementationStatus = {
   phase1: {
     title: "Phase 1: Initialization Sequence Debug",
@@ -44,12 +44,17 @@ const implementationStatus = {
         details: ["Type validation", "Error recovery", "Retry logic", "Timeout handling"]
       },
       "Iframe management": {
-        status: "in-progress",
+        status: "completed",
         details: ["Creation verification", "Load state tracking", "Resource validation", "Cleanup handling"]
       },
       "Communication logging": {
-        status: "pending",
-        details: ["Message flow tracking", "Error reporting", "Performance metrics", "State changes"]
+        status: "in-progress",
+        details: [
+          "Message flow tracking ✓",
+          "Error reporting ✓",
+          "Performance metrics →",
+          "State changes →"
+        ]
       }
     }
   },
@@ -219,6 +224,17 @@ export function WidgetVersionManager() {
         return 'bg-blue-500';
       default:
         return 'bg-gray-500';
+    }
+  };
+
+  const getItemStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return '✓';
+      case 'in-progress':
+        return '→';
+      default:
+        return '•';
     }
   };
 
