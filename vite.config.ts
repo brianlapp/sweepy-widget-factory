@@ -32,11 +32,11 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: 'dist',
-    assetsDir: '',  // Changed to empty string to put assets in root
+    assetsDir: '',
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
-        widget: path.resolve(__dirname, 'public/widget.js'),
+        widget: path.resolve(__dirname, 'src/widget.tsx'),
       },
       output: {
         entryFileNames: (chunkInfo) => {
