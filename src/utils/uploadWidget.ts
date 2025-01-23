@@ -13,7 +13,7 @@ export async function uploadWidgetFiles() {
           console.log(`Found ${filename} in dist directory`);
           const content = await response.text();
           console.log(`Content preview for ${filename}:`, content.substring(0, 200));
-          return response;
+          return { content, type: response.headers.get('content-type') };
         }
         
         // Fallback to public directory (development)
@@ -22,7 +22,7 @@ export async function uploadWidgetFiles() {
           console.log(`Found ${filename} in public directory`);
           const content = await devResponse.text();
           console.log(`Content preview for ${filename}:`, content.substring(0, 200));
-          return devResponse;
+          return { content, type: devResponse.headers.get('content-type') };
         }
         
         throw new Error(`Failed to fetch ${filename}`);
@@ -37,6 +37,109 @@ export async function uploadWidgetFiles() {
     await supabase.storage
       .from('static')
       .remove(['embed.html', 'widget.js', 'widget.bundle.js']);
+
+    // Upload widget.js - this should be the loader script
+    const widgetJs = `
+(function() {
+  const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
+  
+  function createIframe(sweepstakesId) {
+    console.log('[Widget] Creating iframe with sweepstakes ID:', sweepstakesId);
+    
+    const iframe = document.createElement('iframe');
+    iframe.style.width = '100%';
+    iframe.style.border = 'none';
+    iframe.style.minHeight = '600px';
+    iframe.setAttribute('scrolling', 'no');
+    
+    // Add error handling for iframe load
+    iframe.onerror = () => {
+      console.error('[Widget] Failed to load iframe');
+      showError('Failed to load widget content');
+    };
+    
+    // Construct the full URL for the embed
+    const embedUrl = \`\${STORAGE_URL}/embed.html?id=\${sweepstakesId}\`;
+    console.log('[Widget] Setting iframe src to:', embedUrl);
+    iframe.src = embedUrl;
+    
+    // Add message listener for iframe height adjustments and error handling
+    window.addEventListener('message', (event) => {
+      // Only accept messages from our own iframe
+      if (event.origin !== new URL(STORAGE_URL).origin) return;
+      
+      if (event.data.type === 'setHeight') {
+        iframe.style.height = \`\${event.data.height}px\`;
+      } else if (event.data.type === 'error') {
+        console.error('[Widget] Error from iframe:', event.data.message);
+        showError(event.data.message);
+      }
+    });
+    
+    return iframe;
+  }
+
+  function showError(message) {
+    const widgetContainer = document.getElementById('sweepstakes-widget');
+    if (widgetContainer) {
+      widgetContainer.innerHTML = \`
+        <div style="padding: 20px; border: 1px solid #f0f0f0; border-radius: 8px; text-align: center;">
+          <p style="color: #666; margin: 0;">Unable to load sweepstakes widget: \${message}</p>
+        </div>
+      \`;
+    }
+  }
+
+  function initializeWidget() {
+    try {
+      console.log('[Widget] Initializing widget...');
+      const widgetContainer = document.getElementById('sweepstakes-widget');
+      if (!widgetContainer) {
+        throw new Error('Widget container not found');
+      }
+
+      const sweepstakesId = widgetContainer.getAttribute('data-sweepstakes-id');
+      if (!sweepstakesId) {
+        throw new Error('No sweepstakes ID provided');
+      }
+
+      // Validate that we have a valid UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(sweepstakesId)) {
+        throw new Error('Invalid sweepstakes ID format');
+      }
+
+      console.log('[Widget] Creating iframe for sweepstakes:', sweepstakesId);
+      const iframe = createIframe(sweepstakesId);
+      widgetContainer.appendChild(iframe);
+      console.log('[Widget] Widget initialized successfully');
+    } catch (error) {
+      console.error('[Widget] Widget initialization failed:', error.message);
+      showError(error.message);
+    }
+  }
+
+  // Initialize when the script loads
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeWidget);
+  } else {
+    initializeWidget();
+  }
+})();`;
+
+    const { error: widgetError } = await supabase.storage
+      .from('static')
+      .upload('widget.js', widgetJs, {
+        contentType: 'application/javascript',
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+    if (widgetError) {
+      console.error('Error uploading widget.js:', widgetError);
+      throw widgetError;
+    }
+    console.log('Successfully uploaded widget.js');
 
     // Upload embed.html
     const embedHtml = `<!DOCTYPE html>
@@ -87,52 +190,25 @@ export async function uploadWidgetFiles() {
 </body>
 </html>`;
 
-    const embedBlob = new Blob([embedHtml], { type: 'text/html' });
     const { error: embedError } = await supabase.storage
       .from('static')
-      .upload('embed.html', embedBlob, {
+      .upload('embed.html', embedHtml, {
         contentType: 'text/html',
         cacheControl: '3600',
         upsert: true,
       });
-    
+
     if (embedError) {
       console.error('Error uploading embed.html:', embedError);
       throw embedError;
     }
     console.log('Successfully uploaded embed.html');
 
-    // Upload widget.js
-    const widgetJsResponse = await fetchFile('widget.js');
-    const widgetJsContent = await widgetJsResponse.text();
-    console.log('Widget.js content type:', widgetJsResponse.headers.get('content-type'));
-    console.log('Widget.js content preview:', widgetJsContent.substring(0, 200));
-    
-    const widgetJsBlob = new Blob([widgetJsContent], { type: 'application/javascript' });
-    const { error: widgetError } = await supabase.storage
-      .from('static')
-      .upload('widget.js', widgetJsBlob, {
-        contentType: 'application/javascript',
-        cacheControl: '3600',
-        upsert: true,
-      });
-
-    if (widgetError) {
-      console.error('Error uploading widget.js:', widgetError);
-      throw widgetError;
-    }
-    console.log('Successfully uploaded widget.js');
-
     // Upload widget bundle
-    const widgetBundleResponse = await fetchFile('widget.bundle.js');
-    const widgetBundleContent = await widgetBundleResponse.text();
-    console.log('Widget bundle content type:', widgetBundleResponse.headers.get('content-type'));
-    console.log('Widget bundle content preview:', widgetBundleContent.substring(0, 200));
-    
-    const widgetBundleBlob = new Blob([widgetBundleContent], { type: 'application/javascript' });
+    const { content: bundleContent } = await fetchFile('widget.bundle.js');
     const { error: bundleError } = await supabase.storage
       .from('static')
-      .upload('widget.bundle.js', widgetBundleBlob, {
+      .upload('widget.bundle.js', bundleContent, {
         contentType: 'application/javascript',
         cacheControl: '3600',
         upsert: true,
