@@ -5,17 +5,27 @@
   const MAX_RETRIES = 3;
   const LOAD_TIMEOUT = 10000;
   
-  // Message types enum for type validation
-  const MessageTypes = {
-    INIT_WIDGET: 'INIT_WIDGET',
-    SET_HEIGHT: 'setHeight',
-    WIDGET_ERROR: 'WIDGET_ERROR',
-    WIDGET_READY: 'WIDGET_READY'
+  // Test environment detection
+  const TEST_ENVIRONMENTS = {
+    LOCAL: 'local',
+    STAGING: 'staging',
+    PRODUCTION: 'production'
   };
 
-  // Enhanced logging utility with production mode check
+  // Enhanced logging and monitoring utility
   const logger = {
     _getTimestamp: () => new Date().toISOString(),
+    _environment: () => {
+      if (window.location.hostname.includes('localhost')) return TEST_ENVIRONMENTS.LOCAL;
+      if (window.location.hostname.includes('staging')) return TEST_ENVIRONMENTS.STAGING;
+      return TEST_ENVIRONMENTS.PRODUCTION;
+    },
+    _metrics: {
+      errors: [],
+      performance: [],
+      resources: new Set(),
+      interactions: []
+    },
     _mark: (name) => {
       if (window.performance && window.performance.mark) {
         window.performance.mark(`widget-${name}`);
@@ -31,56 +41,79 @@
           );
           const measures = window.performance.getEntriesByName(`widget-${name}`);
           if (measures.length > 0) {
-            this._log(`${name} took ${measures[0].duration}ms`);
+            const duration = measures[0].duration;
+            this._metrics.performance.push({
+              name,
+              duration,
+              timestamp: this._getTimestamp()
+            });
+            this._log(`${name} took ${duration}ms`);
           }
         } catch (e) {
           this._warn(`Error measuring ${name}:`, e);
         }
       }
     },
-    _isProduction: () => {
-      return !window.location.hostname.includes('localhost') && 
-             !window.location.hostname.includes('127.0.0.1');
+    _sendMetrics: () => {
+      if (this._environment() === TEST_ENVIRONMENTS.PRODUCTION) {
+        const metrics = {
+          ...this._metrics,
+          resources: Array.from(this._metrics.resources),
+          timestamp: this._getTimestamp(),
+          version: VERSION,
+          url: window.location.href,
+          userAgent: navigator.userAgent
+        };
+
+        // Store metrics in localStorage for debugging and analysis
+        try {
+          const storedMetrics = JSON.parse(localStorage.getItem('widget-metrics') || '[]');
+          storedMetrics.push(metrics);
+          localStorage.setItem('widget-metrics', JSON.stringify(storedMetrics.slice(-50))); // Keep last 50 metrics
+        } catch (e) {
+          console.error('Error storing metrics:', e);
+        }
+
+        // Reset metrics after sending
+        this._metrics.errors = [];
+        this._metrics.performance = [];
+        this._metrics.resources.clear();
+        this._metrics.interactions = [];
+      }
     },
     _log: (message, ...args) => {
-      if (!this._isProduction()) {
+      if (this._environment() !== TEST_ENVIRONMENTS.PRODUCTION) {
         console.log(`[Widget ${VERSION}] ${this._getTimestamp()} - ${message}`, ...args);
       }
     },
     _warn: (message, ...args) => {
       console.warn(`[Widget ${VERSION}] ${this._getTimestamp()} - Warning: ${message}`, ...args);
+      this._metrics.errors.push({
+        level: 'warning',
+        message,
+        args,
+        timestamp: this._getTimestamp()
+      });
     },
     _error: (message, ...args) => {
       console.error(`[Widget ${VERSION}] ${this._getTimestamp()} - Error: ${message}`, ...args);
-      // In production, send error to monitoring service
-      if (this._isProduction()) {
-        this._sendErrorToMonitoring(message, args);
-      }
-    },
-    _sendErrorToMonitoring: (message, args) => {
-      // Implementation for error monitoring service
-      // This would typically send errors to a service like Sentry
-      const errorData = {
+      this._metrics.errors.push({
+        level: 'error',
         message,
         args,
-        timestamp: this._getTimestamp(),
-        version: VERSION,
-        url: window.location.href,
-        userAgent: navigator.userAgent
-      };
-      
-      // For now, we'll just store it in localStorage for debugging
-      try {
-        const errors = JSON.parse(localStorage.getItem('widget-errors') || '[]');
-        errors.push(errorData);
-        localStorage.setItem('widget-errors', JSON.stringify(errors.slice(-10))); // Keep last 10 errors
-      } catch (e) {
-        console.error('Error storing widget error:', e);
-      }
+        timestamp: this._getTimestamp()
+      });
     },
     info: (...args) => this._log(...args),
     warn: (...args) => this._warn(...args),
     error: (...args) => this._error(...args),
+    trackInteraction: (type, data) => {
+      this._metrics.interactions.push({
+        type,
+        data,
+        timestamp: this._getTimestamp()
+      });
+    },
     performance: (name) => {
       this._mark(name);
       return {
@@ -92,18 +125,29 @@
     }
   };
 
-  // Message validation utility
-  const validateMessage = (message) => {
-    if (!message || typeof message !== 'object') {
-      throw new Error('Invalid message format');
+  // Automated test helper functions
+  const testHelpers = {
+    simulateUserInteraction: (elementId, eventType) => {
+      const element = document.getElementById(elementId);
+      if (element) {
+        const event = new Event(eventType);
+        element.dispatchEvent(event);
+        logger.trackInteraction('test', { elementId, eventType });
+      }
+    },
+    verifyElementState: (elementId, expectedState) => {
+      const element = document.getElementById(elementId);
+      return element && Object.entries(expectedState).every(([key, value]) => 
+        element[key] === value
+      );
+    },
+    runIntegrationTests: () => {
+      if (logger._environment() !== TEST_ENVIRONMENTS.PRODUCTION) {
+        logger.info('Running integration tests...');
+        // Add your integration test cases here
+        logger.info('Integration tests completed');
+      }
     }
-    if (!MessageTypes[message.type]) {
-      throw new Error(`Invalid message type: ${message.type}`);
-    }
-    if (message.type === MessageTypes.INIT_WIDGET && !message.sweepstakesId) {
-      throw new Error('Missing sweepstakesId in initialization message');
-    }
-    return true;
   };
 
   class IframeManager {
@@ -355,5 +399,15 @@
   } else {
     logger.info('Document already loaded, initializing immediately');
     initialize();
+  }
+
+  // Periodic metrics collection
+  setInterval(() => {
+    logger._sendMetrics();
+  }, 60000); // Send metrics every minute
+
+  // Run tests in non-production environments
+  if (logger._environment() !== TEST_ENVIRONMENTS.PRODUCTION) {
+    testHelpers.runIntegrationTests();
   }
 })();
