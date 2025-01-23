@@ -245,14 +245,18 @@
           throw new Error('Cannot access iframe content window');
         }
 
-        // Verify required resources are loaded
-        const requiredResources = ['widget.js', 'embed.html'];
+        // Update resource verification to use correct paths
+        const requiredResources = [
+          `${STORAGE_URL}/widget.js`,
+          `${STORAGE_URL}/embed.html`
+        ];
+        
         const missingResources = requiredResources.filter(resource => 
           !Array.from(this.resourcesLoaded).some(loaded => loaded.includes(resource))
         );
 
         if (missingResources.length > 0) {
-          throw new Error(`Missing required resources: ${missingResources.join(', ')}`);
+          throw new Error(`Missing required resources: ${missingResources.map(r => r.split('/').pop()).join(', ')}`);
         }
 
         this.isReady = true;
@@ -280,14 +284,15 @@
 
     setIframeSource() {
       try {
-        const baseUrl = new URL(STORAGE_URL);
-        const embedPath = new URL('embed.html', baseUrl);
+        // Construct the full URL to embed.html in the static bucket
+        const embedUrl = `${STORAGE_URL}/embed.html`;
+        const url = new URL(embedUrl);
         
-        embedPath.searchParams.append('v', VERSION);
-        embedPath.searchParams.append('t', Date.now().toString());
+        url.searchParams.append('v', VERSION);
+        url.searchParams.append('t', Date.now().toString());
         
-        logger.info('Setting iframe src:', embedPath.toString());
-        this.iframe.src = embedPath.toString();
+        logger.info('Setting iframe src:', url.toString());
+        this.iframe.src = url.toString();
       } catch (error) {
         logger.error('Error constructing iframe URL:', error);
         throw new Error('Failed to construct widget URL');
