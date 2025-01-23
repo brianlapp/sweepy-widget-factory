@@ -17,6 +17,9 @@
     
     // Add message listener for iframe height adjustments
     window.addEventListener('message', (event) => {
+      // Only accept messages from our own iframe
+      if (event.origin !== new URL(STORAGE_URL).origin) return;
+      
       if (event.data.type === 'setHeight') {
         iframe.style.height = `${event.data.height}px`;
       }
@@ -38,12 +41,27 @@
         throw new Error('No sweepstakes ID provided');
       }
 
+      // Validate that we have a valid UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(sweepstakesId)) {
+        throw new Error('Invalid sweepstakes ID format');
+      }
+
       console.log('[Widget] Creating iframe for sweepstakes:', sweepstakesId);
       const iframe = createIframe(sweepstakesId);
       widgetContainer.appendChild(iframe);
       console.log('[Widget] Widget initialized successfully');
     } catch (error) {
       console.error('[Widget] Widget initialization failed:', error.message);
+      // Display a user-friendly error message in the widget container
+      const widgetContainer = document.getElementById('sweepstakes-widget');
+      if (widgetContainer) {
+        widgetContainer.innerHTML = `
+          <div style="padding: 20px; border: 1px solid #f0f0f0; border-radius: 8px; text-align: center;">
+            <p style="color: #666; margin: 0;">Unable to load sweepstakes widget. Please try again later.</p>
+          </div>
+        `;
+      }
     }
   }
 
