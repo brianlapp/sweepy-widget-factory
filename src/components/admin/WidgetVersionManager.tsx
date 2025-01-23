@@ -42,6 +42,19 @@ export function WidgetVersionManager() {
     },
   });
 
+  const { data: sweepstakes } = useQuery({
+    queryKey: ['sweepstakes'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('sweepstakes')
+        .select('id, title')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const generateUniqueVersion = () => {
     const now = new Date();
     const timestamp = now.getTime();
