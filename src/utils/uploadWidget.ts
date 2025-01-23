@@ -16,13 +16,24 @@ export async function uploadWidgetFiles() {
           return { content, type: response.headers.get('content-type') };
         }
         
-        // Fallback to public directory (development)
-        const devResponse = await fetch(`/${filename}`);
-        if (devResponse.ok) {
-          console.log(`Found ${filename} in public directory`);
-          const content = await devResponse.text();
+        // Try root directory (development)
+        const rootResponse = await fetch(`/${filename}`);
+        if (rootResponse.ok) {
+          console.log(`Found ${filename} in root directory`);
+          const content = await rootResponse.text();
           console.log(`Content length for ${filename}:`, content.length);
-          return { content, type: devResponse.headers.get('content-type') };
+          return { content, type: rootResponse.headers.get('content-type') };
+        }
+
+        // Try src directory for widget bundle
+        if (filename === 'widget.bundle.js') {
+          const srcResponse = await fetch('/src/widget.tsx');
+          if (srcResponse.ok) {
+            console.log('Found widget.tsx in src directory');
+            const content = await srcResponse.text();
+            console.log('Content length for widget.tsx:', content.length);
+            return { content, type: 'application/javascript' };
+          }
         }
         
         throw new Error(`Failed to fetch ${filename}`);
@@ -150,19 +161,18 @@ export async function uploadWidgetFiles() {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:;">
     <title>Sweepstakes Widget</title>
-    <!-- Primary CDN -->
-    <script type="text/javascript" src="https://unpkg.com/react@18/umd/react.production.min.js" 
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" 
             crossorigin
             onerror="loadFallbackScript('react')">
     </script>
-    <script type="text/javascript" src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" 
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" 
             crossorigin
             onerror="loadFallbackScript('react-dom')">
     </script>
     
-    <script type="text/javascript">
+    <script>
         // Fallback mechanism
         function loadFallbackScript(library) {
             const fallbackUrls = {
@@ -171,7 +181,6 @@ export async function uploadWidgetFiles() {
             };
             
             const script = document.createElement('script');
-            script.type = 'text/javascript';
             script.src = fallbackUrls[library];
             script.crossOrigin = 'anonymous';
             document.head.appendChild(script);
@@ -188,7 +197,7 @@ export async function uploadWidgetFiles() {
             }
         });
     </script>
-    <script type="text/javascript" src="widget.bundle.js" defer></script>
+    <script src="widget.bundle.js" defer></script>
     <style>
         body { margin: 0; padding: 0; }
         #root { min-height: 100vh; }
@@ -217,6 +226,12 @@ export async function uploadWidgetFiles() {
     // Upload widget bundle with explicit JavaScript MIME type
     console.log('Fetching widget.bundle.js...');
     const { content: bundleContent } = await fetchFile('widget.bundle.js');
+    
+    // Ensure we're uploading JavaScript content
+    if (!bundleContent.includes('window.initializeWidget')) {
+      throw new Error('Invalid widget bundle content - missing initialization function');
+    }
+    
     console.log('Uploading widget.bundle.js...');
     const { error: bundleError } = await supabase.storage
       .from('static')
