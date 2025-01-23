@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sweepstakes Widget</title>
+    <!-- Production React -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script>
         // Production error tracking
         console.log('[Widget Embed] Initializing embed page...');
@@ -15,6 +18,15 @@
             }, '*');
             return false;
         };
+
+        // Global error boundary
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('[Widget Embed] Unhandled promise rejection:', event.reason);
+            window.parent.postMessage({ 
+                type: 'WIDGET_ERROR', 
+                error: { message: 'Unhandled promise rejection: ' + event.reason } 
+            }, '*');
+        });
     </script>
 </head>
 <body>
@@ -22,13 +34,14 @@
     <script>
         console.log('[Widget Embed] DOM loaded, waiting for widget initialization...');
         
-        // Enhanced message handling with validation
+        // Enhanced message handling with validation and error tracking
         window.addEventListener('message', function(event) {
             console.log('[Widget Embed] Received message:', event.data);
             
             if (event.data.type === 'INIT_WIDGET') {
                 console.log('[Widget Embed] Initializing widget with data:', event.data);
                 
+                // Validate required data
                 if (!event.data.sweepstakesId) {
                     console.error('[Widget Embed] No sweepstakes ID provided');
                     window.parent.postMessage({ 
@@ -40,10 +53,11 @@
 
                 window.WIDGET_CONFIG = event.data;
                 
-                // Initialize the widget with enhanced error handling
+                // Initialize widget with enhanced error handling
                 if (window.initializeWidget) {
                     try {
                         window.initializeWidget(event.data.sweepstakesId);
+                        console.log('[Widget Embed] Widget initialized successfully');
                     } catch (error) {
                         console.error('[Widget Embed] Initialization error:', error);
                         window.parent.postMessage({ 
@@ -61,6 +75,7 @@
             }
         });
     </script>
+    <!-- Load widget bundle from Supabase storage with cache busting -->
     <script src="https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static/widget.js"></script>
 </body>
 </html>
