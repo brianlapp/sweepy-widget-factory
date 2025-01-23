@@ -164,22 +164,62 @@
       this.isReady = false;
       this.loadTimeout = null;
       this.resourcesLoaded = new Set();
+      
+      // Add message event listener for debugging
+      window.addEventListener('message', this.handleMessage.bind(this));
+    }
+
+    handleMessage(event) {
+      logger.info('Received message from iframe:', {
+        type: event.data.type,
+        origin: event.origin,
+        data: event.data
+      });
+
+      // Handle specific message types
+      switch(event.data.type) {
+        case 'WIDGET_ERROR':
+          logger.error('Widget error received:', event.data.error);
+          this.handleLoadError(new Error(event.data.error.message));
+          break;
+        case 'WIDGET_READY':
+          logger.info('Widget ready signal received');
+          this.isReady = true;
+          this.processMessageQueue();
+          break;
+        case 'DEBUG_LOG':
+          logger.info('Debug log from iframe:', event.data.message);
+          break;
+        default:
+          logger.info('Unknown message type:', event.data.type);
+      }
     }
 
     createIframe(sweepstakesId) {
       logger.performance('iframe-creation-start');
+      logger.info('Creating iframe for sweepstakes:', sweepstakesId);
       
       try {
-        // Cleanup any existing iframe
         this.cleanup();
-
         this.iframe = document.createElement('iframe');
         this.setupIframeAttributes();
         this.setupLoadTracking();
         this.setupResourceTracking();
-        
-        // Set iframe source with proper URL construction and validation
         this.setIframeSource();
+
+        // Send initialization data to iframe
+        setTimeout(() => {
+          if (this.iframe.contentWindow) {
+            logger.info('Sending init data to iframe:', { sweepstakesId });
+            this.iframe.contentWindow.postMessage({
+              type: 'INIT_WIDGET',
+              sweepstakesId,
+              timestamp: Date.now()
+            }, '*');
+          } else {
+            logger.error('Cannot access iframe contentWindow');
+          }
+        }, 1000);
 
         logger.performance('iframe-creation-start').end('iframe-creation-complete');
         return this.iframe;

@@ -5,77 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sweepstakes Widget</title>
     <script>
-        // Enhanced diagnostic logging utility with verbose error tracking and performance metrics
+        // Enhanced diagnostic logging utility
         const logger = {
             timeStart: Date.now(),
             errors: [],
             metrics: {
                 resourceLoadTimes: {},
                 renderingSteps: [],
-                reactInitTime: null
+                reactInitTime: null,
+                messageEvents: []
             },
-            formatTime: () => `[${new Date().toISOString()}]`,
             info: function(msg, ...args) {
-                console.log(`${this.formatTime()} [Widget Embed] ${msg}`, ...args);
-                this.metrics.renderingSteps.push({
-                    type: 'info',
-                    message: msg,
-                    timestamp: Date.now() - this.timeStart
-                });
+                console.log(`[Widget Embed] ${msg}`, ...args);
+                this.sendToParent('DEBUG_LOG', msg);
             },
             error: function(msg, ...args) {
-                const error = { 
-                    message: msg, 
-                    details: args, 
-                    timestamp: new Date().toISOString(),
-                    stack: args[0]?.stack
-                };
-                this.errors.push(error);
-                console.error(`${this.formatTime()} [Widget Embed] Error: ${msg}`, ...args);
-                
-                // Send detailed error to parent
+                console.error(`[Widget Embed] Error: ${msg}`, ...args);
+                this.sendToParent('WIDGET_ERROR', { message: msg, details: args });
+            },
+            sendToParent: function(type, message) {
                 if (window.parent) {
-                    window.parent.postMessage({ 
-                        type: 'WIDGET_ERROR', 
-                        error,
-                        errorCount: this.errors.length,
-                        metrics: this.metrics
-                    }, '*');
+                    window.parent.postMessage({ type, message, timestamp: Date.now() }, '*');
                 }
-            },
-            warn: function(msg, ...args) {
-                console.warn(`${this.formatTime()} [Widget Embed] Warning: ${msg}`, ...args);
-            },
-            performance: function(label) {
-                const start = performance.now();
-                return {
-                    end: () => {
-                        const duration = performance.now() - start;
-                        this.metrics.resourceLoadTimes[label] = duration;
-                        this.info(`${label} took ${duration.toFixed(2)}ms`);
-                    }
-                };
-            },
-            getErrorSummary: function() {
-                return this.errors.map(e => `${e.timestamp}: ${e.message}`).join('\n');
-            },
-            getDiagnosticReport: function() {
-                return {
-                    errors: this.errors,
-                    metrics: this.metrics,
-                    environment: {
-                        userAgent: navigator.userAgent,
-                        reactVersion: window.React?.version,
-                        reactDomVersion: window.ReactDOM?.version,
-                        timestamp: new Date().toISOString()
-                    }
-                };
             }
         };
 
-        // Early error capture
+        // Early error capture with detailed logging
         window.onerror = function(msg, url, line, col, error) {
-            logger.error('Global error:', { msg, url, line, col, error });
+            logger.error('Global error:', { msg, url, line, col, error: error?.stack });
             return false;
         };
 
@@ -83,8 +40,25 @@
             logger.error('Unhandled promise rejection:', event.reason);
         });
 
+        // Track all message events
+        window.addEventListener('message', function(event) {
+            logger.metrics.messageEvents.push({
+                type: event.data.type,
+                timestamp: Date.now(),
+                data: event.data
+            });
+            
+            logger.info('Message received:', event.data);
+        });
+
         // Resource loading diagnostics
-        const resourcePerf = logger.performance('resource-loading');
+        const resourcePerf = {
+            start: Date.now(),
+            end: function() {
+                logger.info('Resource loading completed in:', Date.now() - this.start, 'ms');
+            }
+        };
+
         window.addEventListener('load', () => {
             resourcePerf.end();
             logger.info('Window loaded, checking dependencies:', {
@@ -92,133 +66,53 @@
                 reactDOM: typeof ReactDOM !== 'undefined'
             });
         });
-
-        logger.info('Embed page initializing...');
     </script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js" 
-            onerror="logger.error('Failed to load React')"
-            onload="logger.info('React core loaded successfully')"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"
-            onerror="logger.error('Failed to load ReactDOM')"
-            onload="logger.info('ReactDOM loaded successfully')"></script>
+    <script 
+        crossorigin 
+        src="https://unpkg.com/react@18/umd/react.production.min.js"
+        onload="logger.info('React core loaded')"
+        onerror="logger.error('Failed to load React')"
+    ></script>
+    <script 
+        crossorigin 
+        src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"
+        onload="logger.info('ReactDOM loaded')"
+        onerror="logger.error('Failed to load ReactDOM')"
+    ></script>
 </head>
 <body>
     <div id="root"></div>
     <script>
-        // Enhanced initialization with better error handling and retries
+        // Enhanced initialization with better error handling
         let initRetries = 0;
         const MAX_RETRIES = 3;
         const RETRY_DELAY = 1000;
-        const SCRIPT_TIMEOUT = 5000;
         
-        function loadWidgetScript() {
-            return new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = 'widget.js';
-                script.async = true;
-
-                const timeoutId = setTimeout(() => {
-                    reject(new Error('Widget script load timeout'));
-                }, SCRIPT_TIMEOUT);
-
-                script.onload = () => {
-                    clearTimeout(timeoutId);
-                    logger.info('Widget script loaded successfully');
-                    resolve();
-                };
-
-                script.onerror = (error) => {
-                    clearTimeout(timeoutId);
-                    reject(new Error('Failed to load widget script: ' + error.message));
-                };
-
-                document.body.appendChild(script);
-            });
-        }
-
-        // Diagnostic component for verifying React setup
-        function renderDiagnosticComponent() {
-            try {
-                const DiagnosticComponent = () => {
-                    React.useEffect(() => {
-                        logger.info('Diagnostic component mounted');
-                    }, []);
-
-                    return React.createElement('div', {
-                        style: {
-                            padding: '20px',
-                            border: '1px solid #eee',
-                            borderRadius: '8px',
-                            margin: '20px',
-                            backgroundColor: '#f9f9f9'
-                        }
-                    }, 'Widget Environment: Ready');
-                };
-
-                const root = ReactDOM.createRoot(document.getElementById('root'));
-                root.render(React.createElement(DiagnosticComponent));
-                logger.info('Diagnostic component rendered successfully');
-            } catch (error) {
-                logger.error('Failed to render diagnostic component:', error);
-                showFallbackContent(error);
+        function validateSweepstakesId(id) {
+            if (!id) {
+                throw new Error('No sweepstakes ID provided');
             }
-        }
-        
-        async function initializeWidgetWithRetry(data) {
-            try {
-                if (!window.initializeWidget) {
-                    if (initRetries < MAX_RETRIES) {
-                        initRetries++;
-                        logger.warn(`Retry ${initRetries}/${MAX_RETRIES} - Widget not ready, attempting to load script`);
-                        await loadWidgetScript();
-                        setTimeout(() => initializeWidgetWithRetry(data), RETRY_DELAY);
-                    } else {
-                        throw new Error('Widget initialization failed after retries');
-                    }
-                } else {
-                    logger.info('Initializing widget with data:', data);
-                    window.initializeWidget(data.sweepstakesId);
-                    logger.info('Widget initialized successfully');
-                }
-            } catch (error) {
-                logger.error('Initialization error:', error);
-                showFallbackContent(error);
+            // Validate UUID format
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            if (!uuidRegex.test(id)) {
+                throw new Error('Invalid sweepstakes ID format');
             }
+            return true;
         }
 
-        function showFallbackContent(error) {
-            const root = document.getElementById('root');
-            if (root) {
-                root.innerHTML = `
-                    <div style="padding: 20px; border: 1px solid #f0f0f0; border-radius: 8px; text-align: center;">
-                        <p style="color: #666; margin: 0;">Unable to load sweepstakes widget</p>
-                        <p style="color: #888; font-size: 0.8em; margin-top: 8px;">${error.message}</p>
-                        <details style="margin-top: 16px; text-align: left;">
-                            <summary style="cursor: pointer; color: #666;">Technical Details</summary>
-                            <pre style="background: #f5f5f5; padding: 8px; margin-top: 8px; font-size: 0.8em; overflow-x: auto;">
-${logger.getErrorSummary()}
-                            </pre>
-                        </details>
-                        <div style="margin-top: 16px;">
-                            <button onclick="location.reload()" 
-                                    style="padding: 8px 16px; background: #4f46e5; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                Retry Loading
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }
-        }
-
-        // Enhanced message handling with error tracking
+        // Handle initialization message
         window.addEventListener('message', function(event) {
             try {
                 logger.info('Received message:', event.data);
                 
                 if (event.data.type === 'INIT_WIDGET') {
                     if (!event.data.sweepstakesId) {
-                        throw new Error('No sweepstakes ID provided');
+                        throw new Error('No sweepstakes ID provided in init message');
                     }
+
+                    validateSweepstakesId(event.data.sweepstakesId);
+                    logger.info('Valid sweepstakes ID received:', event.data.sweepstakesId);
+                    
                     window.WIDGET_CONFIG = event.data;
                     initializeWidgetWithRetry(event.data);
                 }
@@ -228,10 +122,10 @@ ${logger.getErrorSummary()}
             }
         });
 
-        // Initial diagnostic render to verify React setup
+        // Notify parent when ready
         setTimeout(() => {
-            if (!window.initializeWidget) {
-                renderDiagnosticComponent();
+            if (window.parent) {
+                window.parent.postMessage({ type: 'WIDGET_READY', timestamp: Date.now() }, '*');
             }
         }, 1000);
 
