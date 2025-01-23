@@ -16,21 +16,51 @@
                 messageEvents: []
             },
             info: function(msg, ...args) {
-                console.log(`[Widget Embed] ${msg}`, ...args);
-                this.sendToParent('DEBUG_LOG', msg);
+                const timestamp = new Date().toISOString();
+                console.log(`[Widget Embed ${timestamp}] ${msg}`, ...args);
+                this.sendToParent('DEBUG_LOG', { message: msg, args, timestamp });
             },
             error: function(msg, ...args) {
-                console.error(`[Widget Embed] Error: ${msg}`, ...args);
-                this.sendToParent('WIDGET_ERROR', { message: msg, details: args });
+                const timestamp = new Date().toISOString();
+                const error = args[0] instanceof Error ? args[0] : new Error(msg);
+                console.error(`[Widget Embed ${timestamp}] Error: ${msg}`, ...args);
+                
+                const errorDetails = {
+                    message: msg,
+                    stack: error.stack,
+                    args: args.map(arg => 
+                        arg instanceof Error ? 
+                            { message: arg.message, stack: arg.stack } : 
+                            arg
+                    ),
+                    timestamp
+                };
+                
+                this.errors.push(errorDetails);
+                this.sendToParent('WIDGET_ERROR', errorDetails);
             },
             sendToParent: function(type, message) {
                 if (window.parent) {
-                    window.parent.postMessage({ type, message, timestamp: Date.now() }, '*');
+                    const event = { 
+                        type, 
+                        message, 
+                        timestamp: Date.now(),
+                        timeSinceStart: Date.now() - this.timeStart
+                    };
+                    window.parent.postMessage(event, '*');
+                    this.metrics.messageEvents.push(event);
                 }
+            },
+            trackResourceLoad: function(resource) {
+                this.metrics.resourceLoadTimes[resource] = {
+                    loadTime: Date.now() - this.timeStart,
+                    status: 'loaded'
+                };
+                this.info(`Resource loaded: ${resource}`);
             }
         };
 
-        // Early error capture with detailed logging
+        // Early error capture
         window.onerror = function(msg, url, line, col, error) {
             logger.error('Global error:', { msg, url, line, col, error: error?.stack });
             return false;
@@ -54,8 +84,15 @@
         // Resource loading diagnostics
         const resourcePerf = {
             start: Date.now(),
+            resources: new Set(),
+            trackResource: function(url) {
+                this.resources.add(url);
+                logger.info('Resource requested:', url);
+            },
             end: function() {
-                logger.info('Resource loading completed in:', Date.now() - this.start, 'ms');
+                const loadTime = Date.now() - this.start;
+                logger.info('Resource loading completed in:', loadTime, 'ms');
+                logger.info('Loaded resources:', Array.from(this.resources));
             }
         };
 
@@ -70,13 +107,13 @@
     <script 
         crossorigin 
         src="https://unpkg.com/react@18/umd/react.production.min.js"
-        onload="logger.info('React core loaded')"
+        onload="logger.trackResourceLoad('react')"
         onerror="logger.error('Failed to load React')"
     ></script>
     <script 
         crossorigin 
         src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"
-        onload="logger.info('ReactDOM loaded')"
+        onload="logger.trackResourceLoad('react-dom')"
         onerror="logger.error('Failed to load ReactDOM')"
     ></script>
 </head>
@@ -98,6 +135,44 @@
                 throw new Error('Invalid sweepstakes ID format');
             }
             return true;
+        }
+
+        function initializeWidgetWithRetry(config) {
+            try {
+                logger.info('Initializing widget with config:', config);
+                
+                if (typeof window.initializeWidget !== 'function') {
+                    throw new Error('Widget initialization function not found');
+                }
+
+                window.initializeWidget(config.sweepstakesId);
+                logger.info('Widget initialized successfully');
+            } catch (error) {
+                logger.error('Widget initialization failed:', error);
+                
+                if (initRetries < MAX_RETRIES) {
+                    initRetries++;
+                    logger.info(`Retrying initialization (${initRetries}/${MAX_RETRIES})`);
+                    setTimeout(() => initializeWidgetWithRetry(config), RETRY_DELAY * initRetries);
+                } else {
+                    logger.error('Max initialization retries reached');
+                    showFallbackContent(error);
+                }
+            }
+        }
+
+        function showFallbackContent(error) {
+            const root = document.getElementById('root');
+            if (root) {
+                root.innerHTML = `
+                    <div style="padding: 20px; text-align: center;">
+                        <p style="color: #666;">Widget initialization failed</p>
+                        <pre style="font-size: 12px; margin-top: 10px; text-align: left; background: #f5f5f5; padding: 10px; border-radius: 4px; overflow: auto;">
+                            ${error.stack || error.message}
+                        </pre>
+                    </div>
+                `;
+            }
         }
 
         // Handle initialization message
@@ -125,7 +200,11 @@
         // Notify parent when ready
         setTimeout(() => {
             if (window.parent) {
-                window.parent.postMessage({ type: 'WIDGET_READY', timestamp: Date.now() }, '*');
+                window.parent.postMessage({ 
+                    type: 'WIDGET_READY', 
+                    timestamp: Date.now(),
+                    metrics: logger.metrics
+                }, '*');
             }
         }, 1000);
 
