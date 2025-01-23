@@ -2,14 +2,47 @@
   const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
   const VERSION = '1.0.0';
   
-  // Enhanced logging utility
+  // Enhanced logging utility with timestamps and performance tracking
   const logger = {
-    info: (message, ...args) => console.log(`[Widget ${VERSION}] ${message}`, ...args),
-    error: (message, ...args) => console.error(`[Widget ${VERSION}] Error: ${message}`, ...args),
-    warn: (message, ...args) => console.warn(`[Widget ${VERSION}] Warning: ${message}`, ...args)
+    _getTimestamp: () => new Date().toISOString(),
+    _mark: (name) => {
+      if (window.performance && window.performance.mark) {
+        window.performance.mark(`widget-${name}`);
+      }
+    },
+    _measure: (name, startMark, endMark) => {
+      if (window.performance && window.performance.measure) {
+        try {
+          window.performance.measure(
+            `widget-${name}`,
+            `widget-${startMark}`,
+            `widget-${endMark}`
+          );
+          const measures = window.performance.getEntriesByName(`widget-${name}`);
+          if (measures.length > 0) {
+            console.log(`[Widget ${VERSION}] ${name} took ${measures[0].duration}ms`);
+          }
+        } catch (e) {
+          console.warn(`[Widget ${VERSION}] Error measuring ${name}:`, e);
+        }
+      }
+    },
+    info: (message, ...args) => console.log(`[Widget ${VERSION}] ${logger._getTimestamp()} - ${message}`, ...args),
+    error: (message, ...args) => console.error(`[Widget ${VERSION}] ${logger._getTimestamp()} - Error: ${message}`, ...args),
+    warn: (message, ...args) => console.warn(`[Widget ${VERSION}] ${logger._getTimestamp()} - Warning: ${message}`, ...args),
+    performance: (name) => {
+      logger._mark(name);
+      return {
+        end: (endName) => {
+          logger._mark(endName);
+          logger._measure(`${name}-to-${endName}`, name, endName);
+        }
+      };
+    }
   };
   
   function initializeWidget(sweepstakesId) {
+    const perf = logger.performance('init-start');
     logger.info('Starting widget initialization with ID:', sweepstakesId);
     
     try {
@@ -19,6 +52,7 @@
       }
 
       // Create iframe with enhanced error handling and accessibility
+      logger.info('Creating iframe element');
       const iframe = document.createElement('iframe');
       iframe.style.width = '100%';
       iframe.style.border = 'none';
@@ -33,8 +67,10 @@
       
       const handleIframeLoad = () => {
         logger.info('Iframe loaded successfully');
+        logger.performance('iframe-load').end('iframe-loaded');
         
         // Initialize the widget in the iframe
+        logger.info('Sending initialization message to iframe');
         iframe.contentWindow.postMessage({
           type: 'INIT_WIDGET',
           sweepstakesId: sweepstakesId,
@@ -49,9 +85,11 @@
           loadRetries++;
           logger.warn(`Retrying iframe load (${loadRetries}/${MAX_LOAD_RETRIES})...`);
           setTimeout(() => {
+            logger.info(`Attempt ${loadRetries + 1} to load iframe`);
             iframe.src = iframe.src;
           }, 1000 * loadRetries);
         } else {
+          logger.error('Max retries reached, showing error message');
           showError('Failed to load widget content after multiple attempts');
         }
       };
@@ -59,14 +97,17 @@
       iframe.onload = handleIframeLoad;
       iframe.onerror = handleIframeError;
 
-      // Enhanced message handling
+      // Enhanced message handling with validation and logging
       const messageHandler = (event) => {
         try {
+          logger.info('Received message from iframe:', event.data);
+          
           if (event.data.type === 'WIDGET_ERROR') {
             logger.error('Error from iframe:', event.data.error);
             showError(event.data.error.message);
           }
           if (event.data.type === 'setHeight') {
+            logger.info('Updating iframe height to:', event.data.height);
             iframe.style.height = `${event.data.height}px`;
           }
         } catch (error) {
@@ -78,6 +119,7 @@
 
       // Cleanup function
       const cleanup = () => {
+        logger.info('Cleaning up widget resources');
         window.removeEventListener('message', messageHandler);
       };
 
@@ -90,16 +132,18 @@
         embedPath.searchParams.append('v', VERSION);
         embedPath.searchParams.append('t', Date.now().toString());
         
+        logger.info('Setting iframe src:', embedPath.toString());
         iframe.src = embedPath.toString();
-        logger.info('Setting iframe src:', iframe.src);
       } catch (error) {
         logger.error('Error constructing iframe URL:', error);
         throw new Error('Failed to construct widget URL');
       }
       
+      perf.end('init-complete');
       return iframe;
     } catch (error) {
       logger.error('Initialization error:', error);
+      perf.end('init-error');
       showError(error.message);
       return null;
     }
@@ -119,12 +163,13 @@
 
   // Initialize when the script loads with enhanced timing logging
   const initialize = () => {
+    const initPerf = logger.performance('script-init');
     logger.info('Starting widget script initialization');
-    const startTime = performance.now();
 
     const container = document.getElementById('sweepstakes-widget');
     if (!container) {
       logger.error('Widget container not found');
+      initPerf.end('init-error');
       return;
     }
 
@@ -132,6 +177,7 @@
     if (!sweepstakesId) {
       logger.error('No sweepstakes ID provided');
       showError('No sweepstakes ID provided');
+      initPerf.end('init-error');
       return;
     }
 
@@ -139,8 +185,7 @@
     const iframe = initializeWidget(sweepstakesId);
     if (iframe) {
       container.appendChild(iframe);
-      const endTime = performance.now();
-      logger.info(`Widget initialization completed in ${Math.round(endTime - startTime)}ms`);
+      initPerf.end('init-success');
     }
   };
 
