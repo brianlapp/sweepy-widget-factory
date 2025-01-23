@@ -7,50 +7,108 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script>
-        // Enhanced diagnostic logging utility
+        // Enhanced diagnostic logging utility with verbose error tracking
         const logger = {
             timeStart: Date.now(),
+            errors: [],
             formatTime: () => `[${new Date().toISOString()}]`,
             info: function(msg, ...args) {
                 console.log(`${this.formatTime()} [Widget Embed] ${msg}`, ...args);
             },
             error: function(msg, ...args) {
+                const error = { message: msg, details: args, timestamp: new Date().toISOString() };
+                this.errors.push(error);
                 console.error(`${this.formatTime()} [Widget Embed] Error: ${msg}`, ...args);
                 if (window.parent) {
-                    window.parent.postMessage({ type: 'WIDGET_ERROR', error: { message: msg, details: args }}, '*');
+                    window.parent.postMessage({ 
+                        type: 'WIDGET_ERROR', 
+                        error,
+                        errorCount: this.errors.length
+                    }, '*');
                 }
             },
             warn: function(msg, ...args) {
                 console.warn(`${this.formatTime()} [Widget Embed] Warning: ${msg}`, ...args);
+            },
+            getErrorSummary: function() {
+                return this.errors.map(e => `${e.timestamp}: ${e.message}`).join('\n');
             }
         };
 
         logger.info('Embed page loading...');
 
-        // Initialize widget with retry logic
+        // Enhanced initialization with better error handling and retries
         let initRetries = 0;
         const MAX_RETRIES = 3;
         const RETRY_DELAY = 1000;
+        const SCRIPT_TIMEOUT = 5000;
         
-        function initializeWidgetWithRetry(data) {
+        function loadWidgetScript() {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'widget.js';
+                script.async = true;
+
+                const timeoutId = setTimeout(() => {
+                    reject(new Error('Widget script load timeout'));
+                }, SCRIPT_TIMEOUT);
+
+                script.onload = () => {
+                    clearTimeout(timeoutId);
+                    logger.info('Widget script loaded successfully');
+                    resolve();
+                };
+
+                script.onerror = (error) => {
+                    clearTimeout(timeoutId);
+                    reject(new Error('Failed to load widget script: ' + error.message));
+                };
+
+                document.body.appendChild(script);
+            });
+        }
+        
+        async function initializeWidgetWithRetry(data) {
             try {
-                if (window.initializeWidget) {
+                if (!window.initializeWidget) {
+                    if (initRetries < MAX_RETRIES) {
+                        initRetries++;
+                        logger.warn(`Retry ${initRetries}/${MAX_RETRIES} - Widget not ready, attempting to load script`);
+                        await loadWidgetScript();
+                        setTimeout(() => initializeWidgetWithRetry(data), RETRY_DELAY);
+                    } else {
+                        throw new Error('Widget initialization failed after retries');
+                    }
+                } else {
                     logger.info('Initializing widget with data:', data);
                     window.initializeWidget(data.sweepstakesId);
                     logger.info('Widget initialized successfully');
-                } else if (initRetries < MAX_RETRIES) {
-                    initRetries++;
-                    logger.warn(`Retry ${initRetries}/${MAX_RETRIES} - Widget not ready`);
-                    setTimeout(() => initializeWidgetWithRetry(data), RETRY_DELAY * initRetries);
-                } else {
-                    throw new Error('Widget initialization failed after retries');
                 }
             } catch (error) {
                 logger.error('Initialization error:', error);
+                showFallbackContent(error);
             }
         }
 
-        // Message handling
+        function showFallbackContent(error) {
+            const root = document.getElementById('root');
+            if (root) {
+                root.innerHTML = `
+                    <div style="padding: 20px; border: 1px solid #f0f0f0; border-radius: 8px; text-align: center;">
+                        <p style="color: #666; margin: 0;">Unable to load sweepstakes widget</p>
+                        <p style="color: #888; font-size: 0.8em; margin-top: 8px;">${error.message}</p>
+                        <details style="margin-top: 16px; text-align: left;">
+                            <summary style="cursor: pointer; color: #666;">Technical Details</summary>
+                            <pre style="background: #f5f5f5; padding: 8px; margin-top: 8px; font-size: 0.8em; overflow-x: auto;">
+${logger.getErrorSummary()}
+                            </pre>
+                        </details>
+                    </div>
+                `;
+            }
+        }
+
+        // Enhanced message handling with error tracking
         window.addEventListener('message', function(event) {
             try {
                 logger.info('Received message:', event.data);
@@ -64,7 +122,19 @@
                 }
             } catch (error) {
                 logger.error('Message handling error:', error);
+                showFallbackContent(error);
             }
+        });
+
+        // Handle global errors
+        window.onerror = function(msg, url, line, col, error) {
+            logger.error('Global error:', { msg, url, line, col, error });
+            return false;
+        };
+
+        // Handle unhandled promise rejections
+        window.addEventListener('unhandledrejection', function(event) {
+            logger.error('Unhandled promise rejection:', event.reason);
         });
 
         logger.info('Embed page ready');
@@ -72,6 +142,5 @@
 </head>
 <body>
     <div id="root"></div>
-    <script src="widget.js"></script>
 </body>
 </html>
