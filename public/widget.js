@@ -43,12 +43,18 @@
           iframe.style.height = `${event.data.height}px`;
         }
       });
-      
-      // Set iframe source to embed.html from storage with cache busting
-      const timestamp = new Date().getTime();
-      const embedUrl = new URL(`${STORAGE_URL}/embed.html`);
-      embedUrl.searchParams.append('v', timestamp.toString());
-      iframe.src = embedUrl.toString();
+
+      // Set iframe source with proper URL construction
+      try {
+        const baseUrl = new URL(STORAGE_URL);
+        const embedPath = new URL('embed.html', baseUrl);
+        embedPath.searchParams.append('v', Date.now().toString());
+        iframe.src = embedPath.toString();
+        console.log('[Widget] Setting iframe src:', iframe.src);
+      } catch (error) {
+        console.error('[Widget] Error constructing iframe URL:', error);
+        throw new Error('Failed to construct widget URL');
+      }
       
       return iframe;
     } catch (error) {
