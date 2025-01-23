@@ -26,10 +26,6 @@ export default defineConfig(({ mode }) => ({
   define: {
     'process.env.VITE_APP_VERSION': JSON.stringify(version),
   },
-  preview: {
-    port: 8080,
-    strictPort: true,
-  },
   build: {
     outDir: 'dist',
     assetsDir: '',

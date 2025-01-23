@@ -15,7 +15,7 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
     async function fetchFile(filename: string) {
       console.log(`[Widget Upload] Attempting to fetch ${filename} from public directory...`);
       try {
-        const response = await fetch(`/public/${filename}`);
+        const response = await fetch(`/dist/${filename}`);
         if (!response.ok) {
           throw new Error(`Failed to fetch ${filename}`);
         }
@@ -40,15 +40,14 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
         .join(''));
     console.log('[Widget Upload] Generated bundle hash:', bundleHash);
 
-    // Delete existing file first
-    console.log('[Widget Upload] Removing existing widget.js...');
+    // Delete existing files first
+    console.log('[Widget Upload] Removing existing widget files...');
     const { error: deleteError } = await supabase.storage
       .from('static')
-      .remove(['widget.js']);
+      .remove(['widget.js', 'widget.bundle.js']);
 
     if (deleteError) {
-      console.log('[Widget Upload] Note: Delete operation returned error (file might not exist):', deleteError);
-      // Continue even if delete fails - it might not exist
+      console.log('[Widget Upload] Note: Delete operation returned error (files might not exist):', deleteError);
     }
 
     // Upload widget.js with explicit content type
@@ -64,6 +63,21 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
     if (uploadError) {
       console.error('[Widget Upload] Upload error:', uploadError);
       throw new Error(`File upload failed: ${uploadError.message}`);
+    }
+
+    // Also upload as widget.bundle.js for compatibility
+    console.log('[Widget Upload] Uploading widget.bundle.js...');
+    const { error: bundleUploadError } = await supabase.storage
+      .from('static')
+      .upload('widget.bundle.js', widgetContent, {
+        contentType: 'application/javascript; charset=utf-8',
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+    if (bundleUploadError) {
+      console.error('[Widget Upload] Bundle upload error:', bundleUploadError);
+      throw new Error(`Bundle upload failed: ${bundleUploadError.message}`);
     }
 
     console.log('[Widget Upload] Upload completed successfully');
