@@ -28,7 +28,7 @@
         showError('Failed to load widget content');
       };
       
-      // Set iframe source to embed.html
+      // Set iframe source to embed.html from storage
       iframe.src = `${STORAGE_URL}/embed.html`;
       
       return iframe;

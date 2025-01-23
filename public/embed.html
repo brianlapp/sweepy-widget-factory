@@ -23,9 +23,16 @@
             if (event.data.type === 'INIT_WIDGET') {
                 console.log('[Widget Embed] Initializing widget with data:', event.data);
                 window.WIDGET_CONFIG = event.data;
+                
+                // Initialize the widget
+                if (window.initializeWidget) {
+                    window.initializeWidget(event.data.sweepstakesId);
+                } else {
+                    console.error('[Widget Embed] Widget initialization function not found');
+                }
             }
         });
     </script>
-    <script type="module" src="/widget.js"></script>
+    <script src="/widget.js"></script>
 </body>
 </html>
