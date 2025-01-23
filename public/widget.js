@@ -1,50 +1,42 @@
 (function() {
   const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
   
-  function createIframe(sweepstakesId) {
-    console.log('[Widget] Creating iframe with sweepstakes ID:', sweepstakesId);
+  function initializeWidget(sweepstakesId) {
+    console.log('[Widget] Starting widget initialization with ID:', sweepstakesId);
     
-    const iframe = document.createElement('iframe');
-    iframe.style.width = '100%';
-    iframe.style.border = 'none';
-    iframe.style.minHeight = '600px';
-    iframe.setAttribute('scrolling', 'no');
-    
-    // Add error handling for iframe load
-    iframe.onload = () => {
-      console.log('[Widget] Iframe loaded successfully');
-    };
-    
-    iframe.onerror = () => {
-      console.error('[Widget] Failed to load iframe');
-      showError('Failed to load widget content');
-    };
-    
-    // Construct the full URL for the embed
-    const embedUrl = `${STORAGE_URL}/embed.html?id=${sweepstakesId}`;
-    console.log('[Widget] Setting iframe src to:', embedUrl);
-    iframe.src = embedUrl;
-    
-    // Add message listener for iframe height adjustments and error handling
-    window.addEventListener('message', (event) => {
-      console.log('[Widget] Received message from iframe:', event.data);
+    try {
+      // Create iframe
+      const iframe = document.createElement('iframe');
+      iframe.style.width = '100%';
+      iframe.style.border = 'none';
+      iframe.style.minHeight = '600px';
+      iframe.setAttribute('scrolling', 'no');
       
-      // Only accept messages from our own iframe
-      if (event.origin !== new URL(STORAGE_URL).origin) {
-        console.log('[Widget] Ignored message from unknown origin:', event.origin);
-        return;
-      }
+      // Add error handling for iframe load
+      iframe.onload = () => {
+        console.log('[Widget] Iframe loaded successfully');
+        
+        // Initialize the widget in the iframe
+        iframe.contentWindow.postMessage({
+          type: 'INIT_WIDGET',
+          sweepstakesId: sweepstakesId
+        }, '*');
+      };
       
-      if (event.data.type === 'setHeight') {
-        console.log('[Widget] Updating iframe height to:', event.data.height);
-        iframe.style.height = `${event.data.height}px`;
-      } else if (event.data.type === 'error') {
-        console.error('[Widget] Error from iframe:', event.data.message);
-        showError(event.data.message);
-      }
-    });
-    
-    return iframe;
+      iframe.onerror = () => {
+        console.error('[Widget] Failed to load iframe');
+        showError('Failed to load widget content');
+      };
+      
+      // Set iframe source to embed.html
+      iframe.src = `${STORAGE_URL}/embed.html`;
+      
+      return iframe;
+    } catch (error) {
+      console.error('[Widget] Initialization error:', error);
+      showError(error.message);
+      return null;
+    }
   }
 
   function showError(message) {
@@ -59,44 +51,48 @@
     }
   }
 
-  function initializeWidget() {
-    console.log('[Widget] Starting widget initialization...');
-    
-    try {
-      const widgetContainer = document.getElementById('sweepstakes-widget');
-      if (!widgetContainer) {
-        throw new Error('Widget container not found');
-      }
-
-      const sweepstakesId = widgetContainer.getAttribute('data-sweepstakes-id');
-      if (!sweepstakesId) {
-        throw new Error('No sweepstakes ID provided');
-      }
-
-      console.log('[Widget] Found sweepstakes ID:', sweepstakesId);
-
-      // Validate that we have a valid UUID format
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(sweepstakesId)) {
-        throw new Error('Invalid sweepstakes ID format');
-      }
-
-      console.log('[Widget] Creating iframe for sweepstakes:', sweepstakesId);
-      const iframe = createIframe(sweepstakesId);
-      widgetContainer.appendChild(iframe);
-      console.log('[Widget] Widget initialized successfully');
-    } catch (error) {
-      console.error('[Widget] Widget initialization failed:', error.message);
-      showError(error.message);
-    }
-  }
-
   // Initialize when the script loads
   if (document.readyState === 'loading') {
     console.log('[Widget] Document still loading, waiting for DOMContentLoaded');
-    document.addEventListener('DOMContentLoaded', initializeWidget);
+    document.addEventListener('DOMContentLoaded', () => {
+      const container = document.getElementById('sweepstakes-widget');
+      if (!container) {
+        console.error('[Widget] Widget container not found');
+        return;
+      }
+
+      const sweepstakesId = container.getAttribute('data-sweepstakes-id');
+      if (!sweepstakesId) {
+        console.error('[Widget] No sweepstakes ID provided');
+        showError('No sweepstakes ID provided');
+        return;
+      }
+
+      console.log('[Widget] Found sweepstakes ID:', sweepstakesId);
+      const iframe = initializeWidget(sweepstakesId);
+      if (iframe) {
+        container.appendChild(iframe);
+      }
+    });
   } else {
     console.log('[Widget] Document already loaded, initializing immediately');
-    initializeWidget();
+    const container = document.getElementById('sweepstakes-widget');
+    if (!container) {
+      console.error('[Widget] Widget container not found');
+      return;
+    }
+
+    const sweepstakesId = container.getAttribute('data-sweepstakes-id');
+    if (!sweepstakesId) {
+      console.error('[Widget] No sweepstakes ID provided');
+      showError('No sweepstakes ID provided');
+      return;
+    }
+
+    console.log('[Widget] Found sweepstakes ID:', sweepstakesId);
+    const iframe = initializeWidget(sweepstakesId);
+    if (iframe) {
+      container.appendChild(iframe);
+    }
   }
 })();

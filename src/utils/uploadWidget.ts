@@ -28,13 +28,17 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
       }
     }
 
-    // Fetch the widget.js content
-    console.log('[Widget Upload] Fetching widget.js...');
-    const widgetContent = await fetchFile('widget.js');
+    // Fetch both widget.js and embed.html content
+    console.log('[Widget Upload] Fetching widget files...');
+    const [widgetContent, embedContent] = await Promise.all([
+      fetchFile('widget.js'),
+      fetchFile('embed.html')
+    ]);
     
-    // Generate bundle hash
+    // Generate bundle hash from both files
     console.log('[Widget Upload] Generating bundle hash...');
-    const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(widgetContent))
+    const combinedContent = widgetContent + embedContent;
+    const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(combinedContent))
       .then(hash => Array.from(new Uint8Array(hash))
         .map(b => b.toString(16).padStart(2, '0'))
         .join(''));
@@ -44,40 +48,35 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
     console.log('[Widget Upload] Removing existing widget files...');
     const { error: deleteError } = await supabase.storage
       .from('static')
-      .remove(['widget.js', 'widget.bundle.js']);
+      .remove(['widget.js', 'embed.html']);
 
     if (deleteError) {
       console.log('[Widget Upload] Note: Delete operation returned error (files might not exist):', deleteError);
     }
 
-    // Upload widget.js with explicit content type
-    console.log('[Widget Upload] Uploading widget.js...');
-    const { error: uploadError } = await supabase.storage
-      .from('static')
-      .upload('widget.js', widgetContent, {
-        contentType: 'application/javascript; charset=utf-8',
-        cacheControl: '3600',
-        upsert: true,
-      });
+    // Upload both files
+    console.log('[Widget Upload] Uploading widget files...');
+    const uploads = await Promise.all([
+      supabase.storage
+        .from('static')
+        .upload('widget.js', widgetContent, {
+          contentType: 'application/javascript; charset=utf-8',
+          cacheControl: '3600',
+          upsert: true,
+        }),
+      supabase.storage
+        .from('static')
+        .upload('embed.html', embedContent, {
+          contentType: 'text/html; charset=utf-8',
+          cacheControl: '3600',
+          upsert: true,
+        })
+    ]);
 
-    if (uploadError) {
-      console.error('[Widget Upload] Upload error:', uploadError);
-      throw new Error(`File upload failed: ${uploadError.message}`);
-    }
-
-    // Also upload as widget.bundle.js for compatibility
-    console.log('[Widget Upload] Uploading widget.bundle.js...');
-    const { error: bundleUploadError } = await supabase.storage
-      .from('static')
-      .upload('widget.bundle.js', widgetContent, {
-        contentType: 'application/javascript; charset=utf-8',
-        cacheControl: '3600',
-        upsert: true,
-      });
-
-    if (bundleUploadError) {
-      console.error('[Widget Upload] Bundle upload error:', bundleUploadError);
-      throw new Error(`Bundle upload failed: ${bundleUploadError.message}`);
+    const uploadErrors = uploads.filter(upload => upload.error);
+    if (uploadErrors.length > 0) {
+      console.error('[Widget Upload] Upload errors:', uploadErrors);
+      throw new Error(`File upload failed: ${uploadErrors[0].error.message}`);
     }
 
     console.log('[Widget Upload] Upload completed successfully');
