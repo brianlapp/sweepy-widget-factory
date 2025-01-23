@@ -8,54 +8,124 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script>
-        // Enhanced logging utility
+        // Enhanced diagnostic logging utility
         const logger = {
             timeStart: Date.now(),
             formatTime: () => `[${new Date().toISOString()}]`,
-            info: (msg, ...args) => console.log(`${logger.formatTime()} [Widget Embed] ${msg}`, ...args),
-            error: (msg, ...args) => console.error(`${logger.formatTime()} [Widget Embed] Error: ${msg}`, ...args),
-            warn: (msg, ...args) => console.warn(`${logger.formatTime()} [Widget Embed] Warning: ${msg}`, ...args),
-            performance: (name) => {
-                if (window.performance && window.performance.mark) {
-                    window.performance.mark(`widget-${name}`);
-                    logger.info(`Performance mark: ${name}`);
+            _metrics: {
+                resourceLoads: [],
+                errors: [],
+                timings: new Map()
+            },
+            info: function(msg, ...args) {
+                console.log(`${this.formatTime()} [Widget Embed] ${msg}`, ...args);
+                this._recordMetric('info', msg, args);
+            },
+            error: function(msg, ...args) {
+                console.error(`${this.formatTime()} [Widget Embed] Error: ${msg}`, ...args);
+                this._recordMetric('error', msg, args);
+                this._notifyParent('error', { message: msg, details: args });
+            },
+            warn: function(msg, ...args) {
+                console.warn(`${this.formatTime()} [Widget Embed] Warning: ${msg}`, ...args);
+                this._recordMetric('warning', msg, args);
+            },
+            _recordMetric: function(type, message, details) {
+                this._metrics[type === 'error' ? 'errors' : 'resourceLoads'].push({
+                    type,
+                    message,
+                    details,
+                    timestamp: Date.now()
+                });
+            },
+            _notifyParent: function(type, data) {
+                if (window.parent && window.parent.postMessage) {
+                    window.parent.postMessage({
+                        type: `WIDGET_${type.toUpperCase()}`,
+                        data,
+                        timestamp: Date.now()
+                    }, '*');
                 }
+            },
+            performance: function(name) {
+                const start = performance.now();
+                this._metrics.timings.set(name, start);
+                this.info(`Starting ${name}`);
+                
+                return {
+                    end: () => {
+                        const end = performance.now();
+                        const duration = end - start;
+                        this.info(`${name} completed in ${duration}ms`);
+                        return duration;
+                    }
+                };
+            },
+            getMetrics: function() {
+                return {
+                    ...this._metrics,
+                    totalDuration: Date.now() - this.timeStart
+                };
             }
         };
 
         // Initialize performance monitoring
         logger.performance('page-init');
-        logger.info('Initializing embed page...');
+        logger.info('Initializing embed page with diagnostics');
 
-        // Enhanced error tracking
-        window.onerror = function(msg, url, lineNo, columnNo, error) {
-            logger.error('Global error:', { msg, url, lineNo, columnNo, error });
-            if (window.parent && window.parent.postMessage) {
-                window.parent.postMessage({ 
-                    type: 'WIDGET_ERROR', 
-                    error: { message: msg, url, lineNo, columnNo },
-                    timestamp: Date.now()
-                }, '*');
+        // Enhanced resource tracking
+        const resourceTracker = {
+            loadedResources: new Set(),
+            expectedResources: new Set(['widget.js', 'embed.html']),
+            
+            normalizeUrl: (url) => {
+                try {
+                    const parsed = new URL(url);
+                    return parsed.pathname.split('/').pop();
+                } catch (e) {
+                    logger.error('Failed to normalize URL:', url, e);
+                    return url;
+                }
+            },
+
+            isResourceLoaded: function(url) {
+                const normalizedUrl = this.normalizeUrl(url);
+                return this.loadedResources.has(normalizedUrl);
+            },
+
+            trackResource: function(url) {
+                const normalizedUrl = this.normalizeUrl(url);
+                this.loadedResources.add(normalizedUrl);
+                logger.info('Resource tracked:', normalizedUrl);
+            },
+
+            getMissingResources: function() {
+                return Array.from(this.expectedResources)
+                    .filter(resource => !this.isResourceLoaded(resource));
             }
+        };
+
+        // Enhanced error tracking with detailed reporting
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            logger.error('Global error:', {
+                message: msg,
+                url,
+                lineNo,
+                columnNo,
+                stack: error?.stack
+            });
             return false;
         };
 
         // Enhanced promise rejection handling
         window.addEventListener('unhandledrejection', function(event) {
-            logger.error('Unhandled promise rejection:', event.reason);
-            if (window.parent && window.parent.postMessage) {
-                window.parent.postMessage({ 
-                    type: 'WIDGET_ERROR', 
-                    error: { 
-                        message: 'Unhandled promise rejection',
-                        details: event.reason?.message || String(event.reason)
-                    },
-                    timestamp: Date.now()
-                }, '*');
-            }
+            logger.error('Unhandled promise rejection:', {
+                reason: event.reason?.message || String(event.reason),
+                stack: event.reason?.stack
+            });
         });
 
-        // Resource loading error tracking
+        // Enhanced resource error tracking
         window.addEventListener('error', function(e) {
             if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
                 logger.error('Resource loading error:', {
@@ -66,16 +136,18 @@
             }
         }, true);
 
-        // Performance monitoring
+        // Enhanced performance monitoring
         if (window.performance) {
-            // Monitor navigation timing
+            const navigationPerf = logger.performance('navigation');
+            
             window.addEventListener('load', function() {
                 const timing = performance.getEntriesByType('navigation')[0];
+                navigationPerf.end();
+                
                 logger.info('Page load metrics:', {
                     domComplete: timing.domComplete,
                     loadEventEnd: timing.loadEventEnd,
-                    domInteractive: timing.domInteractive,
-                    timestamp: Date.now()
+                    domInteractive: timing.domInteractive
                 });
             });
 
@@ -83,22 +155,30 @@
             const observer = new PerformanceObserver((list) => {
                 list.getEntries().forEach(entry => {
                     if (entry.name.includes('widget.js')) {
-                        logger.info('Widget bundle loaded:', {
+                        logger.info('Widget bundle metrics:', {
                             duration: entry.duration,
                             size: entry.transferSize,
-                            timestamp: Date.now()
+                            protocol: entry.nextHopProtocol
                         });
+                        resourceTracker.trackResource(entry.name);
                     }
                 });
             });
+            
             observer.observe({ entryTypes: ['resource'] });
         }
+
+        // Periodic metrics reporting
+        setInterval(() => {
+            const metrics = logger.getMetrics();
+            logger._notifyParent('metrics', metrics);
+        }, 5000);
     </script>
 </head>
 <body>
     <div id="root"></div>
     <script>
-        logger.info('DOM loaded, waiting for widget initialization...');
+        logger.info('DOM loaded, initializing widget with diagnostics');
         logger.performance('dom-ready');
         
         // Enhanced initialization with retry logic and validation
@@ -107,72 +187,54 @@
         const RETRY_DELAY = 1000;
         
         function initializeWidgetWithRetry(data) {
+            const initAttempt = logger.performance('init-attempt');
+            
             try {
-                logger.performance('init-attempt');
                 if (window.initializeWidget) {
                     logger.info('Initializing widget with data:', data);
                     window.initializeWidget(data.sweepstakesId);
+                    initAttempt.end();
                     logger.info('Widget initialized successfully');
-                    logger.performance('init-complete');
                 } else if (initRetries < MAX_RETRIES) {
                     initRetries++;
-                    logger.warn(`Retry ${initRetries}/${MAX_RETRIES} - Widget not ready yet`);
+                    logger.warn(`Retry ${initRetries}/${MAX_RETRIES} - Widget not ready`);
                     setTimeout(() => initializeWidgetWithRetry(data), RETRY_DELAY * initRetries);
                 } else {
-                    throw new Error('Widget initialization function not found after retries');
+                    throw new Error('Widget initialization failed after retries');
                 }
             } catch (error) {
                 logger.error('Initialization error:', error);
-                if (window.parent && window.parent.postMessage) {
-                    window.parent.postMessage({ 
-                        type: 'WIDGET_ERROR', 
-                        error: { message: error.message },
-                        timestamp: Date.now()
-                    }, '*');
-                }
             }
         }
 
         // Enhanced message handling with validation
         window.addEventListener('message', function(event) {
+            const msgTracking = logger.performance('message-handling');
+            
             try {
                 logger.info('Received message:', event.data);
-                logger.performance('message-received');
                 
                 if (event.data.type === 'INIT_WIDGET') {
-                    logger.info('Processing initialization message');
-                    
-                    // Validate required data
                     if (!event.data.sweepstakesId) {
                         throw new Error('No sweepstakes ID provided');
                     }
 
-                    // Store configuration
                     window.WIDGET_CONFIG = {
                         ...event.data,
                         timestamp: Date.now()
                     };
                     
-                    logger.performance('init-start');
                     initializeWidgetWithRetry(event.data);
                 }
+                
+                msgTracking.end();
             } catch (error) {
                 logger.error('Message handling error:', error);
-                if (window.parent && window.parent.postMessage) {
-                    window.parent.postMessage({ 
-                        type: 'WIDGET_ERROR', 
-                        error: { message: error.message },
-                        timestamp: Date.now()
-                    }, '*');
-                }
             }
         });
 
-        // Report initial load complete
-        logger.performance('embed-ready');
-        logger.info('Embed page ready for initialization');
+        logger.info('Embed page ready with diagnostic capabilities');
     </script>
-    <!-- Load widget bundle -->
     <script src="https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static/widget.js"></script>
 </body>
 </html>
