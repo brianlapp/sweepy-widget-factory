@@ -14,9 +14,11 @@ export default defineConfig(({ mode }) => ({
     middlewareMode: false,
   },
   plugins: [
-    react(),
-    mode === 'development' &&
-    componentTagger(),
+    react({
+      // Configure React refresh for development only
+      fastRefresh: mode === 'development',
+    }),
+    mode === 'development' && componentTagger(),
   ].filter(Boolean),
   resolve: {
     alias: {
@@ -44,9 +46,9 @@ export default defineConfig(({ mode }) => ({
         assetFileNames: 'assets/[name]-[hash][extname]',
         chunkFileNames: 'assets/[name]-[hash].js',
       },
-      external: ['react', 'react-dom'],
+      external: mode === 'production' ? ['react', 'react-dom'] : [],
     },
     sourcemap: true,
-    minify: false,
+    minify: mode === 'production',
   },
 }));
