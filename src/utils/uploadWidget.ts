@@ -38,7 +38,7 @@ export async function uploadWidgetFiles() {
       .from('static')
       .remove(['embed.html', 'widget.js', 'widget.bundle.js']);
 
-    // Upload widget.js - this should be the loader script
+    // Upload widget.js with explicit JavaScript MIME type
     const widgetJs = `
 (function() {
   const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
@@ -130,7 +130,7 @@ export async function uploadWidgetFiles() {
     const { error: widgetError } = await supabase.storage
       .from('static')
       .upload('widget.js', widgetJs, {
-        contentType: 'application/javascript',
+        contentType: 'application/javascript; charset=utf-8',
         cacheControl: '3600',
         upsert: true,
       });
@@ -141,7 +141,7 @@ export async function uploadWidgetFiles() {
     }
     console.log('Successfully uploaded widget.js');
 
-    // Upload embed.html
+    // Upload embed.html with explicit HTML MIME type
     const embedHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -149,16 +149,16 @@ export async function uploadWidgetFiles() {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sweepstakes Widget</title>
     <!-- Primary CDN -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" 
+    <script type="text/javascript" src="https://unpkg.com/react@18/umd/react.production.min.js" 
             crossorigin
             onerror="loadFallbackScript('react')">
     </script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" 
+    <script type="text/javascript" src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" 
             crossorigin
             onerror="loadFallbackScript('react-dom')">
     </script>
     
-    <script>
+    <script type="text/javascript">
         // Fallback mechanism
         function loadFallbackScript(library) {
             const fallbackUrls = {
@@ -167,6 +167,7 @@ export async function uploadWidgetFiles() {
             };
             
             const script = document.createElement('script');
+            script.type = 'text/javascript';
             script.src = fallbackUrls[library];
             script.crossOrigin = 'anonymous';
             document.head.appendChild(script);
@@ -183,7 +184,7 @@ export async function uploadWidgetFiles() {
             }
         });
     </script>
-    <script src="widget.bundle.js" defer></script>
+    <script type="text/javascript" src="widget.bundle.js" defer></script>
 </head>
 <body>
     <div id="root"></div>
@@ -193,7 +194,7 @@ export async function uploadWidgetFiles() {
     const { error: embedError } = await supabase.storage
       .from('static')
       .upload('embed.html', embedHtml, {
-        contentType: 'text/html',
+        contentType: 'text/html; charset=utf-8',
         cacheControl: '3600',
         upsert: true,
       });
@@ -204,12 +205,12 @@ export async function uploadWidgetFiles() {
     }
     console.log('Successfully uploaded embed.html');
 
-    // Upload widget bundle
+    // Upload widget bundle with explicit JavaScript MIME type
     const { content: bundleContent } = await fetchFile('widget.bundle.js');
     const { error: bundleError } = await supabase.storage
       .from('static')
       .upload('widget.bundle.js', bundleContent, {
-        contentType: 'application/javascript',
+        contentType: 'application/javascript; charset=utf-8',
         cacheControl: '3600',
         upsert: true,
       });
