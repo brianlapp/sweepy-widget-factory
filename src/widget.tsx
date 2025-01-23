@@ -9,8 +9,55 @@ const queryClient = new QueryClient();
 // Storage URL for origin checking
 const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
 
+// Error Boundary Component
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('[Widget] Error caught by boundary:', error, errorInfo);
+    // Send error to parent window
+    if (window !== window.parent) {
+      try {
+        const storageOrigin = new URL(STORAGE_URL).origin;
+        window.parent.postMessage({ 
+          type: 'error', 
+          message: error.message 
+        }, storageOrigin);
+      } catch (e) {
+        console.error('[Widget] Error sending error message to parent:', e);
+      }
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 text-center">
+          <p className="text-red-600">Something went wrong loading the sweepstakes.</p>
+          <p className="text-sm text-gray-600">{this.state.error?.message}</p>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 function WidgetRoot({ sweepstakesId }: { sweepstakesId: string }) {
   React.useEffect(() => {
+    // Log widget version on mount
+    console.log('[Widget] Initializing widget version:', process.env.VITE_APP_VERSION || 'development');
+
     // Function to update iframe height
     const updateIframeHeight = () => {
       const height = document.documentElement.scrollHeight;
@@ -41,7 +88,9 @@ function WidgetRoot({ sweepstakesId }: { sweepstakesId: string }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SweepstakesWidget sweepstakesId={sweepstakesId} />
+      <ErrorBoundary>
+        <SweepstakesWidget sweepstakesId={sweepstakesId} />
+      </ErrorBoundary>
     </QueryClientProvider>
   );
 }

@@ -10,22 +10,42 @@
     iframe.style.minHeight = '600px';
     iframe.setAttribute('scrolling', 'no');
     
+    // Add error handling for iframe load
+    iframe.onerror = () => {
+      console.error('[Widget] Failed to load iframe');
+      showError('Failed to load widget content');
+    };
+    
     // Construct the full URL for the embed
     const embedUrl = `${STORAGE_URL}/embed.html?id=${sweepstakesId}`;
     console.log('[Widget] Setting iframe src to:', embedUrl);
     iframe.src = embedUrl;
     
-    // Add message listener for iframe height adjustments
+    // Add message listener for iframe height adjustments and error handling
     window.addEventListener('message', (event) => {
       // Only accept messages from our own iframe
       if (event.origin !== new URL(STORAGE_URL).origin) return;
       
       if (event.data.type === 'setHeight') {
         iframe.style.height = `${event.data.height}px`;
+      } else if (event.data.type === 'error') {
+        console.error('[Widget] Error from iframe:', event.data.message);
+        showError(event.data.message);
       }
     });
     
     return iframe;
+  }
+
+  function showError(message) {
+    const widgetContainer = document.getElementById('sweepstakes-widget');
+    if (widgetContainer) {
+      widgetContainer.innerHTML = `
+        <div style="padding: 20px; border: 1px solid #f0f0f0; border-radius: 8px; text-align: center;">
+          <p style="color: #666; margin: 0;">Unable to load sweepstakes widget: ${message}</p>
+        </div>
+      `;
+    }
   }
 
   function initializeWidget() {
@@ -53,15 +73,7 @@
       console.log('[Widget] Widget initialized successfully');
     } catch (error) {
       console.error('[Widget] Widget initialization failed:', error.message);
-      // Display a user-friendly error message in the widget container
-      const widgetContainer = document.getElementById('sweepstakes-widget');
-      if (widgetContainer) {
-        widgetContainer.innerHTML = `
-          <div style="padding: 20px; border: 1px solid #f0f0f0; border-radius: 8px; text-align: center;">
-            <p style="color: #666; margin: 0;">Unable to load sweepstakes widget. Please try again later.</p>
-          </div>
-        `;
-      }
+      showError(error.message);
     }
   }
 

@@ -3,6 +3,10 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 
+// Generate a version string based on timestamp
+const version = new Date().toISOString().split('T')[0] + '-' + 
+               Math.random().toString(36).substring(2, 7);
+
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
@@ -18,6 +22,9 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  define: {
+    'process.env.VITE_APP_VERSION': JSON.stringify(version),
   },
   preview: {
     port: 8080,
