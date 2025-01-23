@@ -40,11 +40,11 @@ const implementationStatus = {
     status: "in-progress",
     items: {
       "Message handling": {
-        status: "in-progress",
+        status: "completed",
         details: ["Type validation", "Error recovery", "Retry logic", "Timeout handling"]
       },
       "Iframe management": {
-        status: "pending",
+        status: "in-progress",
         details: ["Creation verification", "Load state tracking", "Resource validation", "Cleanup handling"]
       },
       "Communication logging": {
