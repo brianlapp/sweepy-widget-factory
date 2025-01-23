@@ -248,19 +248,34 @@
         }
 
         // Update resource verification to use correct paths and strip query params
+        const baseUrl = STORAGE_URL + '/static';
         const requiredResources = [
-          `${STORAGE_URL}/static/widget.js`,
-          `${STORAGE_URL}/static/embed.html`
+          baseUrl + '/widget.js',
+          baseUrl + '/embed.html'
         ];
         
-        const loadedResources = Array.from(this.resourcesLoaded).map(url => url.split('?')[0]);
-        const missingResources = requiredResources.filter(resource => 
-          !loadedResources.some(loaded => loaded.includes(resource))
-        );
+        const loadedResources = Array.from(this.resourcesLoaded);
+        logger.info('Loaded resources:', loadedResources);
+        
+        const hasAllResources = requiredResources.every(required => {
+          // Strip query parameters for comparison
+          const cleanRequired = required.split('?')[0];
+          return loadedResources.some(loaded => {
+            const cleanLoaded = loaded.split('?')[0];
+            return cleanLoaded.includes(cleanRequired);
+          });
+        });
 
-        if (missingResources.length > 0) {
+        if (!hasAllResources) {
+          const missingResources = requiredResources.filter(required => {
+            const cleanRequired = required.split('?')[0];
+            return !loadedResources.some(loaded => {
+              const cleanLoaded = loaded.split('?')[0];
+              return cleanLoaded.includes(cleanRequired);
+            });
+          });
+          
           logger.warn('Missing resources:', missingResources);
-          logger.warn('Loaded resources:', loadedResources);
           throw new Error(`Missing required resources: ${missingResources.map(r => r.split('/').pop()).join(', ')}`);
         }
 
