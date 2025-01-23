@@ -46,7 +46,9 @@
       
       // Set iframe source to embed.html from storage with cache busting
       const timestamp = new Date().getTime();
-      iframe.src = `${STORAGE_URL}/embed.html?v=${timestamp}`;
+      const embedUrl = new URL(`${STORAGE_URL}/embed.html`);
+      embedUrl.searchParams.append('v', timestamp.toString());
+      iframe.src = embedUrl.toString();
       
       return iframe;
     } catch (error) {
