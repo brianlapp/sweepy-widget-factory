@@ -4,39 +4,107 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sweepstakes Widget</title>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script>
-        // Enhanced diagnostic logging utility with verbose error tracking
+        // Enhanced diagnostic logging utility with verbose error tracking and performance metrics
         const logger = {
             timeStart: Date.now(),
             errors: [],
+            metrics: {
+                resourceLoadTimes: {},
+                renderingSteps: [],
+                reactInitTime: null
+            },
             formatTime: () => `[${new Date().toISOString()}]`,
             info: function(msg, ...args) {
                 console.log(`${this.formatTime()} [Widget Embed] ${msg}`, ...args);
+                this.metrics.renderingSteps.push({
+                    type: 'info',
+                    message: msg,
+                    timestamp: Date.now() - this.timeStart
+                });
             },
             error: function(msg, ...args) {
-                const error = { message: msg, details: args, timestamp: new Date().toISOString() };
+                const error = { 
+                    message: msg, 
+                    details: args, 
+                    timestamp: new Date().toISOString(),
+                    stack: args[0]?.stack
+                };
                 this.errors.push(error);
                 console.error(`${this.formatTime()} [Widget Embed] Error: ${msg}`, ...args);
+                
+                // Send detailed error to parent
                 if (window.parent) {
                     window.parent.postMessage({ 
                         type: 'WIDGET_ERROR', 
                         error,
-                        errorCount: this.errors.length
+                        errorCount: this.errors.length,
+                        metrics: this.metrics
                     }, '*');
                 }
             },
             warn: function(msg, ...args) {
                 console.warn(`${this.formatTime()} [Widget Embed] Warning: ${msg}`, ...args);
             },
+            performance: function(label) {
+                const start = performance.now();
+                return {
+                    end: () => {
+                        const duration = performance.now() - start;
+                        this.metrics.resourceLoadTimes[label] = duration;
+                        this.info(`${label} took ${duration.toFixed(2)}ms`);
+                    }
+                };
+            },
             getErrorSummary: function() {
                 return this.errors.map(e => `${e.timestamp}: ${e.message}`).join('\n');
+            },
+            getDiagnosticReport: function() {
+                return {
+                    errors: this.errors,
+                    metrics: this.metrics,
+                    environment: {
+                        userAgent: navigator.userAgent,
+                        reactVersion: window.React?.version,
+                        reactDomVersion: window.ReactDOM?.version,
+                        timestamp: new Date().toISOString()
+                    }
+                };
             }
         };
 
-        logger.info('Embed page loading...');
+        // Early error capture
+        window.onerror = function(msg, url, line, col, error) {
+            logger.error('Global error:', { msg, url, line, col, error });
+            return false;
+        };
 
+        window.addEventListener('unhandledrejection', function(event) {
+            logger.error('Unhandled promise rejection:', event.reason);
+        });
+
+        // Resource loading diagnostics
+        const resourcePerf = logger.performance('resource-loading');
+        window.addEventListener('load', () => {
+            resourcePerf.end();
+            logger.info('Window loaded, checking dependencies:', {
+                react: typeof React !== 'undefined',
+                reactDOM: typeof ReactDOM !== 'undefined'
+            });
+        });
+
+        logger.info('Embed page initializing...');
+    </script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js" 
+            onerror="logger.error('Failed to load React')"
+            onload="logger.info('React core loaded successfully')"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"
+            onerror="logger.error('Failed to load ReactDOM')"
+            onload="logger.info('ReactDOM loaded successfully')"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
         // Enhanced initialization with better error handling and retries
         let initRetries = 0;
         const MAX_RETRIES = 3;
@@ -66,6 +134,34 @@
 
                 document.body.appendChild(script);
             });
+        }
+
+        // Diagnostic component for verifying React setup
+        function renderDiagnosticComponent() {
+            try {
+                const DiagnosticComponent = () => {
+                    React.useEffect(() => {
+                        logger.info('Diagnostic component mounted');
+                    }, []);
+
+                    return React.createElement('div', {
+                        style: {
+                            padding: '20px',
+                            border: '1px solid #eee',
+                            borderRadius: '8px',
+                            margin: '20px',
+                            backgroundColor: '#f9f9f9'
+                        }
+                    }, 'Widget Environment: Ready');
+                };
+
+                const root = ReactDOM.createRoot(document.getElementById('root'));
+                root.render(React.createElement(DiagnosticComponent));
+                logger.info('Diagnostic component rendered successfully');
+            } catch (error) {
+                logger.error('Failed to render diagnostic component:', error);
+                showFallbackContent(error);
+            }
         }
         
         async function initializeWidgetWithRetry(data) {
@@ -103,6 +199,12 @@
 ${logger.getErrorSummary()}
                             </pre>
                         </details>
+                        <div style="margin-top: 16px;">
+                            <button onclick="location.reload()" 
+                                    style="padding: 8px 16px; background: #4f46e5; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                Retry Loading
+                            </button>
+                        </div>
                     </div>
                 `;
             }
@@ -126,21 +228,14 @@ ${logger.getErrorSummary()}
             }
         });
 
-        // Handle global errors
-        window.onerror = function(msg, url, line, col, error) {
-            logger.error('Global error:', { msg, url, line, col, error });
-            return false;
-        };
-
-        // Handle unhandled promise rejections
-        window.addEventListener('unhandledrejection', function(event) {
-            logger.error('Unhandled promise rejection:', event.reason);
-        });
+        // Initial diagnostic render to verify React setup
+        setTimeout(() => {
+            if (!window.initializeWidget) {
+                renderDiagnosticComponent();
+            }
+        }, 1000);
 
         logger.info('Embed page ready');
     </script>
-</head>
-<body>
-    <div id="root"></div>
 </body>
 </html>
