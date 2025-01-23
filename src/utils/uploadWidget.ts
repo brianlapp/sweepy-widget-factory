@@ -46,13 +46,9 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
 
     // Delete existing files first
     console.log('[Widget Upload] Removing existing widget files...');
-    const { error: deleteError } = await supabase.storage
+    await supabase.storage
       .from('static')
       .remove(['widget.js', 'embed.html']);
-
-    if (deleteError) {
-      console.log('[Widget Upload] Note: Delete operation returned error (files might not exist):', deleteError);
-    }
 
     // Upload both files
     console.log('[Widget Upload] Uploading widget files...');

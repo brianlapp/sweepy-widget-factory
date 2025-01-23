@@ -1,8 +1,16 @@
 (function() {
   const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
+  const VERSION = '1.0.0';
+  
+  // Enhanced logging utility
+  const logger = {
+    info: (message, ...args) => console.log(`[Widget ${VERSION}] ${message}`, ...args),
+    error: (message, ...args) => console.error(`[Widget ${VERSION}] Error: ${message}`, ...args),
+    warn: (message, ...args) => console.warn(`[Widget ${VERSION}] Warning: ${message}`, ...args)
+  };
   
   function initializeWidget(sweepstakesId) {
-    console.log('[Widget] Starting widget initialization with ID:', sweepstakesId);
+    logger.info('Starting widget initialization with ID:', sweepstakesId);
     
     try {
       // Validate sweepstakes ID
@@ -10,62 +18,95 @@
         throw new Error('No sweepstakes ID provided');
       }
 
-      // Create iframe with enhanced error handling
+      // Create iframe with enhanced error handling and accessibility
       const iframe = document.createElement('iframe');
       iframe.style.width = '100%';
       iframe.style.border = 'none';
       iframe.style.minHeight = '600px';
       iframe.setAttribute('scrolling', 'no');
+      iframe.setAttribute('title', 'Sweepstakes Widget');
+      iframe.setAttribute('aria-label', 'Sweepstakes Entry Form');
       
-      // Enhanced iframe error handling
-      iframe.onload = () => {
-        console.log('[Widget] Iframe loaded successfully');
+      // Enhanced iframe error handling with retry logic
+      let loadRetries = 0;
+      const MAX_LOAD_RETRIES = 3;
+      
+      const handleIframeLoad = () => {
+        logger.info('Iframe loaded successfully');
         
         // Initialize the widget in the iframe
         iframe.contentWindow.postMessage({
           type: 'INIT_WIDGET',
-          sweepstakesId: sweepstakesId
+          sweepstakesId: sweepstakesId,
+          timestamp: Date.now()
         }, '*');
       };
       
-      iframe.onerror = (error) => {
-        console.error('[Widget] Failed to load iframe:', error);
-        showError('Failed to load widget content');
+      const handleIframeError = (error) => {
+        logger.error('Failed to load iframe:', error);
+        
+        if (loadRetries < MAX_LOAD_RETRIES) {
+          loadRetries++;
+          logger.warn(`Retrying iframe load (${loadRetries}/${MAX_LOAD_RETRIES})...`);
+          setTimeout(() => {
+            iframe.src = iframe.src;
+          }, 1000 * loadRetries);
+        } else {
+          showError('Failed to load widget content after multiple attempts');
+        }
+      };
+      
+      iframe.onload = handleIframeLoad;
+      iframe.onerror = handleIframeError;
+
+      // Enhanced message handling
+      const messageHandler = (event) => {
+        try {
+          if (event.data.type === 'WIDGET_ERROR') {
+            logger.error('Error from iframe:', event.data.error);
+            showError(event.data.error.message);
+          }
+          if (event.data.type === 'setHeight') {
+            iframe.style.height = `${event.data.height}px`;
+          }
+        } catch (error) {
+          logger.error('Error handling message:', error);
+        }
       };
 
-      // Listen for error messages from the iframe
-      window.addEventListener('message', (event) => {
-        if (event.data.type === 'WIDGET_ERROR') {
-          console.error('[Widget] Error from iframe:', event.data.error);
-          showError(event.data.error.message);
-        }
-        if (event.data.type === 'setHeight') {
-          iframe.style.height = `${event.data.height}px`;
-        }
-      });
+      window.addEventListener('message', messageHandler);
 
-      // Set iframe source with proper URL construction
+      // Cleanup function
+      const cleanup = () => {
+        window.removeEventListener('message', messageHandler);
+      };
+
+      // Set iframe source with proper URL construction and validation
       try {
         const baseUrl = new URL(STORAGE_URL);
         const embedPath = new URL('embed.html', baseUrl);
-        embedPath.searchParams.append('v', Date.now().toString());
+        
+        // Add cache-busting parameter and version
+        embedPath.searchParams.append('v', VERSION);
+        embedPath.searchParams.append('t', Date.now().toString());
+        
         iframe.src = embedPath.toString();
-        console.log('[Widget] Setting iframe src:', iframe.src);
+        logger.info('Setting iframe src:', iframe.src);
       } catch (error) {
-        console.error('[Widget] Error constructing iframe URL:', error);
+        logger.error('Error constructing iframe URL:', error);
         throw new Error('Failed to construct widget URL');
       }
       
       return iframe;
     } catch (error) {
-      console.error('[Widget] Initialization error:', error);
+      logger.error('Initialization error:', error);
       showError(error.message);
       return null;
     }
   }
 
   function showError(message) {
-    console.error('[Widget] Showing error message:', message);
+    logger.error('Showing error message:', message);
     const widgetContainer = document.getElementById('sweepstakes-widget');
     if (widgetContainer) {
       widgetContainer.innerHTML = `
@@ -76,48 +117,38 @@
     }
   }
 
-  // Initialize when the script loads
-  if (document.readyState === 'loading') {
-    console.log('[Widget] Document still loading, waiting for DOMContentLoaded');
-    document.addEventListener('DOMContentLoaded', () => {
-      const container = document.getElementById('sweepstakes-widget');
-      if (!container) {
-        console.error('[Widget] Widget container not found');
-        return;
-      }
+  // Initialize when the script loads with enhanced timing logging
+  const initialize = () => {
+    logger.info('Starting widget script initialization');
+    const startTime = performance.now();
 
-      const sweepstakesId = container.getAttribute('data-sweepstakes-id');
-      if (!sweepstakesId) {
-        console.error('[Widget] No sweepstakes ID provided');
-        showError('No sweepstakes ID provided');
-        return;
-      }
-
-      console.log('[Widget] Found sweepstakes ID:', sweepstakesId);
-      const iframe = initializeWidget(sweepstakesId);
-      if (iframe) {
-        container.appendChild(iframe);
-      }
-    });
-  } else {
-    console.log('[Widget] Document already loaded, initializing immediately');
     const container = document.getElementById('sweepstakes-widget');
     if (!container) {
-      console.error('[Widget] Widget container not found');
+      logger.error('Widget container not found');
       return;
     }
 
     const sweepstakesId = container.getAttribute('data-sweepstakes-id');
     if (!sweepstakesId) {
-      console.error('[Widget] No sweepstakes ID provided');
+      logger.error('No sweepstakes ID provided');
       showError('No sweepstakes ID provided');
       return;
     }
 
-    console.log('[Widget] Found sweepstakes ID:', sweepstakesId);
+    logger.info('Found sweepstakes ID:', sweepstakesId);
     const iframe = initializeWidget(sweepstakesId);
     if (iframe) {
       container.appendChild(iframe);
+      const endTime = performance.now();
+      logger.info(`Widget initialization completed in ${Math.round(endTime - startTime)}ms`);
     }
+  };
+
+  if (document.readyState === 'loading') {
+    logger.info('Document still loading, waiting for DOMContentLoaded');
+    document.addEventListener('DOMContentLoaded', initialize);
+  } else {
+    logger.info('Document already loaded, initializing immediately');
+    initialize();
   }
 })();

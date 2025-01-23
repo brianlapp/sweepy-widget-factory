@@ -31,6 +31,11 @@
                 }, '*');
             }
         });
+
+        // Performance monitoring
+        if (window.performance && window.performance.mark) {
+            window.performance.mark('widget-embed-start');
+        }
     </script>
 </head>
 <body>
@@ -38,7 +43,43 @@
     <script>
         console.log('[Widget Embed] DOM loaded, waiting for widget initialization...');
         
-        // Enhanced message handling with validation
+        // Enhanced message handling with validation and retry logic
+        let initRetries = 0;
+        const MAX_RETRIES = 3;
+        
+        function initializeWidgetWithRetry(data) {
+            try {
+                if (window.initializeWidget) {
+                    window.initializeWidget(data.sweepstakesId);
+                    console.log('[Widget Embed] Widget initialized successfully');
+                    
+                    // Mark successful initialization
+                    if (window.performance && window.performance.mark) {
+                        window.performance.mark('widget-init-complete');
+                        window.performance.measure(
+                            'widget-total-init-time',
+                            'widget-embed-start',
+                            'widget-init-complete'
+                        );
+                    }
+                } else if (initRetries < MAX_RETRIES) {
+                    initRetries++;
+                    console.log(`[Widget Embed] Retry ${initRetries}/${MAX_RETRIES} - Widget not ready yet`);
+                    setTimeout(() => initializeWidgetWithRetry(data), 1000);
+                } else {
+                    throw new Error('Widget initialization function not found after retries');
+                }
+            } catch (error) {
+                console.error('[Widget Embed] Error initializing widget:', error);
+                if (window.parent && window.parent.postMessage) {
+                    window.parent.postMessage({ 
+                        type: 'WIDGET_ERROR', 
+                        error: { message: error.message } 
+                    }, '*');
+                }
+            }
+        }
+
         window.addEventListener('message', function(event) {
             try {
                 console.log('[Widget Embed] Received message:', event.data);
@@ -52,14 +93,7 @@
                     }
 
                     window.WIDGET_CONFIG = event.data;
-                    
-                    // Initialize widget with enhanced error handling
-                    if (window.initializeWidget) {
-                        window.initializeWidget(event.data.sweepstakesId);
-                        console.log('[Widget Embed] Widget initialized successfully');
-                    } else {
-                        throw new Error('Widget initialization function not found');
-                    }
+                    initializeWidgetWithRetry(event.data);
                 }
             } catch (error) {
                 console.error('[Widget Embed] Error handling message:', error);
