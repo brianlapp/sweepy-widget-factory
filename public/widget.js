@@ -1,8 +1,9 @@
 (function() {
   const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
   const VERSION = '1.0.0';
-  const MESSAGE_TIMEOUT = 5000; // 5 seconds timeout for messages
+  const MESSAGE_TIMEOUT = 5000;
   const MAX_RETRIES = 3;
+  const LOAD_TIMEOUT = 10000; // 10 seconds timeout for iframe loading
   
   // Message types enum for type validation
   const MessageTypes = {
@@ -65,75 +66,141 @@
     return true;
   };
 
-  // Enhanced iframe management with retry logic
   class IframeManager {
     constructor() {
       this.retryCount = 0;
       this.iframe = null;
       this.messageQueue = [];
       this.isReady = false;
+      this.loadTimeout = null;
+      this.resourcesLoaded = new Set();
     }
 
     createIframe(sweepstakesId) {
       logger.performance('iframe-creation-start');
       
       try {
-        this.iframe = document.createElement('iframe');
-        this.iframe.style.width = '100%';
-        this.iframe.style.border = 'none';
-        this.iframe.style.minHeight = '600px';
-        this.iframe.setAttribute('scrolling', 'no');
-        this.iframe.setAttribute('title', 'Sweepstakes Widget');
-        this.iframe.setAttribute('aria-label', 'Sweepstakes Entry Form');
-        
-        // Enhanced iframe error handling with retry logic
-        const handleIframeLoad = () => {
-          logger.info('Iframe loaded successfully');
-          logger.performance('iframe-load').end('iframe-loaded');
-          this.isReady = true;
-          this.processMessageQueue();
-        };
-        
-        const handleIframeError = (error) => {
-          logger.error('Failed to load iframe:', error);
-          
-          if (this.retryCount < MAX_RETRIES) {
-            this.retryCount++;
-            logger.warn(`Retrying iframe load (${this.retryCount}/${MAX_RETRIES})...`);
-            setTimeout(() => {
-              logger.info(`Attempt ${this.retryCount + 1} to load iframe`);
-              this.iframe.src = this.iframe.src;
-            }, 1000 * this.retryCount);
-          } else {
-            logger.error('Max retries reached, showing error message');
-            this.showError('Failed to load widget content after multiple attempts');
-          }
-        };
-        
-        this.iframe.onload = handleIframeLoad;
-        this.iframe.onerror = handleIframeError;
+        // Cleanup any existing iframe
+        this.cleanup();
 
+        this.iframe = document.createElement('iframe');
+        this.setupIframeAttributes();
+        this.setupLoadTracking();
+        this.setupResourceTracking();
+        
         // Set iframe source with proper URL construction and validation
-        try {
-          const baseUrl = new URL(STORAGE_URL);
-          const embedPath = new URL('embed.html', baseUrl);
-          
-          // Add cache-busting parameter and version
-          embedPath.searchParams.append('v', VERSION);
-          embedPath.searchParams.append('t', Date.now().toString());
-          
-          logger.info('Setting iframe src:', embedPath.toString());
-          this.iframe.src = embedPath.toString();
-        } catch (error) {
-          logger.error('Error constructing iframe URL:', error);
-          throw new Error('Failed to construct widget URL');
-        }
+        this.setIframeSource();
 
         logger.performance('iframe-creation-start').end('iframe-creation-complete');
         return this.iframe;
       } catch (error) {
         logger.error('Error creating iframe:', error);
         throw error;
+      }
+    }
+
+    setupIframeAttributes() {
+      this.iframe.style.width = '100%';
+      this.iframe.style.border = 'none';
+      this.iframe.style.minHeight = '600px';
+      this.iframe.setAttribute('scrolling', 'no');
+      this.iframe.setAttribute('title', 'Sweepstakes Widget');
+      this.iframe.setAttribute('aria-label', 'Sweepstakes Entry Form');
+      this.iframe.setAttribute('data-widget-version', VERSION);
+    }
+
+    setupLoadTracking() {
+      // Set up load timeout
+      this.loadTimeout = setTimeout(() => {
+        if (!this.isReady) {
+          logger.error('Iframe load timeout reached');
+          this.handleLoadError(new Error('Iframe load timeout'));
+        }
+      }, LOAD_TIMEOUT);
+
+      const handleIframeLoad = () => {
+        clearTimeout(this.loadTimeout);
+        logger.info('Iframe loaded successfully');
+        logger.performance('iframe-load').end('iframe-loaded');
+        this.verifyIframeContent();
+      };
+      
+      const handleIframeError = (error) => {
+        clearTimeout(this.loadTimeout);
+        this.handleLoadError(error);
+      };
+      
+      this.iframe.onload = handleIframeLoad;
+      this.iframe.onerror = handleIframeError;
+    }
+
+    setupResourceTracking() {
+      // Track resource loading within iframe
+      const observer = new PerformanceObserver((list) => {
+        list.getEntries().forEach(entry => {
+          if (entry.initiatorType === 'iframe' && entry.name.includes(STORAGE_URL)) {
+            this.resourcesLoaded.add(entry.name);
+            logger.info('Resource loaded:', entry.name);
+          }
+        });
+      });
+      
+      observer.observe({ entryTypes: ['resource'] });
+    }
+
+    verifyIframeContent() {
+      try {
+        // Verify iframe content is accessible
+        if (!this.iframe.contentWindow) {
+          throw new Error('Cannot access iframe content window');
+        }
+
+        // Verify required resources are loaded
+        const requiredResources = ['widget.js', 'embed.html'];
+        const missingResources = requiredResources.filter(resource => 
+          !Array.from(this.resourcesLoaded).some(loaded => loaded.includes(resource))
+        );
+
+        if (missingResources.length > 0) {
+          throw new Error(`Missing required resources: ${missingResources.join(', ')}`);
+        }
+
+        this.isReady = true;
+        this.processMessageQueue();
+      } catch (error) {
+        this.handleLoadError(error);
+      }
+    }
+
+    handleLoadError(error) {
+      logger.error('Failed to load iframe:', error);
+      
+      if (this.retryCount < MAX_RETRIES) {
+        this.retryCount++;
+        logger.warn(`Retrying iframe load (${this.retryCount}/${MAX_RETRIES})...`);
+        setTimeout(() => {
+          logger.info(`Attempt ${this.retryCount + 1} to load iframe`);
+          this.setIframeSource();
+        }, 1000 * this.retryCount);
+      } else {
+        logger.error('Max retries reached, showing error message');
+        this.showError('Failed to load widget content after multiple attempts');
+      }
+    }
+
+    setIframeSource() {
+      try {
+        const baseUrl = new URL(STORAGE_URL);
+        const embedPath = new URL('embed.html', baseUrl);
+        
+        embedPath.searchParams.append('v', VERSION);
+        embedPath.searchParams.append('t', Date.now().toString());
+        
+        logger.info('Setting iframe src:', embedPath.toString());
+        this.iframe.src = embedPath.toString();
+      } catch (error) {
+        logger.error('Error constructing iframe URL:', error);
+        throw new Error('Failed to construct widget URL');
       }
     }
 
@@ -190,13 +257,25 @@
 
     cleanup() {
       logger.info('Cleaning up iframe manager');
+      clearTimeout(this.loadTimeout);
+      
       if (this.iframe) {
+        // Remove event listeners
+        this.iframe.onload = null;
+        this.iframe.onerror = null;
+        
+        // Remove iframe from DOM
         this.iframe.remove();
         this.iframe = null;
       }
+
+      // Clear tracking state
+      this.resourcesLoaded.clear();
       this.messageQueue = [];
       this.isReady = false;
       this.retryCount = 0;
+      
+      logger.info('Iframe cleanup complete');
     }
   }
 
