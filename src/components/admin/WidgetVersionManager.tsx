@@ -55,7 +55,7 @@ export function WidgetVersionManager() {
     },
   });
 
-  const createVersionMutation = useMutation({
+  const { mutate: createVersion, isPending: isCreating } = useMutation({
     mutationFn: async () => {
       const version = process.env.VITE_APP_VERSION || new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
@@ -81,7 +81,7 @@ export function WidgetVersionManager() {
     },
   });
 
-  const deployMutation = useMutation({
+  const { mutate: deployVersion, isPending: isDeploying } = useMutation({
     mutationFn: async (versionId: string) => {
       try {
         console.log('[Widget Deploy] Starting deployment for version:', versionId);
@@ -165,8 +165,8 @@ export function WidgetVersionManager() {
           </div>
           <Button 
             size="sm" 
-            onClick={() => createVersionMutation.mutate()}
-            disabled={createVersionMutation.isPending}
+            onClick={() => createVersion()}
+            disabled={isCreating}
           >
             Create Version
           </Button>
@@ -194,8 +194,8 @@ export function WidgetVersionManager() {
                     <Button
                       size="sm"
                       variant={version.is_active ? "secondary" : "default"}
-                      onClick={() => deployMutation.mutate(version.id)}
-                      disabled={version.is_active || deployMutation.isPending}
+                      onClick={() => deployVersion(version.id)}
+                      disabled={version.is_active || isDeploying}
                     >
                       {version.is_active ? 'Deployed' : 'Deploy'}
                     </Button>
