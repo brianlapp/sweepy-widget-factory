@@ -13,9 +13,9 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
   try {
     // Helper function to fetch file content
     async function fetchFile(filename: string) {
-      console.log(`[Widget Upload] Attempting to fetch ${filename} from public directory...`);
+      console.log(`[Widget Upload] Attempting to fetch ${filename}...`);
       try {
-        const response = await fetch(`/dist/${filename}`);
+        const response = await fetch(`/public/${filename}`);
         if (!response.ok) {
           throw new Error(`Failed to fetch ${filename}`);
         }
