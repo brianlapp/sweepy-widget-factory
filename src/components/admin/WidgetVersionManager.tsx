@@ -103,6 +103,8 @@ export function WidgetVersionManager() {
     messageLatency: 0,
     resourceLoadTime: 0
   });
+  const [testSweepstakesId, setTestSweepstakesId] = React.useState('');
+  const [testIframe, setTestIframe] = React.useState<HTMLIFrameElement | null>(null);
 
   // Performance monitoring
   React.useEffect(() => {
@@ -252,6 +254,57 @@ export function WidgetVersionManager() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast.success('Embed code copied to clipboard');
+  };
+
+  const createTestWidget = () => {
+    if (!testSweepstakesId) {
+      toast.error('Please select a sweepstakes to test');
+      return;
+    }
+
+    // Remove existing test iframe if any
+    if (testIframe) {
+      testIframe.remove();
+    }
+
+    // Create new test iframe
+    const iframe = document.createElement('iframe');
+    iframe.style.width = '100%';
+    iframe.style.height = '600px';
+    iframe.style.border = '1px solid #e2e8f0';
+    iframe.style.borderRadius = '8px';
+
+    // Create container div for widget
+    const container = document.createElement('div');
+    container.id = 'sweepstakes-widget';
+    container.setAttribute('data-sweepstakes-id', testSweepstakesId);
+
+    // Add script tag
+    const script = document.createElement('script');
+    script.src = `https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static/widget.js?v=${Date.now()}`;
+    
+    // Find or create test container
+    let testContainer = document.getElementById('widget-test-container');
+    if (!testContainer) {
+      testContainer = document.createElement('div');
+      testContainer.id = 'widget-test-container';
+      document.getElementById('widget-test-area')?.appendChild(testContainer);
+    }
+    
+    // Clear and update test container
+    testContainer.innerHTML = '';
+    testContainer.appendChild(container);
+    testContainer.appendChild(script);
+    
+    setTestIframe(iframe);
+    
+    // Listen for widget messages
+    window.addEventListener('message', (event) => {
+      if (event.data.type === 'WIDGET_ERROR') {
+        console.error('Widget Error:', event.data.error);
+        toast.error(`Widget Error: ${event.data.error.message}`);
+      }
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -476,6 +529,41 @@ export function WidgetVersionManager() {
           </CardContent>
         </Card>
       )}
+
+      {/* Add Testing Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Widget Testing</CardTitle>
+          <CardDescription>Test the widget with different sweepstakes</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-4">
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+              value={testSweepstakesId}
+              onChange={(e) => setTestSweepstakesId(e.target.value)}
+            >
+              <option value="">Select a sweepstakes...</option>
+              {sweepstakes?.map((sweep) => (
+                <option key={sweep.id} value={sweep.id}>
+                  {sweep.title}
+                </option>
+              ))}
+            </select>
+            <Button onClick={createTestWidget}>
+              Test Widget
+            </Button>
+          </div>
+          
+          <div id="widget-test-area" className="min-h-[600px] bg-muted/10 rounded-lg p-4">
+            {!testIframe && (
+              <div className="flex items-center justify-center h-[600px] text-muted-foreground">
+                Select a sweepstakes and click Test Widget to preview
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
