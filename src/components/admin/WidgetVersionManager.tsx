@@ -42,26 +42,21 @@ export function WidgetVersionManager() {
     },
   });
 
-  const { data: sweepstakes } = useQuery({
-    queryKey: ['sweepstakes'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('sweepstakes')
-        .select('id, title')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data;
-    },
-  });
+  const generateUniqueVersion = () => {
+    const now = new Date();
+    const timestamp = now.getTime();
+    return `${process.env.VITE_APP_VERSION || '1.0.0'}-${timestamp}`;
+  };
 
   const { mutate: createVersion, isPending: isCreating } = useMutation({
     mutationFn: async () => {
-      const version = process.env.VITE_APP_VERSION || new Date().toISOString().split('T')[0];
+      const uniqueVersion = generateUniqueVersion();
+      console.log('[Widget Version Create] Creating version:', uniqueVersion);
+      
       const { data, error } = await supabase
         .from('widget_versions')
         .insert({
-          version,
+          version: uniqueVersion,
           bundle_hash: 'pending',
           is_active: false
         })
