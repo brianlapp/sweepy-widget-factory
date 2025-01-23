@@ -11,38 +11,30 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
   console.log('[Widget Upload] Starting widget files upload process...');
   
   try {
-    // Helper function to fetch file with proper content type handling
+    // Helper function to fetch file content
     async function fetchFile(filename: string) {
-      console.log(`[Widget Upload] Attempting to fetch ${filename}...`);
+      console.log(`[Widget Upload] Attempting to fetch ${filename} from public directory...`);
       try {
-        // Always try dist directory first (production build)
-        const response = await fetch(`/dist/${filename}`);
-        if (response.ok) {
-          console.log(`[Widget Upload] Found ${filename} in dist directory`);
-          const content = await response.text();
-          console.log(`[Widget Upload] Content length for ${filename}:`, content.length);
-          console.log(`[Widget Upload] Content type for ${filename}:`, response.headers.get('content-type'));
-          return { 
-            content, 
-            type: filename.endsWith('.js') ? 'application/javascript' : 'text/html'
-          };
+        const response = await fetch(`/public/${filename}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ${filename}`);
         }
-
-        throw new Error(`Failed to fetch ${filename} from dist directory`);
+        const content = await response.text();
+        console.log(`[Widget Upload] Successfully fetched ${filename}, content length:`, content.length);
+        return content;
       } catch (error) {
         console.error(`[Widget Upload] Error fetching ${filename}:`, error);
         throw error;
       }
     }
 
-    // First, verify we can fetch the widget.js file
-    console.log('[Widget Upload] Verifying widget.js file...');
-    const widgetJs = await fetchFile('widget.js');
-    console.log('[Widget Upload] Widget.js file verified:', widgetJs.type);
-
+    // Fetch the widget.js content
+    console.log('[Widget Upload] Fetching widget.js...');
+    const widgetContent = await fetchFile('widget.js');
+    
     // Generate bundle hash
     console.log('[Widget Upload] Generating bundle hash...');
-    const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(widgetJs.content))
+    const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(widgetContent))
       .then(hash => Array.from(new Uint8Array(hash))
         .map(b => b.toString(16).padStart(2, '0'))
         .join(''));
@@ -55,7 +47,7 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
       .remove(['widget.js']);
 
     if (deleteError) {
-      console.error('[Widget Upload] Error deleting existing file:', deleteError);
+      console.log('[Widget Upload] Note: Delete operation returned error (file might not exist):', deleteError);
       // Continue even if delete fails - it might not exist
     }
 
@@ -63,7 +55,7 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
     console.log('[Widget Upload] Uploading widget.js...');
     const { error: uploadError } = await supabase.storage
       .from('static')
-      .upload('widget.js', widgetJs.content, {
+      .upload('widget.js', widgetContent, {
         contentType: 'application/javascript; charset=utf-8',
         cacheControl: '3600',
         upsert: true,
