@@ -12,7 +12,7 @@ export async function uploadWidgetFiles() {
         if (response.ok) {
           console.log(`Found ${filename} in dist directory`);
           const content = await response.text();
-          console.log(`Content preview for ${filename}:`, content.substring(0, 200));
+          console.log(`Content length for ${filename}:`, content.length);
           return { content, type: response.headers.get('content-type') };
         }
         
@@ -21,7 +21,7 @@ export async function uploadWidgetFiles() {
         if (devResponse.ok) {
           console.log(`Found ${filename} in public directory`);
           const content = await devResponse.text();
-          console.log(`Content preview for ${filename}:`, content.substring(0, 200));
+          console.log(`Content length for ${filename}:`, content.length);
           return { content, type: devResponse.headers.get('content-type') };
         }
         
@@ -47,9 +47,7 @@ export async function uploadWidgetFiles() {
     console.log('[Widget] Creating iframe with sweepstakes ID:', sweepstakesId);
     
     const iframe = document.createElement('iframe');
-    iframe.style.width = '100%';
-    iframe.style.border = 'none';
-    iframe.style.minHeight = '600px';
+    iframe.style.cssText = 'width: 100%; border: none; min-height: 600px;';
     iframe.setAttribute('scrolling', 'no');
     
     // Add error handling for iframe load
@@ -82,11 +80,14 @@ export async function uploadWidgetFiles() {
   function showError(message) {
     const widgetContainer = document.getElementById('sweepstakes-widget');
     if (widgetContainer) {
-      widgetContainer.innerHTML = \`
-        <div style="padding: 20px; border: 1px solid #f0f0f0; border-radius: 8px; text-align: center;">
-          <p style="color: #666; margin: 0;">Unable to load sweepstakes widget: \${message}</p>
-        </div>
-      \`;
+      const errorDiv = document.createElement('div');
+      errorDiv.style.cssText = 'padding: 20px; border: 1px solid #f0f0f0; border-radius: 8px; text-align: center;';
+      const errorMessage = document.createElement('p');
+      errorMessage.style.cssText = 'color: #666; margin: 0;';
+      errorMessage.textContent = 'Unable to load sweepstakes widget: ' + message;
+      errorDiv.appendChild(errorMessage);
+      widgetContainer.innerHTML = '';
+      widgetContainer.appendChild(errorDiv);
     }
   }
 
@@ -111,6 +112,7 @@ export async function uploadWidgetFiles() {
 
       console.log('[Widget] Creating iframe for sweepstakes:', sweepstakesId);
       const iframe = createIframe(sweepstakesId);
+      widgetContainer.innerHTML = '';
       widgetContainer.appendChild(iframe);
       console.log('[Widget] Widget initialized successfully');
     } catch (error) {
@@ -127,6 +129,7 @@ export async function uploadWidgetFiles() {
   }
 })();`;
 
+    console.log('Uploading widget.js...');
     const { error: widgetError } = await supabase.storage
       .from('static')
       .upload('widget.js', widgetJs, {
@@ -141,12 +144,13 @@ export async function uploadWidgetFiles() {
     }
     console.log('Successfully uploaded widget.js');
 
-    // Upload embed.html with explicit HTML MIME type
+    // Upload embed.html with explicit HTML MIME type and CSP meta tag
     const embedHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval';">
     <title>Sweepstakes Widget</title>
     <!-- Primary CDN -->
     <script type="text/javascript" src="https://unpkg.com/react@18/umd/react.production.min.js" 
@@ -185,12 +189,17 @@ export async function uploadWidgetFiles() {
         });
     </script>
     <script type="text/javascript" src="widget.bundle.js" defer></script>
+    <style>
+        body { margin: 0; padding: 0; }
+        #root { min-height: 100vh; }
+    </style>
 </head>
 <body>
     <div id="root"></div>
 </body>
 </html>`;
 
+    console.log('Uploading embed.html...');
     const { error: embedError } = await supabase.storage
       .from('static')
       .upload('embed.html', embedHtml, {
@@ -206,7 +215,9 @@ export async function uploadWidgetFiles() {
     console.log('Successfully uploaded embed.html');
 
     // Upload widget bundle with explicit JavaScript MIME type
+    console.log('Fetching widget.bundle.js...');
     const { content: bundleContent } = await fetchFile('widget.bundle.js');
+    console.log('Uploading widget.bundle.js...');
     const { error: bundleError } = await supabase.storage
       .from('static')
       .upload('widget.bundle.js', bundleContent, {
