@@ -5,14 +5,19 @@
     console.log('[Widget] Starting widget initialization with ID:', sweepstakesId);
     
     try {
-      // Create iframe
+      // Validate sweepstakes ID
+      if (!sweepstakesId) {
+        throw new Error('No sweepstakes ID provided');
+      }
+
+      // Create iframe with enhanced error handling
       const iframe = document.createElement('iframe');
       iframe.style.width = '100%';
       iframe.style.border = 'none';
       iframe.style.minHeight = '600px';
       iframe.setAttribute('scrolling', 'no');
       
-      // Add error handling for iframe load
+      // Enhanced iframe error handling
       iframe.onload = () => {
         console.log('[Widget] Iframe loaded successfully');
         
@@ -23,13 +28,25 @@
         }, '*');
       };
       
-      iframe.onerror = () => {
-        console.error('[Widget] Failed to load iframe');
+      iframe.onerror = (error) => {
+        console.error('[Widget] Failed to load iframe:', error);
         showError('Failed to load widget content');
       };
+
+      // Listen for error messages from the iframe
+      window.addEventListener('message', (event) => {
+        if (event.data.type === 'WIDGET_ERROR') {
+          console.error('[Widget] Error from iframe:', event.data.error);
+          showError(event.data.error.message);
+        }
+        if (event.data.type === 'setHeight') {
+          iframe.style.height = `${event.data.height}px`;
+        }
+      });
       
-      // Set iframe source to embed.html from storage
-      iframe.src = `${STORAGE_URL}/embed.html`;
+      // Set iframe source to embed.html from storage with cache busting
+      const timestamp = new Date().getTime();
+      iframe.src = `${STORAGE_URL}/embed.html?v=${timestamp}`;
       
       return iframe;
     } catch (error) {
