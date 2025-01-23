@@ -9,7 +9,22 @@ const queryClient = new QueryClient();
 // Storage URL for origin checking
 const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
 
-// Error Boundary Component
+// Enhanced logging utility
+const logger = {
+  timeStart: Date.now(),
+  formatTime: () => `[${new Date().toISOString()}]`,
+  info: (msg: string, ...args: any[]) => console.log(`${logger.formatTime()} [Widget] ${msg}`, ...args),
+  error: (msg: string, ...args: any[]) => console.error(`${logger.formatTime()} [Widget] Error: ${msg}`, ...args),
+  warn: (msg: string, ...args: any[]) => console.warn(`${logger.formatTime()} [Widget] Warning: ${msg}`, ...args),
+  performance: (name: string) => {
+    if (window.performance && window.performance.mark) {
+      window.performance.mark(`widget-${name}`);
+      logger.info(`Performance mark: ${name}`);
+    }
+  }
+};
+
+// Error Boundary Component with enhanced logging
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean; error: Error | null }
@@ -17,25 +32,31 @@ class ErrorBoundary extends React.Component<
   constructor(props: { children: React.ReactNode }) {
     super(props);
     this.state = { hasError: false, error: null };
+    logger.info('ErrorBoundary initialized');
   }
 
   static getDerivedStateFromError(error: Error) {
-    console.error('[Widget] Error caught in boundary:', error);
+    logger.error('Error caught in boundary:', error);
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('[Widget] Error details:', error, errorInfo);
+    logger.error('Error details:', { error, errorInfo });
     // Send error to parent window
     if (window !== window.parent) {
       try {
         const storageOrigin = new URL(STORAGE_URL).origin;
         window.parent.postMessage({ 
-          type: 'error', 
-          message: error.message 
+          type: 'WIDGET_ERROR', 
+          error: { 
+            message: error.message,
+            stack: error.stack,
+            componentStack: errorInfo.componentStack
+          },
+          timestamp: Date.now()
         }, storageOrigin);
       } catch (e) {
-        console.error('[Widget] Error sending error message to parent:', e);
+        logger.error('Error sending error message to parent:', e);
       }
     }
   }
@@ -56,41 +77,49 @@ class ErrorBoundary extends React.Component<
 
 function WidgetRoot({ sweepstakesId }: { sweepstakesId: string }) {
   React.useEffect(() => {
-    console.log('[Widget] WidgetRoot mounted with ID:', sweepstakesId);
+    logger.info('WidgetRoot mounted with ID:', sweepstakesId);
+    logger.performance('widget-mount');
     
     // Log widget version on mount
-    console.log('[Widget] Widget version:', process.env.VITE_APP_VERSION || 'development');
+    logger.info('Widget version:', process.env.VITE_APP_VERSION || 'development');
 
-    // Function to update iframe height
+    // Enhanced height update function with logging
     const updateIframeHeight = () => {
       const height = document.documentElement.scrollHeight;
-      console.log('[Widget] Calculating new height:', height);
+      logger.info('Calculating new height:', height);
       
       // Only send message if we're in an iframe
       if (window !== window.parent) {
         try {
           const storageOrigin = new URL(STORAGE_URL).origin;
-          window.parent.postMessage({ type: 'setHeight', height }, storageOrigin);
-          console.log('[Widget] Sent height update:', height, 'to origin:', storageOrigin);
+          window.parent.postMessage({ 
+            type: 'setHeight', 
+            height,
+            timestamp: Date.now()
+          }, storageOrigin);
+          logger.info('Sent height update:', height, 'to origin:', storageOrigin);
         } catch (error) {
-          console.error('[Widget] Error sending height update:', error);
+          logger.error('Error sending height update:', error);
         }
       }
     };
 
-    // Set up height observer
+    // Set up height observer with logging
     const observer = new ResizeObserver(() => {
-      console.log('[Widget] Size change detected');
+      logger.info('Size change detected');
+      logger.performance('height-update-start');
       updateIframeHeight();
+      logger.performance('height-update-end');
     });
 
     // Observe body for size changes
     observer.observe(document.body);
-    console.log('[Widget] ResizeObserver setup complete');
+    logger.info('ResizeObserver setup complete');
 
-    // Cleanup
+    // Cleanup with logging
     return () => {
-      console.log('[Widget] WidgetRoot unmounting');
+      logger.info('WidgetRoot unmounting');
+      logger.performance('widget-unmount');
       observer.disconnect();
     };
   }, [sweepstakesId]);
@@ -104,9 +133,10 @@ function WidgetRoot({ sweepstakesId }: { sweepstakesId: string }) {
   );
 }
 
-// Initialize the widget when the script loads
+// Initialize the widget with enhanced logging
 function initializeWidget(sweepstakesId: string) {
-  console.log('[Widget] Starting widget initialization with ID:', sweepstakesId);
+  logger.info('Starting widget initialization with ID:', sweepstakesId);
+  logger.performance('init-start');
   
   try {
     const root = document.getElementById('root');
@@ -120,7 +150,8 @@ function initializeWidget(sweepstakesId: string) {
       throw new Error('Invalid sweepstakes ID format');
     }
 
-    console.log('[Widget] Creating widget with sweepstakes ID:', sweepstakesId);
+    logger.info('Creating widget with sweepstakes ID:', sweepstakesId);
+    logger.performance('react-render-start');
     
     createRoot(root).render(
       <React.StrictMode>
@@ -128,9 +159,11 @@ function initializeWidget(sweepstakesId: string) {
       </React.StrictMode>
     );
     
-    console.log('[Widget] Widget initialized successfully');
+    logger.info('Widget initialized successfully');
+    logger.performance('init-complete');
   } catch (error) {
-    console.error('[Widget] Initialization error:', error);
+    logger.error('Initialization error:', error);
+    logger.performance('init-error');
     const root = document.getElementById('root');
     if (root) {
       root.innerHTML = `
