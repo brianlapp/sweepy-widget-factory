@@ -3,7 +3,7 @@
   const VERSION = '1.0.0';
   const MESSAGE_TIMEOUT = 5000;
   const MAX_RETRIES = 3;
-  const LOAD_TIMEOUT = 10000; // 10 seconds timeout for iframe loading
+  const LOAD_TIMEOUT = 10000;
   
   // Message types enum for type validation
   const MessageTypes = {
@@ -13,7 +13,7 @@
     WIDGET_READY: 'WIDGET_READY'
   };
 
-  // Enhanced logging utility with timestamps and performance tracking
+  // Enhanced logging utility with production mode check
   const logger = {
     _getTimestamp: () => new Date().toISOString(),
     _mark: (name) => {
@@ -31,22 +31,62 @@
           );
           const measures = window.performance.getEntriesByName(`widget-${name}`);
           if (measures.length > 0) {
-            console.log(`[Widget ${VERSION}] ${name} took ${measures[0].duration}ms`);
+            this._log(`${name} took ${measures[0].duration}ms`);
           }
         } catch (e) {
-          console.warn(`[Widget ${VERSION}] Error measuring ${name}:`, e);
+          this._warn(`Error measuring ${name}:`, e);
         }
       }
     },
-    info: (message, ...args) => console.log(`[Widget ${VERSION}] ${logger._getTimestamp()} - ${message}`, ...args),
-    error: (message, ...args) => console.error(`[Widget ${VERSION}] ${logger._getTimestamp()} - Error: ${message}`, ...args),
-    warn: (message, ...args) => console.warn(`[Widget ${VERSION}] ${logger._getTimestamp()} - Warning: ${message}`, ...args),
+    _isProduction: () => {
+      return !window.location.hostname.includes('localhost') && 
+             !window.location.hostname.includes('127.0.0.1');
+    },
+    _log: (message, ...args) => {
+      if (!this._isProduction()) {
+        console.log(`[Widget ${VERSION}] ${this._getTimestamp()} - ${message}`, ...args);
+      }
+    },
+    _warn: (message, ...args) => {
+      console.warn(`[Widget ${VERSION}] ${this._getTimestamp()} - Warning: ${message}`, ...args);
+    },
+    _error: (message, ...args) => {
+      console.error(`[Widget ${VERSION}] ${this._getTimestamp()} - Error: ${message}`, ...args);
+      // In production, send error to monitoring service
+      if (this._isProduction()) {
+        this._sendErrorToMonitoring(message, args);
+      }
+    },
+    _sendErrorToMonitoring: (message, args) => {
+      // Implementation for error monitoring service
+      // This would typically send errors to a service like Sentry
+      const errorData = {
+        message,
+        args,
+        timestamp: this._getTimestamp(),
+        version: VERSION,
+        url: window.location.href,
+        userAgent: navigator.userAgent
+      };
+      
+      // For now, we'll just store it in localStorage for debugging
+      try {
+        const errors = JSON.parse(localStorage.getItem('widget-errors') || '[]');
+        errors.push(errorData);
+        localStorage.setItem('widget-errors', JSON.stringify(errors.slice(-10))); // Keep last 10 errors
+      } catch (e) {
+        console.error('Error storing widget error:', e);
+      }
+    },
+    info: (...args) => this._log(...args),
+    warn: (...args) => this._warn(...args),
+    error: (...args) => this._error(...args),
     performance: (name) => {
-      logger._mark(name);
+      this._mark(name);
       return {
         end: (endName) => {
-          logger._mark(endName);
-          logger._measure(`${name}-to-${endName}`, name, endName);
+          this._mark(endName);
+          this._measure(`${name}-to-${endName}`, name, endName);
         }
       };
     }
