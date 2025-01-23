@@ -216,6 +216,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      deploy_widget_version: {
+        Args: {
+          p_version_id: string
+          p_bundle_hash: string
+        }
+        Returns: undefined
+      }
       is_admin: {
         Args: {
           user_id: string

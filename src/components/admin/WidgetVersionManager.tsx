@@ -27,14 +27,17 @@ export function WidgetVersionManager() {
   const { data: versions, isLoading } = useQuery({
     queryKey: ['widget-versions'],
     queryFn: async () => {
-      console.log('Fetching widget versions...');
+      console.log('[Widget Versions] Fetching versions...');
       const { data, error } = await supabase
         .from('widget_versions')
         .select('*')
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
-      console.log('Fetched versions:', data);
+      if (error) {
+        console.error('[Widget Versions] Error fetching versions:', error);
+        throw error;
+      }
+      console.log('[Widget Versions] Fetched versions:', data);
       return data as Version[];
     },
   });
@@ -49,6 +52,32 @@ export function WidgetVersionManager() {
       
       if (error) throw error;
       return data;
+    },
+  });
+
+  const createVersionMutation = useMutation({
+    mutationFn: async () => {
+      const version = process.env.VITE_APP_VERSION || new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('widget_versions')
+        .insert({
+          version,
+          bundle_hash: 'pending',
+          is_active: false
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['widget-versions'] });
+      toast.success('New widget version created');
+    },
+    onError: (error) => {
+      console.error('[Widget Version Create] Error:', error);
+      toast.error(`Failed to create widget version: ${error.message}`);
     },
   });
 
@@ -68,7 +97,7 @@ export function WidgetVersionManager() {
 
         console.log('[Widget Deploy] Files uploaded successfully, bundle hash:', uploadResult.bundleHash);
 
-        // Start a transaction to update version statuses
+        // Call the deploy_widget_version function
         const { error: updateError } = await supabase.rpc('deploy_widget_version', {
           p_version_id: versionId,
           p_bundle_hash: uploadResult.bundleHash
@@ -95,6 +124,18 @@ export function WidgetVersionManager() {
       toast.error(`Failed to deploy widget version: ${error.message}`);
     },
   });
+
+  const handleCopyCode = async () => {
+    const code = getEmbedCode(selectedSweepstakesId);
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast.success('Embed code copied to clipboard');
+  };
+
+  const getEmbedCode = (sweepstakesId: string) => {
+    return `<script src="${window.location.origin}/widget.js" data-sweepstakes-id="${sweepstakesId}"></script>`;
+  };
 
   if (isLoading) {
     return <div>Loading versions...</div>;
