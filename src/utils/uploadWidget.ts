@@ -2,6 +2,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 export async function uploadWidgetFiles() {
   try {
+    console.log('Starting widget files upload...');
+
     // Helper function to fetch file with fallback paths
     async function fetchFile(filename: string) {
       try {
@@ -65,7 +67,6 @@ export async function uploadWidgetFiles() {
         contentType: 'text/html',
         cacheControl: '3600',
         upsert: true,
-        duplex: 'half'
       });
     
     if (embedError) {
@@ -83,7 +84,6 @@ export async function uploadWidgetFiles() {
         contentType: 'application/javascript',
         cacheControl: '3600',
         upsert: true,
-        duplex: 'half'
       });
 
     if (widgetError) {
@@ -101,7 +101,6 @@ export async function uploadWidgetFiles() {
         contentType: 'application/javascript',
         cacheControl: '3600',
         upsert: true,
-        duplex: 'half'
       });
 
     if (bundleError) {
