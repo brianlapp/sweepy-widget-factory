@@ -6,11 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Info, Copy, Check, AlertCircle } from 'lucide-react';
-import { uploadWidgetFiles } from '@/utils/uploadWidget';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { uploadWidgetFiles } from '@/utils/uploadWidget';
 
 // IMPORTANT: This is the source of truth for the widget embed code format.
-// Any changes to this format must be carefully considered and documented.
 const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
 
 interface Version {
@@ -137,19 +136,19 @@ export function WidgetVersionManager() {
     },
   });
 
+  // This function returns the official embed code format.
+  const getEmbedCode = (sweepstakesId: string) => {
+    return `<!-- Sweepstakes Widget Embed Code -->
+<div id="sweepstakes-widget" data-sweepstakes-id="${sweepstakesId}"></div>
+<script src="${STORAGE_URL}/widget.js"></script>`;
+  };
+
   const handleCopyCode = async () => {
     const code = getEmbedCode(selectedSweepstakesId);
     await navigator.clipboard.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast.success('Embed code copied to clipboard');
-  };
-
-  // This function returns the official embed code format.
-  // Any changes here must be carefully reviewed and documented.
-  const getEmbedCode = (sweepstakesId: string) => {
-    return `<div id="sweepstakes-widget" data-sweepstakes-id="${sweepstakesId}"></div>
-<script src="${STORAGE_URL}/widget.js"></script>`;
   };
 
   if (isLoading) {
@@ -263,7 +262,7 @@ export function WidgetVersionManager() {
                     )}
                   </Button>
                 </div>
-                <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">
+                <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto whitespace-pre-wrap">
                   {getEmbedCode(selectedSweepstakesId)}
                 </pre>
               </div>
