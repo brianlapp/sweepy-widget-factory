@@ -27,12 +27,14 @@ export function WidgetVersionManager() {
   const { data: versions, isLoading } = useQuery({
     queryKey: ['widget-versions'],
     queryFn: async () => {
+      console.log('Fetching widget versions...');
       const { data, error } = await supabase
         .from('widget_versions')
         .select('*')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
+      console.log('Fetched versions:', data);
       return data as Version[];
     },
   });
@@ -53,6 +55,8 @@ export function WidgetVersionManager() {
   const deployMutation = useMutation({
     mutationFn: async (versionId: string) => {
       try {
+        console.log('Starting deployment for version:', versionId);
+        
         // First build the widget files
         toast.info('Building widget files...');
         
@@ -68,8 +72,23 @@ export function WidgetVersionManager() {
             .map(b => b.toString(16).padStart(2, '0'))
             .join(''));
 
-        // Update version record
-        const { error } = await supabase
+        console.log('Generated bundle hash:', bundleHash);
+
+        // First deactivate all versions
+        console.log('Deactivating all versions...');
+        const { error: deactivateError } = await supabase
+          .from('widget_versions')
+          .update({ is_active: false })
+          .neq('id', 'no-match'); // This ensures all rows are updated
+
+        if (deactivateError) {
+          console.error('Error deactivating versions:', deactivateError);
+          throw deactivateError;
+        }
+
+        // Then activate and update the current version
+        console.log('Activating current version:', versionId);
+        const { error: updateError } = await supabase
           .from('widget_versions')
           .update({ 
             deployed_at: new Date().toISOString(),
@@ -78,15 +97,12 @@ export function WidgetVersionManager() {
           })
           .eq('id', versionId);
 
-        if (error) throw error;
+        if (updateError) {
+          console.error('Error updating version:', updateError);
+          throw updateError;
+        }
 
-        // Deactivate other versions
-        const { error: deactivateError } = await supabase
-          .from('widget_versions')
-          .update({ is_active: false })
-          .neq('id', versionId);
-
-        if (deactivateError) throw deactivateError;
+        console.log('Deployment completed successfully');
       } catch (error) {
         console.error('Deployment error:', error);
         throw error;
