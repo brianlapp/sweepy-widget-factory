@@ -40,15 +40,20 @@
                 this.sendToParent('WIDGET_ERROR', errorDetails);
             },
             sendToParent: function(type, message) {
-                if (window.parent) {
-                    const event = { 
-                        type, 
-                        message, 
-                        timestamp: Date.now(),
-                        timeSinceStart: Date.now() - this.timeStart
-                    };
-                    window.parent.postMessage(event, '*');
-                    this.metrics.messageEvents.push(event);
+                try {
+                    if (window.parent) {
+                        const event = { 
+                            type, 
+                            message, 
+                            timestamp: Date.now(),
+                            timeSinceStart: Date.now() - this.timeStart
+                        };
+                        window.parent.postMessage(event, '*');
+                        this.metrics.messageEvents.push(event);
+                        console.log('[Widget Embed] Sent message to parent:', event);
+                    }
+                } catch (error) {
+                    console.error('[Widget Embed] Error sending message to parent:', error);
                 }
             },
             trackResourceLoad: function(resource) {
@@ -72,6 +77,7 @@
 
         // Track all message events
         window.addEventListener('message', function(event) {
+            console.log('[Widget Embed] Received message:', event.data);
             logger.metrics.messageEvents.push({
                 type: event.data.type,
                 timestamp: Date.now(),
@@ -79,6 +85,13 @@
             });
             
             logger.info('Message received:', event.data);
+
+            // Handle initialization message
+            if (event.data.type === 'INIT_WIDGET') {
+                logger.info('Initializing widget with config:', event.data);
+                window.WIDGET_CONFIG = event.data;
+                initializeWidgetWithRetry(event.data);
+            }
         });
 
         // Resource loading diagnostics
@@ -96,31 +109,28 @@
             }
         };
 
-        window.addEventListener('load', () => {
-            resourcePerf.end();
-            logger.info('Window loaded, checking dependencies:', {
-                react: typeof React !== 'undefined',
-                reactDOM: typeof ReactDOM !== 'undefined'
-            });
-        });
+        // Log when scripts start loading
+        console.log('[Widget Embed] Starting to load React scripts...');
     </script>
+    
     <script 
         crossorigin 
         src="https://unpkg.com/react@18/umd/react.production.min.js"
-        onload="logger.trackResourceLoad('react')"
+        onload="logger.info('React loaded successfully'); logger.trackResourceLoad('react')"
         onerror="logger.error('Failed to load React')"
     ></script>
     <script 
         crossorigin 
         src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"
-        onload="logger.trackResourceLoad('react-dom')"
+        onload="logger.info('ReactDOM loaded successfully'); logger.trackResourceLoad('react-dom')"
         onerror="logger.error('Failed to load ReactDOM')"
     ></script>
 </head>
 <body>
     <div id="root"></div>
     <script>
-        // Enhanced initialization with better error handling
+        console.log('[Widget Embed] Body script starting...');
+        
         let initRetries = 0;
         const MAX_RETRIES = 3;
         const RETRY_DELAY = 1000;
@@ -129,7 +139,6 @@
             if (!id) {
                 throw new Error('No sweepstakes ID provided');
             }
-            // Validate UUID format
             const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
             if (!uuidRegex.test(id)) {
                 throw new Error('Invalid sweepstakes ID format');
@@ -139,14 +148,30 @@
 
         function initializeWidgetWithRetry(config) {
             try {
-                logger.info('Initializing widget with config:', config);
+                logger.info('Starting widget initialization with config:', config);
                 
+                // Check if React is available
+                if (typeof React === 'undefined') {
+                    throw new Error('React not loaded');
+                }
+                if (typeof ReactDOM === 'undefined') {
+                    throw new Error('ReactDOM not loaded');
+                }
+                
+                logger.info('React and ReactDOM are available');
+
                 if (typeof window.initializeWidget !== 'function') {
                     throw new Error('Widget initialization function not found');
                 }
 
                 window.initializeWidget(config.sweepstakesId);
                 logger.info('Widget initialized successfully');
+                
+                // Notify parent that widget is ready
+                logger.sendToParent('WIDGET_READY', {
+                    timestamp: Date.now(),
+                    metrics: logger.metrics
+                });
             } catch (error) {
                 logger.error('Widget initialization failed:', error);
                 
@@ -175,30 +200,27 @@
             }
         }
 
-        // Handle initialization message
-        window.addEventListener('message', function(event) {
-            try {
-                logger.info('Received message:', event.data);
-                
-                if (event.data.type === 'INIT_WIDGET') {
-                    if (!event.data.sweepstakesId) {
-                        throw new Error('No sweepstakes ID provided in init message');
-                    }
-
-                    validateSweepstakesId(event.data.sweepstakesId);
-                    logger.info('Valid sweepstakes ID received:', event.data.sweepstakesId);
-                    
-                    window.WIDGET_CONFIG = event.data;
-                    initializeWidgetWithRetry(event.data);
-                }
-            } catch (error) {
-                logger.error('Message handling error:', error);
-                showFallbackContent(error);
+        // Log when the page is fully loaded
+        window.addEventListener('load', () => {
+            resourcePerf.end();
+            const reactAvailable = typeof React !== 'undefined';
+            const reactDOMAvailable = typeof ReactDOM !== 'undefined';
+            logger.info('Window loaded, checking dependencies:', {
+                react: reactAvailable,
+                reactDOM: reactDOMAvailable
+            });
+            
+            if (!reactAvailable || !reactDOMAvailable) {
+                logger.error('Required dependencies not loaded:', {
+                    react: reactAvailable,
+                    reactDOM: reactDOMAvailable
+                });
             }
         });
 
-        // Notify parent when ready
+        // Initial ready notification
         setTimeout(() => {
+            logger.info('Sending initial ready notification');
             if (window.parent) {
                 window.parent.postMessage({ 
                     type: 'WIDGET_READY', 
