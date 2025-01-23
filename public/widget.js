@@ -247,36 +247,32 @@
           throw new Error('Cannot access iframe content window');
         }
 
-        // Update resource verification to use correct paths and strip query params
-        const baseUrl = STORAGE_URL + '/static';
+        // Update resource verification to use correct paths
         const requiredResources = [
-          baseUrl + '/widget.js',
-          baseUrl + '/embed.html'
+          'widget.js',
+          'embed.html'
         ];
         
         const loadedResources = Array.from(this.resourcesLoaded);
         logger.info('Loaded resources:', loadedResources);
         
         const hasAllResources = requiredResources.every(required => {
-          // Strip query parameters for comparison
-          const cleanRequired = required.split('?')[0];
           return loadedResources.some(loaded => {
-            const cleanLoaded = loaded.split('?')[0];
-            return cleanLoaded.includes(cleanRequired);
+            const cleanLoaded = loaded.split('?')[0].split('/').pop();
+            return cleanLoaded === required;
           });
         });
 
         if (!hasAllResources) {
           const missingResources = requiredResources.filter(required => {
-            const cleanRequired = required.split('?')[0];
             return !loadedResources.some(loaded => {
-              const cleanLoaded = loaded.split('?')[0];
-              return cleanLoaded.includes(cleanRequired);
+              const cleanLoaded = loaded.split('?')[0].split('/').pop();
+              return cleanLoaded === required;
             });
           });
           
           logger.warn('Missing resources:', missingResources);
-          throw new Error(`Missing required resources: ${missingResources.map(r => r.split('/').pop()).join(', ')}`);
+          throw new Error(`Missing required resources: ${missingResources.join(', ')}`);
         }
 
         logger.info('All required resources verified');

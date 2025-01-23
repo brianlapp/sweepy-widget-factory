@@ -25,6 +25,8 @@
             }
         };
 
+        logger.info('Embed page loading...');
+
         // Initialize widget with retry logic
         let initRetries = 0;
         const MAX_RETRIES = 3;
@@ -70,6 +72,6 @@
 </head>
 <body>
     <div id="root"></div>
-    <script src="https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static/widget.js"></script>
+    <script src="widget.js"></script>
 </body>
 </html>
