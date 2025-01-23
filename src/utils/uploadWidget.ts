@@ -28,17 +28,14 @@ export async function uploadWidgetFiles() {
       }
     }
 
-    console.log('Starting widget files upload...');
-
     // First, delete existing files
     console.log('Removing existing files...');
     await supabase.storage
       .from('static')
       .remove(['embed.html', 'widget.js', 'widget.bundle.js']);
 
-    // Upload embed.html - this should be a minimal HTML file
-    const embedHtml = `
-<!DOCTYPE html>
+    // Upload embed.html
+    const embedHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -46,9 +43,6 @@ export async function uploadWidgetFiles() {
     <title>Sweepstakes Widget</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-</head>
-<body>
-    <div id="root"></div>
     <script src="widget.bundle.js"></script>
     <script>
         const params = new URLSearchParams(window.location.search);
@@ -57,6 +51,9 @@ export async function uploadWidgetFiles() {
             window.initializeWidget(sweepstakesId);
         }
     </script>
+</head>
+<body>
+    <div id="root"></div>
 </body>
 </html>`;
 
