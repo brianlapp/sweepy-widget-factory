@@ -12,7 +12,7 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
   console.log('[Widget Upload] Starting widget files upload process...');
   
   try {
-    // Helper function to fetch file with fallback paths
+    // Helper function to fetch file with proper content type handling
     async function fetchFile(filename: string) {
       console.log(`[Widget Upload] Attempting to fetch ${filename}...`);
       try {
@@ -22,7 +22,10 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
           console.log(`[Widget Upload] Found ${filename} in dist directory`);
           const content = await response.text();
           console.log(`[Widget Upload] Content length for ${filename}:`, content.length);
-          return { content, type: response.headers.get('content-type') };
+          return { 
+            content, 
+            type: filename.endsWith('.js') ? 'application/javascript' : 'text/html'
+          };
         }
         
         // Try root directory (development)
@@ -31,7 +34,10 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
           console.log(`[Widget Upload] Found ${filename} in root directory`);
           const content = await rootResponse.text();
           console.log(`[Widget Upload] Content length for ${filename}:`, content.length);
-          return { content, type: rootResponse.headers.get('content-type') };
+          return { 
+            content, 
+            type: filename.endsWith('.js') ? 'application/javascript' : 'text/html'
+          };
         }
 
         throw new Error(`Failed to fetch ${filename} from any location`);
@@ -43,9 +49,8 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
 
     // First, verify we can fetch all required files before starting upload
     console.log('[Widget Upload] Verifying all required files...');
-    const [widgetJs, bundleJs, embedHtml] = await Promise.all([
+    const [widgetJs, embedHtml] = await Promise.all([
       fetchFile('widget.js'),
-      fetchFile('widget.bundle.js'),
       fetchFile('embed.html')
     ]).catch(error => {
       throw new Error(`File verification failed: ${error.message}`);
@@ -53,7 +58,7 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
 
     // Generate bundle hash before upload
     console.log('[Widget Upload] Generating bundle hash...');
-    const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(bundleJs.content))
+    const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(widgetJs.content))
       .then(hash => Array.from(new Uint8Array(hash))
         .map(b => b.toString(16).padStart(2, '0'))
         .join(''));
@@ -63,26 +68,19 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
     console.log('[Widget Upload] Removing existing files...');
     const { error: deleteError } = await supabase.storage
       .from('static')
-      .remove(['embed.html', 'widget.js', 'widget.bundle.js']);
+      .remove(['embed.html', 'widget.js']);
 
     if (deleteError) {
       console.error('[Widget Upload] Error deleting existing files:', deleteError);
       throw new Error(`Failed to delete existing files: ${deleteError.message}`);
     }
 
-    // Upload all files in parallel
+    // Upload all files in parallel with explicit content types
     console.log('[Widget Upload] Uploading new files...');
     const uploads = await Promise.all([
       supabase.storage
         .from('static')
         .upload('widget.js', widgetJs.content, {
-          contentType: 'application/javascript; charset=utf-8',
-          cacheControl: '3600',
-          upsert: true,
-        }),
-      supabase.storage
-        .from('static')
-        .upload('widget.bundle.js', bundleJs.content, {
           contentType: 'application/javascript; charset=utf-8',
           cacheControl: '3600',
           upsert: true,

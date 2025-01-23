@@ -36,25 +36,19 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
-        widget: path.resolve(__dirname, 'src/widget.tsx'),
-        embed: path.resolve(__dirname, 'public/embed.html'),
+        widget: path.resolve(__dirname, 'public/widget.js'),
       },
       output: {
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === 'widget') {
-            return 'widget.bundle.js';
+            return 'widget.js';
           }
           return 'assets/[name]-[hash].js';
         },
-        assetFileNames: (assetInfo) => {
-          if (assetInfo.name === 'embed.html' || assetInfo.name === 'widget.js') {
-            return '[name]';
-          }
-          return 'assets/[name]-[hash][extname]';
-        },
+        assetFileNames: 'assets/[name]-[hash][extname]',
         chunkFileNames: 'assets/[name]-[hash].js',
       },
-      external: ['react', 'react-dom'], // Only exclude React and ReactDOM
+      external: ['react', 'react-dom'],
     },
     sourcemap: true,
     minify: false,
