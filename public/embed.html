@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sweepstakes Widget</title>
     <script>
-        // Enhanced error tracking
+        // Production error tracking
         console.log('[Widget Embed] Initializing embed page...');
         window.onerror = function(msg, url, lineNo, columnNo, error) {
             console.error('[Widget Embed] Error:', { msg, url, lineNo, columnNo, error });
@@ -22,15 +22,25 @@
     <script>
         console.log('[Widget Embed] DOM loaded, waiting for widget initialization...');
         
-        // Enhanced message handling
+        // Enhanced message handling with validation
         window.addEventListener('message', function(event) {
             console.log('[Widget Embed] Received message:', event.data);
             
             if (event.data.type === 'INIT_WIDGET') {
                 console.log('[Widget Embed] Initializing widget with data:', event.data);
+                
+                if (!event.data.sweepstakesId) {
+                    console.error('[Widget Embed] No sweepstakes ID provided');
+                    window.parent.postMessage({ 
+                        type: 'WIDGET_ERROR', 
+                        error: { message: 'No sweepstakes ID provided' } 
+                    }, '*');
+                    return;
+                }
+
                 window.WIDGET_CONFIG = event.data;
                 
-                // Initialize the widget
+                // Initialize the widget with enhanced error handling
                 if (window.initializeWidget) {
                     try {
                         window.initializeWidget(event.data.sweepstakesId);
