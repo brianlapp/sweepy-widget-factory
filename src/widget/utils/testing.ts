@@ -1,4 +1,4 @@
-import { WidgetError, WidgetTestConfig } from '../types';
+import { WidgetError, WidgetTestConfig, WidgetConfig } from '../types';
 
 export function createTestWidget(config: WidgetTestConfig) {
   console.group('[Widget Test] Creating test widget');
@@ -22,9 +22,14 @@ export function createTestWidget(config: WidgetTestConfig) {
 
     console.log('[Widget Test] Container ready, initializing widget');
 
-    // Initialize widget
+    // Initialize widget with proper config
     if (window.initializeWidget) {
-      window.initializeWidget(containerId);
+      const widgetConfig: WidgetConfig = {
+        storageUrl: '',
+        version: '1.0.0',
+        sweepstakesId
+      };
+      window.initializeWidget(widgetConfig);
       console.log('[Widget Test] Widget initialized successfully');
     } else {
       throw new Error('Widget initialization function not found');
@@ -32,6 +37,7 @@ export function createTestWidget(config: WidgetTestConfig) {
   } catch (error) {
     console.error('[Widget Test] Failed to create test widget:', error);
     logWidgetError({
+      name: 'TestWidgetError',
       code: 'TEST_WIDGET_CREATION_ERROR',
       message: error instanceof Error ? error.message : 'Unknown error occurred',
       details: error

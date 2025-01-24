@@ -34,6 +34,7 @@ class ErrorBoundary extends React.Component<
   componentDidCatch(error: Error) {
     if (this.props.onError) {
       this.props.onError({
+        name: 'RenderError',
         code: 'RENDER_ERROR',
         message: error.message,
         details: error.stack

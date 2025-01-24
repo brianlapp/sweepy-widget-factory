@@ -19,6 +19,7 @@ export const logger = {
   error: (msg: string, error?: Error) => {
     console.error(`[Widget Error] ${msg}`, error);
     const widgetError: WidgetError = {
+      name: 'WidgetError',
       code: 'ERROR',
       message: msg,
       details: error?.stack
