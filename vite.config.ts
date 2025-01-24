@@ -37,7 +37,7 @@ export default defineConfig(({ mode, command }): UserConfig => {
       build: {
         outDir: 'dist/widget',
         lib: {
-          entry: path.resolve(__dirname, 'src/widget.ts'),
+          entry: path.resolve(__dirname, 'src/widget/index.ts'),
           name: 'SweepstakesWidget',
           formats: ['iife'],
           fileName: () => 'widget.js',
