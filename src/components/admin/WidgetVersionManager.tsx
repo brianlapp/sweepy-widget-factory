@@ -453,7 +453,7 @@ export function WidgetVersionManager() {
                       </span>
                       <Badge variant={
                         log.type === 'error' ? 'destructive' :
-                        log.type === 'warning' ? 'secondary' :
+                        log.type === 'warning' ? 'outline' :
                         'default'
                       }>
                         {log.type}
