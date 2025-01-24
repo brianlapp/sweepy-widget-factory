@@ -28,14 +28,10 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
     }
 
     console.log('[Widget Upload] Fetching widget files...');
-    const [widgetContent, embedContent] = await Promise.all([
-      fetchFile('widget.js'),
-      fetchFile('embed.html')
-    ]);
+    const widgetContent = await fetchFile('widget-bundle.js');
     
     console.log('[Widget Upload] Generating bundle hash...');
-    const combinedContent = widgetContent + embedContent;
-    const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(combinedContent))
+    const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(widgetContent))
       .then(hash => Array.from(new Uint8Array(hash))
         .map(b => b.toString(16).padStart(2, '0'))
         .join(''));
@@ -45,67 +41,33 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
     console.log('[Widget Upload] Removing existing widget files...');
     await supabase.storage
       .from('static')
-      .remove(['widget.js', 'embed.html']);
-
-    await new Promise(resolve => setTimeout(resolve, 1000));
+      .remove(['widget.js']);
 
     // Set proper CORS headers and cache control
     const uploadOptions = {
       cacheControl: '3600',
       upsert: true,
-      contentType: 'text/html; charset=utf-8',
-      duplex: 'half',
+      contentType: 'application/javascript; charset=utf-8',
     };
 
     console.log('[Widget Upload] Uploading widget files with CORS headers...');
-    const uploads = await Promise.all([
-      supabase.storage
-        .from('static')
-        .upload('widget.js', new Blob([widgetContent], { 
-          type: 'application/javascript' 
-        }), {
-          ...uploadOptions,
-          contentType: 'application/javascript; charset=utf-8',
-        }),
-      supabase.storage
-        .from('static')
-        .upload('embed.html', new Blob([embedContent], { 
-          type: 'text/html' 
-        }), uploadOptions)
-    ]);
-
-    const uploadErrors = uploads.filter(upload => upload.error);
-    if (uploadErrors.length > 0) {
-      console.error('[Widget Upload] Upload errors:', uploadErrors);
-      const errorMessages = uploadErrors.map(upload => upload.error?.message).join(', ');
-      throw new Error(`File upload failed: ${errorMessages}`);
-    }
-
-    // Verify uploads and get public URLs
-    const { data: files, error: listError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('static')
-      .list();
-    
-    if (listError) {
-      console.error('[Widget Upload] Error listing files:', listError);
-      throw new Error(`Failed to verify uploads: ${listError.message}`);
+      .upload('widget.js', new Blob([widgetContent], { 
+        type: 'application/javascript' 
+      }), uploadOptions);
+
+    if (uploadError) {
+      console.error('[Widget Upload] Upload error:', uploadError);
+      throw uploadError;
     }
 
-    // Get and log public URLs
+    // Get and log public URL
     const widgetUrl = supabase.storage
       .from('static')
       .getPublicUrl('widget.js').data.publicUrl;
-    
-    const embedUrl = supabase.storage
-      .from('static')
-      .getPublicUrl('embed.html').data.publicUrl;
 
-    console.log('[Widget Upload] Public URLs:', {
-      widget: widgetUrl,
-      embed: embedUrl
-    });
-
-    console.log('[Widget Upload] Current files in storage:', files);
+    console.log('[Widget Upload] Public URL:', widgetUrl);
     console.log('[Widget Upload] Upload completed successfully');
     
     return { success: true, bundleHash };
