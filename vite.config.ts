@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react({
       tsDecorators: true,
-      jsxImportSource: "react", // Explicitly set React as JSX source
+      jsxImportSource: "react",
     }),
     mode === 'development' && componentTagger(),
   ].filter(Boolean),
@@ -23,14 +23,14 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-    dedupe: ['react', 'react-dom'], // Ensure single copy of React
+    dedupe: ['react', 'react-dom'],
   },
   define: {
     'process.env.VITE_APP_VERSION': JSON.stringify(version),
   },
   build: {
     outDir: 'dist',
-    assetsDir: '',
+    assetsDir: 'assets',
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
@@ -45,11 +45,7 @@ export default defineConfig(({ mode }) => ({
         },
         assetFileNames: 'assets/[name]-[hash][extname]',
         chunkFileNames: 'assets/[name]-[hash].js',
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom'], // Bundle React separately
-        },
       },
-      external: [], // Bundle everything together
     },
     sourcemap: true,
     minify: mode === 'production',
