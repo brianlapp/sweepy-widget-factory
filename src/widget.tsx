@@ -22,7 +22,7 @@ function WidgetRoot({ sweepstakesId }: { sweepstakesId: string }) {
         };
 
         // Track React availability
-        (window as any).__REACT_STATUS__.loaded = true;
+        (window as any).__WIDGET_STATE__.reactLoaded = true;
         logger.info('React loaded and available');
         window.parent.postMessage({ type: 'REACT_LOADED', status: true }, '*');
 
