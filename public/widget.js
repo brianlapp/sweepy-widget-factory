@@ -4,20 +4,28 @@
   const MESSAGE_TIMEOUT = 5000;
   const MAX_RETRIES = 3;
   const LOAD_TIMEOUT = 10000;
+  const ALLOWED_ORIGINS = ['*']; // We can make this more restrictive later
 
-  // Enhanced diagnostic system with network monitoring
+  // Enhanced diagnostic system with connection monitoring
   const diagnostics = {
     startTime: Date.now(),
     events: [],
     errors: [],
     resources: new Set(),
     networkRequests: [],
+    connectionStatus: {
+      iframeLoaded: false,
+      reactLoaded: false,
+      widgetInitialized: false,
+      lastError: null
+    },
     log: function(type, message, data = {}) {
       const event = {
         type,
         message,
         timestamp: Date.now(),
         timeSinceStart: Date.now() - this.startTime,
+        connectionStatus: { ...this.connectionStatus },
         data
       };
       this.events.push(event);
@@ -29,9 +37,11 @@
         message,
         error: error?.toString(),
         stack: error?.stack,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        connectionStatus: { ...this.connectionStatus }
       };
       this.errors.push(errorEvent);
+      this.connectionStatus.lastError = message;
       console.error(`[Widget Error] ${message}`, error);
       return errorEvent;
     },
@@ -47,28 +57,7 @@
     }
   };
 
-  // Network request monitoring
-  const originalFetch = window.fetch;
-  window.fetch = function(...args) {
-    const request = args[0];
-    const url = typeof request === 'string' ? request : request.url;
-    
-    return originalFetch.apply(this, args)
-      .then(response => {
-        diagnostics.network({
-          url,
-          status: response.status,
-          type: 'fetch',
-          ok: response.ok
-        });
-        return response;
-      })
-      .catch(error => {
-        diagnostics.error('Fetch error:', error);
-        throw error;
-      });
-  };
-
+  // Enhanced IframeManager with better connection handling
   class IframeManager {
     constructor() {
       this.retryCount = 0;
@@ -76,23 +65,34 @@
       this.isReady = false;
       this.loadTimeout = null;
       this.initTimeout = null;
+      this.connectionCheckInterval = null;
       
-      // Track all resource loads
-      const observer = new PerformanceObserver((list) => {
-        list.getEntries().forEach(entry => {
-          diagnostics.log('resource_load', `Resource loaded: ${entry.name}`, {
-            type: entry.initiatorType,
-            duration: entry.duration
-          });
-          diagnostics.resources.add(entry.name);
-        });
-      });
-      
-      observer.observe({ entryTypes: ['resource'] });
-      
-      // Listen for messages
       window.addEventListener('message', this.handleMessage.bind(this));
-      diagnostics.log('init', 'IframeManager initialized');
+      window.addEventListener('online', this.handleOnline.bind(this));
+      window.addEventListener('offline', this.handleOffline.bind(this));
+      
+      diagnostics.log('init', 'IframeManager initialized with enhanced connection handling');
+    }
+
+    handleOnline() {
+      diagnostics.log('connection', 'Network connection restored');
+      if (this.iframe && !this.isReady) {
+        this.retryConnection();
+      }
+    }
+
+    handleOffline() {
+      diagnostics.log('connection', 'Network connection lost');
+    }
+
+    retryConnection() {
+      if (this.retryCount < MAX_RETRIES) {
+        this.retryCount++;
+        diagnostics.log('retry', `Attempting to reconnect (${this.retryCount}/${MAX_RETRIES})`);
+        this.setIframeSource();
+      } else {
+        diagnostics.error('Max retries reached');
+      }
     }
 
     handleMessage(event) {
@@ -111,6 +111,7 @@
             break;
           case 'REACT_LOADED':
             diagnostics.log('react_status', 'React initialization status', event.data);
+            diagnostics.connectionStatus.reactLoaded = true;
             break;
           case 'setHeight':
             if (this.iframe) {
@@ -147,55 +148,51 @@
         this.cleanup();
         this.iframe = document.createElement('iframe');
         
-        // Set iframe attributes
+        // Enhanced iframe attributes
         this.iframe.style.width = '100%';
         this.iframe.style.border = 'none';
         this.iframe.style.minHeight = '600px';
         this.iframe.setAttribute('scrolling', 'no');
         this.iframe.setAttribute('title', 'Sweepstakes Widget');
+        this.iframe.setAttribute('loading', 'eager'); // Prioritize loading
         
         // Enhanced load handling
         this.iframe.onload = () => {
           diagnostics.log('iframe_load', 'Iframe loaded');
+          diagnostics.connectionStatus.iframeLoaded = true;
           clearTimeout(this.loadTimeout);
           this.verifyIframeContent();
         };
         
         this.iframe.onerror = (error) => {
           diagnostics.error('Iframe load error', error);
+          diagnostics.connectionStatus.iframeLoaded = false;
           this.handleLoadError(error);
         };
         
-        // Set source with cache busting and version
         const embedUrl = `${STORAGE_URL}/embed.html?v=${VERSION}&t=${Date.now()}`;
         this.iframe.src = embedUrl;
-        diagnostics.log('set_src', `Setting iframe src: ${embedUrl}`);
         
-        // Set load timeout
-        this.loadTimeout = setTimeout(() => {
+        // Set up connection monitoring
+        this.connectionCheckInterval = setInterval(() => {
           if (!this.isReady) {
-            diagnostics.error('Iframe load timeout');
-            this.handleLoadError(new Error('Load timeout'));
+            this.checkConnection();
           }
-        }, LOAD_TIMEOUT);
-
-        // Initialize widget after load
-        this.initTimeout = setTimeout(() => {
-          if (this.iframe.contentWindow) {
-            const initMessage = {
-              type: 'INIT_WIDGET',
-              sweepstakesId,
-              timestamp: Date.now()
-            };
-            diagnostics.log('init_message', 'Sending init message', initMessage);
-            this.iframe.contentWindow.postMessage(initMessage, '*');
-          }
-        }, 1000);
+        }, 5000);
 
         return this.iframe;
       } catch (error) {
         diagnostics.error('Error creating iframe', error);
         throw error;
+      }
+    }
+
+    checkConnection() {
+      const status = diagnostics.connectionStatus;
+      diagnostics.log('connection_check', 'Checking connection status', status);
+      
+      if (!status.iframeLoaded || !status.reactLoaded) {
+        this.retryConnection();
       }
     }
 
@@ -272,6 +269,7 @@
       diagnostics.log('cleanup', 'Cleaning up iframe manager');
       clearTimeout(this.loadTimeout);
       clearTimeout(this.initTimeout);
+      clearInterval(this.connectionCheckInterval);
       
       if (this.iframe) {
         this.iframe.onload = null;
