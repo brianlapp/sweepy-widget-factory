@@ -1,23 +1,26 @@
 export interface WidgetConfig {
-  sweepstakesId: string;
-  version?: string;
-  environment?: 'development' | 'production';
+  storageUrl: string;
+  version: string;
 }
 
 export interface WidgetMessage {
   type: string;
   data?: any;
-  error?: Error;
 }
 
-export interface WidgetError extends Error {
-  code?: string;
-  context?: any;
+export interface WidgetError {
+  code: string;
+  message: string;
+  details?: any;
 }
 
 export interface WidgetState {
   isReady: boolean;
-  hasError: boolean;
-  error?: WidgetError;
-  height?: number;
+  isLoading: boolean;
+  error: WidgetError | null;
+}
+
+export interface WidgetProps {
+  sweepstakesId: string;
+  config: WidgetConfig;
 }
