@@ -10,44 +10,111 @@
     <script>
         console.log('[Widget] Starting initialization...');
         
-        // Track React availability
-        window.__REACT_STATUS__ = {
-            loaded: false,
-            error: null
+        // Enhanced initialization tracking
+        window.__WIDGET_STATE__ = {
+            loadStartTime: Date.now(),
+            reactLoaded: false,
+            widgetInitialized: false,
+            error: null,
+            logs: []
         };
+
+        function logState(type, message, data = {}) {
+            const log = {
+                type,
+                message,
+                timestamp: Date.now(),
+                timeSinceStart: Date.now() - window.__WIDGET_STATE__.loadStartTime,
+                state: { ...window.__WIDGET_STATE__ },
+                data
+            };
+            window.__WIDGET_STATE__.logs.push(log);
+            console.log(`[Widget ${type}]`, message, data);
+            
+            // Report state to parent
+            window.parent.postMessage({
+                type: 'WIDGET_STATE',
+                state: window.__WIDGET_STATE__,
+                log
+            }, '*');
+        }
 
         // Enhanced error tracking
         window.onerror = function(msg, url, line, col, error) {
-            console.error('[Widget Error]', { msg, url, line, col, error });
-            window.parent.postMessage({ 
-                type: 'WIDGET_ERROR', 
-                error: { message: msg, url, line, stack: error?.stack } 
-            }, '*');
+            window.__WIDGET_STATE__.error = {
+                message: msg,
+                url,
+                line,
+                stack: error?.stack
+            };
+            logState('ERROR', msg, { url, line, col, stack: error?.stack });
             return false;
         };
 
-        // Track widget initialization
-        window.__WIDGET_READY__ = false;
+        // Track React availability
+        Object.defineProperty(window, 'React', {
+            set: function(value) {
+                window.__WIDGET_STATE__.reactLoaded = true;
+                logState('REACT', 'React loaded and available');
+                return value;
+            },
+            configurable: true
+        });
+
+        // Initialize widget with enhanced tracking
         window.__initializeWidget = function(sweepstakesId) {
-            console.log('[Widget] Initializing with ID:', sweepstakesId);
+            logState('INIT', 'Initializing widget', { sweepstakesId });
+            
             try {
+                if (!window.initializeWidget) {
+                    throw new Error('Widget initialization function not found');
+                }
+                
                 window.initializeWidget(sweepstakesId);
-                window.__WIDGET_READY__ = true;
-                console.log('[Widget] Successfully initialized');
-                window.parent.postMessage({ type: 'WIDGET_READY' }, '*');
-            } catch (error) {
-                console.error('[Widget] Initialization failed:', error);
+                window.__WIDGET_STATE__.widgetInitialized = true;
+                logState('SUCCESS', 'Widget initialized successfully');
+                
                 window.parent.postMessage({ 
-                    type: 'WIDGET_ERROR', 
-                    error: { 
-                        message: 'Initialization failed', 
-                        details: error?.message,
-                        stack: error?.stack
-                    } 
+                    type: 'WIDGET_READY',
+                    sweepstakesId 
                 }, '*');
+            } catch (error) {
+                logState('ERROR', 'Initialization failed', {
+                    message: error.message,
+                    stack: error.stack
+                });
+                
+                window.parent.postMessage({ 
+                    type: 'WIDGET_ERROR',
+                    error: {
+                        message: 'Initialization failed',
+                        details: error.message,
+                        stack: error.stack
+                    }
+                }, '*');
+                throw error;
             }
         };
+
+        // Load widget bundle with timeout
+        const scriptLoadTimeout = setTimeout(() => {
+            if (!window.__WIDGET_STATE__.reactLoaded) {
+                logState('TIMEOUT', 'Script load timeout');
+            }
+        }, 5000);
+
+        // Track script load
+        const widgetScript = document.createElement('script');
+        widgetScript.src = 'widget-bundle.js';
+        widgetScript.onload = () => {
+            clearTimeout(scriptLoadTimeout);
+            logState('LOAD', 'Widget bundle loaded');
+        };
+        widgetScript.onerror = (error) => {
+            clearTimeout(scriptLoadTimeout);
+            logState('ERROR', 'Failed to load widget bundle', { error });
+        };
+        document.body.appendChild(widgetScript);
     </script>
-    <script src="widget-bundle.js"></script>
 </body>
 </html>
