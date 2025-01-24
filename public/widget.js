@@ -5,12 +5,13 @@
   const MAX_RETRIES = 3;
   const LOAD_TIMEOUT = 10000;
 
-  // Enhanced diagnostic system
+  // Enhanced diagnostic system with network monitoring
   const diagnostics = {
     startTime: Date.now(),
     events: [],
     errors: [],
     resources: new Set(),
+    networkRequests: [],
     log: function(type, message, data = {}) {
       const event = {
         type,
@@ -33,7 +34,39 @@
       this.errors.push(errorEvent);
       console.error(`[Widget Error] ${message}`, error);
       return errorEvent;
+    },
+    network: function(request) {
+      const details = {
+        url: request.url,
+        status: request.status,
+        type: request.type,
+        timestamp: Date.now()
+      };
+      this.networkRequests.push(details);
+      this.log('network_request', `${request.type} request to ${request.url}`, details);
     }
+  };
+
+  // Network request monitoring
+  const originalFetch = window.fetch;
+  window.fetch = function(...args) {
+    const request = args[0];
+    const url = typeof request === 'string' ? request : request.url;
+    
+    return originalFetch.apply(this, args)
+      .then(response => {
+        diagnostics.network({
+          url,
+          status: response.status,
+          type: 'fetch',
+          ok: response.ok
+        });
+        return response;
+      })
+      .catch(error => {
+        diagnostics.error('Fetch error:', error);
+        throw error;
+      });
   };
 
   class IframeManager {
@@ -71,10 +104,13 @@
             diagnostics.error('Widget error from iframe', event.data.error);
             break;
           case 'WIDGET_READY':
-            this.handleWidgetReady();
+            this.handleWidgetReady(event.data);
             break;
           case 'DEBUG_LOG':
-            diagnostics.log('iframe_debug', event.data.message);
+            diagnostics.log('iframe_debug', event.data.message, event.data);
+            break;
+          case 'REACT_LOADED':
+            diagnostics.log('react_status', 'React initialization status', event.data);
             break;
           case 'setHeight':
             if (this.iframe) {
@@ -88,8 +124,8 @@
       }
     }
 
-    handleWidgetReady() {
-      diagnostics.log('widget_ready', 'Widget reported ready');
+    handleWidgetReady(data) {
+      diagnostics.log('widget_ready', 'Widget reported ready', data);
       clearTimeout(this.initTimeout);
       this.isReady = true;
       

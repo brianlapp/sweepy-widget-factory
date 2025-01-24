@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sweepstakes Widget</title>
     <script>
-        // Enhanced diagnostic logging utility
+        // Enhanced diagnostic logging utility with network request tracking
         const logger = {
             timeStart: Date.now(),
             errors: [],
@@ -14,7 +14,8 @@
                 renderingSteps: [],
                 reactInitTime: null,
                 messageEvents: [],
-                reactStatus: null
+                reactStatus: null,
+                networkRequests: []
             },
             info: function(msg, ...args) {
                 const timestamp = new Date().toISOString();
@@ -40,6 +41,16 @@
                 this.errors.push(errorDetails);
                 this.sendToParent('WIDGET_ERROR', errorDetails);
             },
+            network: function(request) {
+                const details = {
+                    url: request.url,
+                    status: request.status,
+                    type: request.type,
+                    timestamp: Date.now()
+                };
+                this.metrics.networkRequests.push(details);
+                this.info('Network request:', details);
+            },
             sendToParent: function(type, message) {
                 try {
                     if (window.parent) {
@@ -48,7 +59,8 @@
                             message, 
                             timestamp: Date.now(),
                             timeSinceStart: Date.now() - this.timeStart,
-                            reactStatus: this.metrics.reactStatus
+                            reactStatus: this.metrics.reactStatus,
+                            networkMetrics: this.metrics.networkRequests
                         };
                         window.parent.postMessage(event, '*');
                         this.metrics.messageEvents.push(event);
@@ -66,6 +78,28 @@
                 };
                 return this.metrics.reactStatus;
             }
+        };
+
+        // Network request monitoring
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            const request = args[0];
+            const url = typeof request === 'string' ? request : request.url;
+            
+            return originalFetch.apply(this, args)
+                .then(response => {
+                    logger.network({
+                        url,
+                        status: response.status,
+                        type: 'fetch',
+                        ok: response.ok
+                    });
+                    return response;
+                })
+                .catch(error => {
+                    logger.error('Fetch error:', error);
+                    throw error;
+                });
         };
 
         // Early error capture
@@ -102,26 +136,35 @@
             }
         });
 
-        // Enhanced script loading with verification
+        // Enhanced script loading with verification and performance tracking
         function loadScript(src, onload, onerror) {
+            const startTime = performance.now();
             logger.info(`Loading script: ${src}`);
+            
             const script = document.createElement('script');
             script.src = src;
             script.crossOrigin = 'anonymous';
+            
             script.onload = () => {
-                logger.info(`Script loaded successfully: ${src}`);
+                const loadTime = performance.now() - startTime;
+                logger.info(`Script loaded successfully: ${src} (${loadTime.toFixed(2)}ms)`);
+                logger.metrics.resourceLoadTimes[src] = loadTime;
+                
                 const reactStatus = logger.checkReactStatus();
                 logger.info('React status after script load:', reactStatus);
                 onload?.();
             };
+            
             script.onerror = (error) => {
                 logger.error(`Script load error: ${src}`, error);
+                logger.metrics.resourceLoadTimes[src] = -1; // Mark as failed
                 onerror?.(error);
             };
+            
             document.head.appendChild(script);
         }
 
-        // Load React with enhanced verification
+        // Load React with enhanced verification and retry logic
         function loadReactScripts(retryCount = 0) {
             const maxRetries = 3;
             const retryDelay = 1000;
@@ -134,6 +177,7 @@
                         'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
                         () => {
                             logger.info('All React scripts loaded successfully');
+                            logger.metrics.reactInitTime = Date.now();
                             const status = logger.checkReactStatus();
                             logger.sendToParent('REACT_LOADED', status);
                         },
@@ -169,7 +213,8 @@
             try {
                 logger.info('Starting widget initialization');
                 
-                if (!reactInitialized || !reactDOMInitialized) {
+                const reactStatus = logger.checkReactStatus();
+                if (!reactStatus.react || !reactStatus.reactDOM) {
                     throw new Error('React not fully initialized');
                 }
 
@@ -214,12 +259,7 @@
 
         // Log when the page is fully loaded
         window.addEventListener('load', () => {
-            resourcePerf.end();
-            checkReactInitialization();
-            logger.info('Window loaded, checking dependencies:', {
-                react: reactInitialized,
-                reactDOM: reactDOMInitialized
-            });
+            logger.info('Window loaded, checking dependencies:', logger.checkReactStatus());
         });
 
         logger.info('Embed page ready');
