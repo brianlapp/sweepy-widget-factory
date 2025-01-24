@@ -17,7 +17,7 @@ export function createTestWidget(containerId: string, sweepstakesId: string): vo
   
   // Initialize widget
   if (window.initializeWidget) {
-    window.initializeWidget();
+    window.initializeWidget(containerId);
   } else {
     console.error('[Widget Test] Widget initialization function not found');
   }
@@ -27,9 +27,6 @@ export function logWidgetError(error: WidgetError): void {
   console.group('[Widget Error]');
   console.error('Code:', error.code);
   console.error('Message:', error.message);
-  if (error.context) {
-    console.error('Context:', error.context);
-  }
   if (error.details) {
     console.error('Details:', error.details);
   }

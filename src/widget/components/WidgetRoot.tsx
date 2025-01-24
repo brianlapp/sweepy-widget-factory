@@ -1,11 +1,12 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SweepstakesWidget } from '@/components/SweepstakesWidget';
+import { WidgetConfig, WidgetError } from '../types';
 
 interface WidgetRootProps {
-  sweepstakesId: string;
+  config: WidgetConfig;
   onReady?: () => void;
-  onError?: (error: Error) => void;
+  onError?: (error: WidgetError) => void;
 }
 
 const queryClient = new QueryClient({
@@ -18,10 +19,10 @@ const queryClient = new QueryClient({
 });
 
 class ErrorBoundary extends React.Component<
-  { children: React.ReactNode; onError?: (error: Error) => void },
+  { children: React.ReactNode; onError?: (error: WidgetError) => void },
   { hasError: boolean; error: Error | null }
 > {
-  constructor(props: { children: React.ReactNode; onError?: (error: Error) => void }) {
+  constructor(props: { children: React.ReactNode; onError?: (error: WidgetError) => void }) {
     super(props);
     this.state = { hasError: false, error: null };
   }
@@ -31,7 +32,13 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error) {
-    this.props.onError?.(error);
+    if (this.props.onError) {
+      this.props.onError({
+        code: 'RENDER_ERROR',
+        message: error.message,
+        details: error.stack
+      });
+    }
   }
 
   render() {
@@ -46,7 +53,9 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-export function WidgetRoot({ sweepstakesId, onReady, onError }: WidgetRootProps) {
+export function WidgetRoot({ config, onReady, onError }: WidgetRootProps) {
+  const sweepstakesId = document.querySelector('#root')?.getAttribute('data-sweepstakes-id') || '';
+
   React.useEffect(() => {
     const updateHeight = () => {
       const height = document.documentElement.scrollHeight;

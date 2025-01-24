@@ -16,9 +16,9 @@ const logger = {
   error: (msg: string, error?: Error) => {
     console.error(`[Widget Error] ${msg}`, error);
     const widgetError: WidgetError = {
-      code: error?.name || 'ERROR',
+      code: 'ERROR',
       message: msg,
-      context: error,
+      details: error?.stack
     };
     window.parent.postMessage({ 
       type: 'WIDGET_ERROR', 
@@ -29,13 +29,13 @@ const logger = {
   }
 };
 
-export function initializeWidget() {
+export function initializeWidget(containerId = 'root') {
   try {
     logger.info('Initializing widget...');
     widgetState.isLoading = true;
     updateWidgetStatus(widgetState);
 
-    const root = document.getElementById('root');
+    const root = document.getElementById(containerId);
     if (!root) {
       throw new Error('Root element not found');
     }
@@ -55,7 +55,7 @@ export function initializeWidget() {
           updateWidgetStatus(widgetState);
           window.parent.postMessage({ type: 'WIDGET_READY' }, '*');
         }}
-        onError={(error) => logger.error(error.message, error.context)}
+        onError={(error: WidgetError) => logger.error(error.message)}
       />
     );
   } catch (error) {
