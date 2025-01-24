@@ -17,6 +17,8 @@
             widgetInitialized: false,
             error: null,
             logs: [],
+            lastMessageTime: 0,
+            processedMessages: new Set(),
             resources: {
                 scripts: new Set(),
                 styles: new Set(),
@@ -26,6 +28,30 @@
             }
         };
 
+        // Message debouncing
+        function shouldProcessMessage(type, data) {
+            const now = Date.now();
+            if (now - window.__WIDGET_STATE__.lastMessageTime < 1000) {
+                return false;
+            }
+
+            const messageKey = `${type}-${JSON.stringify(data)}-${now}`;
+            if (window.__WIDGET_STATE__.processedMessages.has(messageKey)) {
+                return false;
+            }
+
+            window.__WIDGET_STATE__.lastMessageTime = now;
+            window.__WIDGET_STATE__.processedMessages.add(messageKey);
+
+            // Clean up old messages
+            if (window.__WIDGET_STATE__.processedMessages.size > 100) {
+                const oldestMessage = Array.from(window.__WIDGET_STATE__.processedMessages)[0];
+                window.__WIDGET_STATE__.processedMessages.delete(oldestMessage);
+            }
+
+            return true;
+        }
+
         // Enhanced resource tracking
         const resourceObserver = new PerformanceObserver((list) => {
             list.getEntries().forEach(entry => {
@@ -33,10 +59,12 @@
                 const type = entry.initiatorType;
                 const duration = entry.duration;
                 
-                logState('RESOURCE', `Loaded ${type}: ${resource}`, {
-                    duration,
-                    size: entry.transferSize
-                });
+                if (shouldProcessMessage('RESOURCE', { resource, type })) {
+                    logState('RESOURCE', `Loaded ${type}: ${resource}`, {
+                        duration,
+                        size: entry.transferSize
+                    });
+                }
 
                 window.__WIDGET_STATE__.resources[type + 's']?.add(resource);
                 window.__WIDGET_STATE__.resources.loadedCount++;
@@ -58,6 +86,10 @@
         }
 
         function logState(type, message, data = {}) {
+            if (!shouldProcessMessage(type, { message, ...data })) {
+                return;
+            }
+
             const log = {
                 type,
                 message,

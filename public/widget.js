@@ -8,8 +8,9 @@
   const MESSAGE_DEBOUNCE = 1000; // 1 second debounce for messages
   
   let lastMessageTime = 0;
+  let messageQueue = [];
+  let isProcessingQueue = false;
 
-  // Enhanced error tracking system
   class ErrorTracker {
     constructor() {
       this.errors = [];
@@ -79,18 +80,37 @@
       this.resources = new Set();
       this.networkRequests = [];
       this.lastMessageSent = 0;
+      this.messageCache = new Set(); // Cache to prevent duplicate messages
     }
 
-    shouldSendMessage() {
+    shouldSendMessage(type, message) {
       const now = Date.now();
       if (now - this.lastMessageSent < MESSAGE_DEBOUNCE) {
         return false;
       }
+
+      // Create a unique key for this message
+      const messageKey = `${type}-${message}-${now}`;
+      if (this.messageCache.has(messageKey)) {
+        return false;
+      }
+
+      // Add to cache and clean old entries
+      this.messageCache.add(messageKey);
+      if (this.messageCache.size > 100) { // Limit cache size
+        const oldestKey = Array.from(this.messageCache)[0];
+        this.messageCache.delete(oldestKey);
+      }
+
       this.lastMessageSent = now;
       return true;
     }
 
     log(type, message, data = {}) {
+      if (!this.shouldSendMessage(type, message)) {
+        return null;
+      }
+
       const event = {
         type,
         message,
@@ -102,16 +122,13 @@
       this.events.push(event);
       console.log(`[Widget Diagnostic] ${type}:`, message, data);
       
-      // Only send diagnostic messages if enough time has passed
-      if (this.shouldSendMessage()) {
-        try {
-          window.parent.postMessage({
-            type: 'WIDGET_DIAGNOSTIC',
-            event
-          }, '*');
-        } catch (e) {
-          console.error('Failed to send diagnostic to parent:', e);
-        }
+      try {
+        window.parent.postMessage({
+          type: 'WIDGET_DIAGNOSTIC',
+          event
+        }, '*');
+      } catch (e) {
+        console.error('Failed to send diagnostic to parent:', e);
       }
       
       return event;
@@ -165,14 +182,67 @@
       this.isReady = false;
       this.loadTimeout = null;
       this.initTimeout = null;
-      this.messageQueue = [];
-      this.processingQueue = false;
+      this.lastMessageTime = 0;
+      this.processedMessages = new Set();
       
       window.addEventListener('message', this.handleMessage.bind(this), false);
       window.addEventListener('error', this.handleError.bind(this), true);
       window.addEventListener('unhandledrejection', this.handlePromiseError.bind(this), true);
       
       diagnostics.log('init', 'IframeManager initialized with enhanced error handling');
+    }
+
+    handleMessage(event) {
+      try {
+        if (!ALLOWED_ORIGINS.includes('*') && !ALLOWED_ORIGINS.includes(event.origin)) {
+          throw new Error(`Unauthorized message origin: ${event.origin}`);
+        }
+
+        const { type, data } = event.data || {};
+        if (!type) return;
+
+        // Create a unique message identifier
+        const messageId = `${type}-${JSON.stringify(data)}-${Date.now()}`;
+        if (this.processedMessages.has(messageId)) {
+          return; // Skip duplicate messages
+        }
+
+        // Implement message debouncing
+        const now = Date.now();
+        if (now - this.lastMessageTime < MESSAGE_DEBOUNCE) {
+          return;
+        }
+        this.lastMessageTime = now;
+
+        // Add to processed messages cache
+        this.processedMessages.add(messageId);
+        if (this.processedMessages.size > 100) {
+          // Clean up old messages
+          const oldestMessage = Array.from(this.processedMessages)[0];
+          this.processedMessages.delete(oldestMessage);
+        }
+
+        diagnostics.log('message', `Received message: ${type}`, { data });
+        
+        switch(type) {
+          case 'WIDGET_ERROR':
+            diagnostics.error('Widget error from iframe', event.data.error);
+            break;
+          case 'WIDGET_READY':
+            this.handleWidgetReady(event.data);
+            break;
+          case 'REACT_LOADED':
+            diagnostics.updateConnectionStatus('reactLoaded', true);
+            break;
+          case 'setHeight':
+            if (this.iframe && event.data.height) {
+              this.iframe.style.height = `${event.data.height}px`;
+            }
+            break;
+        }
+      } catch (error) {
+        diagnostics.error('Message handling error', error);
+      }
     }
 
     handleError(event) {
@@ -232,45 +302,6 @@
             </button>
           </div>
         `;
-      }
-    }
-
-    handleMessage(event) {
-      try {
-        if (!ALLOWED_ORIGINS.includes('*') && !ALLOWED_ORIGINS.includes(event.origin)) {
-          throw new Error(`Unauthorized message origin: ${event.origin}`);
-        }
-
-        // Prevent processing the same type of message too frequently
-        const now = Date.now();
-        if (now - lastMessageTime < MESSAGE_DEBOUNCE) {
-          return;
-        }
-        lastMessageTime = now;
-
-        const { type, data } = event.data || {};
-        if (!type) return; // Ignore messages without type
-
-        diagnostics.log('message', `Received message: ${type}`, { data });
-        
-        switch(type) {
-          case 'WIDGET_ERROR':
-            diagnostics.error('Widget error from iframe', event.data.error);
-            break;
-          case 'WIDGET_READY':
-            this.handleWidgetReady(event.data);
-            break;
-          case 'REACT_LOADED':
-            diagnostics.updateConnectionStatus('reactLoaded', true);
-            break;
-          case 'setHeight':
-            if (this.iframe && event.data.height) {
-              this.iframe.style.height = `${event.data.height}px`;
-            }
-            break;
-        }
-      } catch (error) {
-        diagnostics.error('Message handling error', error);
       }
     }
 
