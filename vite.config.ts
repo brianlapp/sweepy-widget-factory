@@ -15,7 +15,6 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react({
-      // The only supported option for development mode is tsDecorators
       tsDecorators: true,
     }),
     mode === 'development' && componentTagger(),
@@ -46,7 +45,8 @@ export default defineConfig(({ mode }) => ({
         assetFileNames: 'assets/[name]-[hash][extname]',
         chunkFileNames: 'assets/[name]-[hash].js',
       },
-      external: mode === 'production' ? ['react', 'react-dom'] : [],
+      // Important: We're now bundling React with our widget
+      external: [],
     },
     sourcemap: true,
     minify: mode === 'production',

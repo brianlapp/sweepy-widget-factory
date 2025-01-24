@@ -4,101 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sweepstakes Widget</title>
-    <!-- Load React synchronously with error handling -->
-    <script>
-        window.onerror = function(msg, url, line, col, error) {
-            console.error('[Widget Error]', { msg, url, line, col, error });
-            if (window.parent) {
-                window.parent.postMessage({ 
-                    type: 'WIDGET_ERROR', 
-                    error: { message: msg, url, line } 
-                }, '*');
-            }
-            return false;
-        };
-
-        // Track script loading
-        const scriptStatus = {
-            react: false,
-            reactDom: false
-        };
-
-        function checkReactLoaded() {
-            if (window.React && window.ReactDOM) {
-                console.log('[Widget] React loaded successfully:', React.version);
-                window.parent.postMessage({ 
-                    type: 'REACT_LOADED',
-                    version: React.version
-                }, '*');
-                return true;
-            }
-            return false;
-        }
-
-        // Enhanced diagnostic logging
-        const logger = {
-            timeStart: Date.now(),
-            info: function(msg, ...args) {
-                console.log(`[Widget ${new Date().toISOString()}] ${msg}`, ...args);
-            },
-            error: function(msg, ...args) {
-                console.error(`[Widget Error] ${msg}`, ...args);
-                if (window.parent) {
-                    window.parent.postMessage({ 
-                        type: 'WIDGET_ERROR', 
-                        error: { message: msg, args } 
-                    }, '*');
-                }
-            }
-        };
-    </script>
-    
-    <!-- Load React core first -->
-    <script 
-        src="https://unpkg.com/react@18/umd/react.production.min.js" 
-        crossorigin
-        onload="scriptStatus.react = true; logger.info('React core loaded');"
-        onerror="logger.error('Failed to load React core');">
-    </script>
-    
-    <!-- Load ReactDOM after React core -->
-    <script 
-        src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" 
-        crossorigin
-        onload="scriptStatus.reactDom = true; logger.info('ReactDOM loaded'); checkReactLoaded();"
-        onerror="logger.error('Failed to load ReactDOM');">
-    </script>
 </head>
 <body>
     <div id="root"></div>
     <script>
-        // Initialize widget only after React is loaded
-        window.addEventListener('message', function(event) {
-            if (event.data.type === 'INIT_WIDGET') {
-                logger.info('Received init message:', event.data);
-                
-                if (!checkReactLoaded()) {
-                    logger.error('React not available for widget initialization');
-                    return;
-                }
+        window.onerror = function(msg, url, line, col, error) {
+            console.error('[Widget Error]', { msg, url, line, col, error });
+            window.parent.postMessage({ 
+                type: 'WIDGET_ERROR', 
+                error: { message: msg, url, line } 
+            }, '*');
+            return false;
+        };
 
-                try {
-                    window.WIDGET_CONFIG = event.data;
-                    window.initializeWidget(event.data.sweepstakesId);
-                    logger.info('Widget initialized successfully');
-                    window.parent.postMessage({ type: 'WIDGET_READY' }, '*');
-                } catch (error) {
-                    logger.error('Widget initialization failed:', error);
-                }
-            }
-        });
-
-        // Verify React availability on load
+        // Enhanced logging
+        console.log('[Widget] Initializing...');
+        
         window.addEventListener('load', function() {
-            if (!checkReactLoaded()) {
-                logger.error('React failed to load on window load');
-            }
+            console.log('[Widget] Window loaded');
+            window.parent.postMessage({ type: 'WIDGET_LOADED' }, '*');
         });
     </script>
+    <script src="widget.js"></script>
 </body>
 </html>
