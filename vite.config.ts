@@ -39,24 +39,23 @@ export default defineConfig(({ mode }): UserConfig => ({
         widget: path.resolve(__dirname, 'src/widget.ts'),
         main: path.resolve(__dirname, 'index.html'),
       },
-      output: [
-        {
-          // Main app build configuration
-          name: 'main',
-          dir: 'dist',
-          entryFileNames: 'assets/[name]-[hash].js',
-          chunkFileNames: 'assets/[name]-[hash].js',
-          assetFileNames: 'assets/[name]-[hash][extname]',
+      output: {
+        // Shared configuration for all outputs
+        assetFileNames: 'assets/[name]-[hash][extname]',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: (chunkInfo) => {
+          // Special handling for widget entry
+          if (chunkInfo.name === 'widget') {
+            return 'widget.js';
+          }
+          // All other entries go to assets directory
+          return 'assets/[name]-[hash].js';
         },
-        {
-          // Widget build configuration
-          name: 'widget',
-          dir: 'dist',
-          entryFileNames: '[name].js',
-          format: 'iife',
-          inlineDynamicImports: true,
-        }
-      ]
+        // IIFE format for the widget
+        format: 'iife',
+        // Ensure each entry point is self-contained
+        manualChunks: undefined,
+      }
     },
   },
 }));
