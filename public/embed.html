@@ -32,14 +32,12 @@
             console.log(`[Widget Verification] ${point}:`, status, details);
         }
 
-        // Listen for initialization message
         window.addEventListener('message', function(event) {
             if (event.data.type === 'INITIALIZE_WIDGET' && event.data.sweepstakesId) {
                 window.__initializeWidget(event.data.sweepstakesId);
             }
         });
 
-        // Resource loading tracking
         const resourceObserver = new PerformanceObserver((list) => {
             list.getEntries().forEach(entry => {
                 logVerification('resourcesLoaded', true, {
@@ -51,7 +49,6 @@
 
         resourceObserver.observe({ entryTypes: ['resource'] });
 
-        // Error handling
         window.onerror = function(msg, url, line, col, error) {
             logVerification('errorHandling', true, {
                 message: msg,
@@ -62,7 +59,6 @@
             return false;
         };
 
-        // Track React availability
         Object.defineProperty(window, 'React', {
             set: function(value) {
                 window.__WIDGET_STATE__.reactLoaded = true;
@@ -74,7 +70,6 @@
             configurable: true
         });
 
-        // Widget initialization function
         window.__initializeWidget = function(sweepstakesId) {
             logVerification('initialization', true, { sweepstakesId });
             
@@ -100,9 +95,9 @@
         };
 
         const widgetScript = document.createElement('script');
-        widgetScript.src = '/widget-bundle.js';
+        widgetScript.src = '/widget.js';
         widgetScript.onload = () => {
-            logVerification('resourcesLoaded', true, { script: 'widget-bundle.js' });
+            logVerification('resourcesLoaded', true, { script: 'widget.js' });
         };
         widgetScript.onerror = (error) => {
             logVerification('errorHandling', true, { error });
