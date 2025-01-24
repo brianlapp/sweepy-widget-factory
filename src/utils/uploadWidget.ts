@@ -43,19 +43,22 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
       .from('static')
       .remove(['widget.js']);
 
-    // Set proper CORS headers and cache control
+    // Create blob with proper content type
+    const blob = new Blob([widgetContent], { 
+      type: 'application/javascript; charset=utf-8'
+    });
+
+    // Set proper CORS headers and cache control with explicit content type
     const uploadOptions = {
       cacheControl: '3600',
       upsert: true,
       contentType: 'application/javascript; charset=utf-8',
     };
 
-    console.log('[Widget Upload] Uploading widget files with CORS headers...');
+    console.log('[Widget Upload] Uploading widget files with proper content type...');
     const { error: uploadError } = await supabase.storage
       .from('static')
-      .upload('widget.js', new Blob([widgetContent], { 
-        type: 'application/javascript' 
-      }), uploadOptions);
+      .upload('widget.js', blob, uploadOptions);
 
     if (uploadError) {
       console.error('[Widget Upload] Upload error:', uploadError);
