@@ -1,69 +1,113 @@
-import { WidgetConfig } from '../types';
+import { WidgetConfig, WidgetError } from '../types';
+import { logger } from '../utils/logger';
 
 export class WidgetLoader {
   private iframe: HTMLIFrameElement | null;
-  private isReady: boolean;
-  private retryCount: number;
-  private readonly maxRetries: number;
   private config: WidgetConfig;
+  private retryAttempts: number;
+  private readonly maxRetries = 3;
+  private readonly retryDelay = 1000;
 
   constructor(config: WidgetConfig) {
     this.iframe = null;
-    this.isReady = false;
-    this.retryCount = 0;
-    this.maxRetries = 3;
     this.config = config;
+    this.retryAttempts = 0;
     
-    window.addEventListener('message', this.handleMessage.bind(this), false);
-    window.addEventListener('error', this.handleError.bind(this), true);
+    window.addEventListener('message', this.handleMessage.bind(this));
+    window.addEventListener('error', this.handleError.bind(this));
     
-    console.log('[Widget] Initialized WidgetLoader with config:', config);
+    logger.info('WidgetLoader initialized with config:', config);
   }
 
-  private handleMessage(event: MessageEvent) {
+  public createIframe(sweepstakesId: string): HTMLIFrameElement {
+    logger.info('Creating iframe for sweepstakes:', sweepstakesId);
+    
+    if (this.iframe) {
+      this.iframe.remove();
+    }
+
+    this.iframe = document.createElement('iframe');
+    this.setupIframe(this.iframe, sweepstakesId);
+    
+    return this.iframe;
+  }
+
+  private setupIframe(iframe: HTMLIFrameElement, sweepstakesId: string): void {
+    iframe.style.width = '100%';
+    iframe.style.border = 'none';
+    iframe.style.minHeight = '600px';
+    iframe.setAttribute('scrolling', 'no');
+    iframe.setAttribute('title', 'Sweepstakes Widget');
+    iframe.setAttribute('data-sweepstakes-id', sweepstakesId);
+    
+    const embedUrl = this.getEmbedUrl();
+    iframe.src = embedUrl;
+    
+    iframe.onload = () => this.initializeContent(sweepstakesId);
+  }
+
+  private getEmbedUrl(): string {
+    const baseUrl = this.config.storageUrl;
+    const version = this.config.version;
+    const timestamp = Date.now();
+    return `${baseUrl}/embed.html?v=${version}&t=${timestamp}`;
+  }
+
+  private initializeContent(sweepstakesId: string): void {
+    if (!this.iframe?.contentWindow) {
+      logger.error('Cannot initialize content - iframe or contentWindow missing');
+      return;
+    }
+
+    logger.info('Initializing content with sweepstakes ID:', sweepstakesId);
+    this.iframe.contentWindow.postMessage({
+      type: 'INITIALIZE_WIDGET',
+      sweepstakesId
+    }, '*');
+  }
+
+  private handleMessage(event: MessageEvent): void {
     const { type, data } = event.data || {};
     if (!type) return;
 
-    console.log('[Widget] Received message:', type, data);
+    logger.info('Received message:', { type, data });
     
     switch(type) {
       case 'WIDGET_ERROR':
-        console.error('[Widget] Error from iframe:', data.error);
         this.handleWidgetError(data.error);
         break;
       case 'WIDGET_READY':
-        this.isReady = true;
-        this.retryCount = 0;
-        console.log('[Widget] Ready event received');
+        this.retryAttempts = 0;
+        logger.info('Widget ready');
         break;
       case 'setHeight':
-        if (this.iframe && data?.height) {
-          this.iframe.style.height = `${data.height}px`;
-        }
-        break;
-      case 'WIDGET_RETRY':
-        this.retryInitialization();
+        this.updateIframeHeight(data?.height);
         break;
     }
   }
 
-  private handleError(event: ErrorEvent) {
-    console.error('[Widget] Global error:', event.error);
-    this.handleWidgetError(event.error);
+  private handleError(event: ErrorEvent): void {
+    logger.error('Global error:', event.error);
+    this.handleWidgetError({
+      code: 'GLOBAL_ERROR',
+      message: event.message,
+      details: event.error
+    });
   }
 
-  private handleWidgetError(error: Error) {
-    if (this.retryCount < this.maxRetries) {
-      console.log(`[Widget] Attempting retry ${this.retryCount + 1} of ${this.maxRetries}`);
-      this.retryInitialization();
+  private handleWidgetError(error: WidgetError): void {
+    logger.error('Widget error:', error);
+    
+    if (this.retryAttempts < this.maxRetries) {
+      this.retryAttempts++;
+      logger.info(`Retrying initialization (${this.retryAttempts}/${this.maxRetries})`);
+      setTimeout(() => this.retryInitialization(), this.retryDelay);
     } else {
-      console.error('[Widget] Max retries reached, widget failed to initialize');
+      logger.error('Max retries reached, widget failed to initialize');
     }
   }
 
-  private retryInitialization() {
-    this.retryCount++;
-    console.log(`[Widget] Retrying initialization (${this.retryCount}/${this.maxRetries})`);
+  private retryInitialization(): void {
     if (this.iframe) {
       const sweepstakesId = this.iframe.getAttribute('data-sweepstakes-id');
       if (sweepstakesId) {
@@ -72,53 +116,20 @@ export class WidgetLoader {
     }
   }
 
-  public createIframe(sweepstakesId: string) {
-    console.log('[Widget] Creating iframe for sweepstakes:', sweepstakesId);
-    
-    if (this.iframe) {
-      this.iframe.remove();
+  private updateIframeHeight(height?: number): void {
+    if (this.iframe && height) {
+      this.iframe.style.height = `${height}px`;
     }
-
-    this.iframe = document.createElement('iframe');
-    this.iframe.style.width = '100%';
-    this.iframe.style.border = 'none';
-    this.iframe.style.minHeight = '600px';
-    this.iframe.setAttribute('scrolling', 'no');
-    this.iframe.setAttribute('title', 'Sweepstakes Widget');
-    this.iframe.setAttribute('data-sweepstakes-id', sweepstakesId);
-    
-    const embedUrl = `${this.config.storageUrl}/embed.html?v=${this.config.version}&t=${Date.now()}`;
-    console.log('[Widget] Setting iframe src:', embedUrl);
-    this.iframe.src = embedUrl;
-    
-    this.iframe.onload = () => {
-      console.log('[Widget] Iframe loaded, initializing content');
-      this.initializeContent(sweepstakesId);
-    };
-    
-    return this.iframe;
   }
 
-  private initializeContent(sweepstakesId: string) {
-    if (!this.iframe?.contentWindow) {
-      console.error('[Widget] Cannot initialize content - iframe or contentWindow missing');
-      return;
-    }
-
-    console.log('[Widget] Initializing content with sweepstakes ID:', sweepstakesId);
-    this.iframe.contentWindow.postMessage({
-      type: 'INITIALIZE_WIDGET',
-      sweepstakesId
-    }, '*');
-  }
-
-  public cleanup() {
+  public cleanup(): void {
     if (this.iframe) {
       this.iframe.remove();
       this.iframe = null;
     }
-    this.isReady = false;
-    this.retryCount = 0;
-    console.log('[Widget] Cleanup completed');
+    this.retryAttempts = 0;
+    window.removeEventListener('message', this.handleMessage.bind(this));
+    window.removeEventListener('error', this.handleError.bind(this));
+    logger.info('Widget cleanup completed');
   }
 }

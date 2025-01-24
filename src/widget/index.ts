@@ -1,15 +1,23 @@
 import { initializeWidget } from './core';
+import { logger } from './utils/logger';
 
-declare global {
-  interface Window {
-    initializeWidget: (sweepstakesId: string) => void;
-  }
-}
+// Initialize error handling
+window.onerror = (message, source, lineno, colno, error) => {
+  logger.error('Global error:', { message, source, lineno, colno, error });
+};
 
-// Export the initialize function to the global scope
+// Export initialization function
 window.initializeWidget = initializeWidget;
 
-console.log('[Widget] Entry point loaded, initialization function exposed');
+// Export types for external usage
+export * from './types';
 
-// Add version tracking
-console.log(`[Widget] Version: ${process.env.VITE_APP_VERSION || 'development'}`);
+// Log initialization
+logger.info('Widget bundle loaded successfully');
+
+// Declare global types
+declare global {
+  interface Window {
+    initializeWidget: typeof initializeWidget;
+  }
+}

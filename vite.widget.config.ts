@@ -5,18 +5,15 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: 'dist/widget',
     lib: {
       entry: path.resolve(__dirname, 'src/widget/index.ts'),
       name: 'SweepstakesWidget',
+      fileName: 'widget',
       formats: ['iife'],
-      fileName: () => 'widget.js',
     },
     rollupOptions: {
       output: {
         extend: true,
-        inlineDynamicImports: true,
-        manualChunks: undefined,
         globals: {
           react: 'React',
           'react-dom': 'ReactDOM',
@@ -26,7 +23,6 @@ export default defineConfig({
     },
     sourcemap: true,
     minify: 'terser',
-    target: 'es2015',
   },
   resolve: {
     alias: {
