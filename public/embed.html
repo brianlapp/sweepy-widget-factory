@@ -8,22 +8,55 @@
 <body>
     <div id="root"></div>
     <script>
+        // Enhanced error tracking
         window.onerror = function(msg, url, line, col, error) {
             console.error('[Widget Error]', { msg, url, line, col, error });
             window.parent.postMessage({ 
                 type: 'WIDGET_ERROR', 
-                error: { message: msg, url, line } 
+                error: { message: msg, url, line, stack: error?.stack } 
             }, '*');
             return false;
         };
 
-        // Enhanced logging
-        console.log('[Widget] Initializing...');
+        // Detailed initialization logging
+        console.log('[Widget] Starting initialization...');
         
+        // Track React availability
+        window.__REACT_STATUS__ = {
+            loaded: false,
+            error: null
+        };
+
+        // Enhanced load event handling
         window.addEventListener('load', function() {
-            console.log('[Widget] Window loaded');
-            window.parent.postMessage({ type: 'WIDGET_LOADED' }, '*');
+            console.log('[Widget] Window loaded, checking React status:', window.__REACT_STATUS__);
+            window.parent.postMessage({ 
+                type: 'WIDGET_LOADED',
+                status: window.__REACT_STATUS__
+            }, '*');
         });
+
+        // Track React initialization
+        window.__WIDGET_READY__ = false;
+        window.__initializeWidget = function(sweepstakesId) {
+            console.log('[Widget] Initializing with ID:', sweepstakesId);
+            try {
+                window.initializeWidget(sweepstakesId);
+                window.__WIDGET_READY__ = true;
+                console.log('[Widget] Successfully initialized');
+                window.parent.postMessage({ type: 'WIDGET_READY' }, '*');
+            } catch (error) {
+                console.error('[Widget] Initialization failed:', error);
+                window.parent.postMessage({ 
+                    type: 'WIDGET_ERROR', 
+                    error: { 
+                        message: 'Initialization failed', 
+                        details: error?.message,
+                        stack: error?.stack
+                    } 
+                }, '*');
+            }
+        };
     </script>
     <script src="widget.js"></script>
 </body>
