@@ -4,7 +4,10 @@
   const MESSAGE_TIMEOUT = 5000;
   const MAX_RETRIES = 3;
   const LOAD_TIMEOUT = 10000;
-  const ALLOWED_ORIGINS = ['*']; // We can make this more restrictive later
+  const ALLOWED_ORIGINS = ['*'];
+  const MESSAGE_DEBOUNCE = 1000; // 1 second debounce for messages
+  
+  let lastMessageTime = 0;
 
   // Enhanced error tracking system
   class ErrorTracker {
@@ -36,17 +39,6 @@
       }
       
       this.notifyListeners(errorObj);
-      
-      // Send error to parent
-      try {
-        window.parent.postMessage({
-          type: 'WIDGET_ERROR',
-          error: errorObj
-        }, '*');
-      } catch (e) {
-        console.error('Failed to send error to parent:', e);
-      }
-      
       return errorObj;
     }
 
@@ -66,11 +58,8 @@
     }
 
     updateConnectionStatus(key, value) {
+      if (this.connectionStatus[key] === value) return; // Prevent unnecessary updates
       this.connectionStatus[key] = value;
-      window.parent.postMessage({
-        type: 'CONNECTION_STATUS',
-        status: this.connectionStatus
-      }, '*');
     }
 
     getErrors() {
@@ -82,7 +71,6 @@
     }
   }
 
-  // Enhanced diagnostic system with connection tracking
   class Diagnostics {
     constructor() {
       this.startTime = Date.now();
@@ -90,6 +78,16 @@
       this.errorTracker = new ErrorTracker();
       this.resources = new Set();
       this.networkRequests = [];
+      this.lastMessageSent = 0;
+    }
+
+    shouldSendMessage() {
+      const now = Date.now();
+      if (now - this.lastMessageSent < MESSAGE_DEBOUNCE) {
+        return false;
+      }
+      this.lastMessageSent = now;
+      return true;
     }
 
     log(type, message, data = {}) {
@@ -100,17 +98,20 @@
         timeSinceStart: Date.now() - this.startTime,
         data
       };
+      
       this.events.push(event);
       console.log(`[Widget Diagnostic] ${type}:`, message, data);
       
-      // Send diagnostic info to parent
-      try {
-        window.parent.postMessage({
-          type: 'WIDGET_DIAGNOSTIC',
-          event
-        }, '*');
-      } catch (e) {
-        console.error('Failed to send diagnostic to parent:', e);
+      // Only send diagnostic messages if enough time has passed
+      if (this.shouldSendMessage()) {
+        try {
+          window.parent.postMessage({
+            type: 'WIDGET_DIAGNOSTIC',
+            event
+          }, '*');
+        } catch (e) {
+          console.error('Failed to send diagnostic to parent:', e);
+        }
       }
       
       return event;
@@ -136,7 +137,9 @@
 
     updateConnectionStatus(key, value) {
       this.errorTracker.updateConnectionStatus(key, value);
-      this.log('connection_status', `Updated ${key} to ${value}`);
+      if (key === 'widgetReady' && value === true) {
+        this.log('connection_status', 'Widget is ready');
+      }
     }
 
     getDiagnosticReport() {
@@ -155,7 +158,6 @@
   // Initialize diagnostics
   const diagnostics = new Diagnostics();
 
-  // Enhanced IframeManager with better error recovery
   class IframeManager {
     constructor() {
       this.retryCount = 0;
@@ -163,8 +165,9 @@
       this.isReady = false;
       this.loadTimeout = null;
       this.initTimeout = null;
+      this.messageQueue = [];
+      this.processingQueue = false;
       
-      // Enhanced error handling setup
       window.addEventListener('message', this.handleMessage.bind(this), false);
       window.addEventListener('error', this.handleError.bind(this), true);
       window.addEventListener('unhandledrejection', this.handlePromiseError.bind(this), true);
@@ -238,25 +241,31 @@
           throw new Error(`Unauthorized message origin: ${event.origin}`);
         }
 
-        diagnostics.log('message', 'Received message', { type: event.data?.type });
+        // Prevent processing the same type of message too frequently
+        const now = Date.now();
+        if (now - lastMessageTime < MESSAGE_DEBOUNCE) {
+          return;
+        }
+        lastMessageTime = now;
+
+        const { type, data } = event.data || {};
+        if (!type) return; // Ignore messages without type
+
+        diagnostics.log('message', `Received message: ${type}`, { data });
         
-        switch(event.data?.type) {
+        switch(type) {
           case 'WIDGET_ERROR':
             diagnostics.error('Widget error from iframe', event.data.error);
             break;
           case 'WIDGET_READY':
             this.handleWidgetReady(event.data);
             break;
-          case 'DEBUG_LOG':
-            diagnostics.log('iframe_debug', event.data.message, event.data);
-            break;
           case 'REACT_LOADED':
             diagnostics.updateConnectionStatus('reactLoaded', true);
             break;
           case 'setHeight':
-            if (this.iframe) {
+            if (this.iframe && event.data.height) {
               this.iframe.style.height = `${event.data.height}px`;
-              diagnostics.log('height_update', `Updated iframe height: ${event.data.height}`);
             }
             break;
         }
