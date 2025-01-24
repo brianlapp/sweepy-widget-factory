@@ -12,6 +12,11 @@
       this.errors = [];
       this.errorListeners = new Set();
       this.maxErrors = 10;
+      this.connectionStatus = {
+        iframeLoaded: false,
+        reactLoaded: false,
+        widgetReady: false
+      };
     }
 
     addError(error, context = {}) {
@@ -19,7 +24,10 @@
         message: error.message || error,
         stack: error.stack,
         timestamp: Date.now(),
-        context
+        context: {
+          ...context,
+          connectionStatus: { ...this.connectionStatus }
+        }
       };
       
       this.errors.push(errorObj);
@@ -28,6 +36,17 @@
       }
       
       this.notifyListeners(errorObj);
+      
+      // Send error to parent
+      try {
+        window.parent.postMessage({
+          type: 'WIDGET_ERROR',
+          error: errorObj
+        }, '*');
+      } catch (e) {
+        console.error('Failed to send error to parent:', e);
+      }
+      
       return errorObj;
     }
 
@@ -46,6 +65,14 @@
       });
     }
 
+    updateConnectionStatus(key, value) {
+      this.connectionStatus[key] = value;
+      window.parent.postMessage({
+        type: 'CONNECTION_STATUS',
+        status: this.connectionStatus
+      }, '*');
+    }
+
     getErrors() {
       return [...this.errors];
     }
@@ -55,7 +82,7 @@
     }
   }
 
-  // Enhanced diagnostic system
+  // Enhanced diagnostic system with connection tracking
   class Diagnostics {
     constructor() {
       this.startTime = Date.now();
@@ -75,6 +102,17 @@
       };
       this.events.push(event);
       console.log(`[Widget Diagnostic] ${type}:`, message, data);
+      
+      // Send diagnostic info to parent
+      try {
+        window.parent.postMessage({
+          type: 'WIDGET_DIAGNOSTIC',
+          event
+        }, '*');
+      } catch (e) {
+        console.error('Failed to send diagnostic to parent:', e);
+      }
+      
       return event;
     }
 
@@ -96,6 +134,11 @@
       this.log('network_request', `${request.type} request to ${request.url}`, details);
     }
 
+    updateConnectionStatus(key, value) {
+      this.errorTracker.updateConnectionStatus(key, value);
+      this.log('connection_status', `Updated ${key} to ${value}`);
+    }
+
     getDiagnosticReport() {
       return {
         startTime: this.startTime,
@@ -103,7 +146,8 @@
         errors: this.errorTracker.getErrors(),
         resources: Array.from(this.resources),
         networkRequests: this.networkRequests,
-        uptime: Date.now() - this.startTime
+        uptime: Date.now() - this.startTime,
+        connectionStatus: this.errorTracker.connectionStatus
       };
     }
   }
@@ -111,7 +155,7 @@
   // Initialize diagnostics
   const diagnostics = new Diagnostics();
 
-  // Enhanced IframeManager with error recovery
+  // Enhanced IframeManager with better error recovery
   class IframeManager {
     constructor() {
       this.retryCount = 0;
@@ -120,41 +164,56 @@
       this.loadTimeout = null;
       this.initTimeout = null;
       
-      window.addEventListener('message', this.handleMessage.bind(this));
-      window.addEventListener('error', this.handleError.bind(this));
-      window.addEventListener('unhandledrejection', this.handlePromiseError.bind(this));
+      // Enhanced error handling setup
+      window.addEventListener('message', this.handleMessage.bind(this), false);
+      window.addEventListener('error', this.handleError.bind(this), true);
+      window.addEventListener('unhandledrejection', this.handlePromiseError.bind(this), true);
       
       diagnostics.log('init', 'IframeManager initialized with enhanced error handling');
     }
 
     handleError(event) {
-      diagnostics.error('Global error caught', {
+      // Prevent default to ensure we catch all errors
+      event.preventDefault();
+      
+      const errorDetails = {
         message: event.message,
         filename: event.filename,
         lineno: event.lineno,
         colno: event.colno,
         error: event.error
-      });
-      this.attemptRecovery();
+      };
+      
+      diagnostics.error('Global error caught', errorDetails);
+      this.attemptRecovery(errorDetails);
     }
 
     handlePromiseError(event) {
+      event.preventDefault();
       diagnostics.error('Unhandled promise rejection', event.reason);
-      this.attemptRecovery();
+      this.attemptRecovery({ message: 'Promise rejection', error: event.reason });
     }
 
-    attemptRecovery() {
+    attemptRecovery(errorDetails) {
       if (this.retryCount < MAX_RETRIES) {
         this.retryCount++;
-        diagnostics.log('recovery', `Attempting recovery (${this.retryCount}/${MAX_RETRIES})`);
+        diagnostics.log('recovery', `Attempting recovery (${this.retryCount}/${MAX_RETRIES})`, errorDetails);
         this.reloadIframe();
       } else {
-        this.handleFatalError('Max retries reached');
+        this.handleFatalError('Max retries reached', errorDetails);
       }
     }
 
-    handleFatalError(message) {
-      diagnostics.error('Fatal error', message);
+    reloadIframe() {
+      if (this.iframe) {
+        diagnostics.log('reload', 'Reloading iframe');
+        this.cleanup();
+        this.setIframeSource();
+      }
+    }
+
+    handleFatalError(message, details = {}) {
+      diagnostics.error('Fatal error', { message, details });
       this.showErrorUI(message);
       this.cleanup();
     }
@@ -175,9 +234,13 @@
 
     handleMessage(event) {
       try {
-        diagnostics.log('message', 'Received message', event.data);
+        if (!ALLOWED_ORIGINS.includes('*') && !ALLOWED_ORIGINS.includes(event.origin)) {
+          throw new Error(`Unauthorized message origin: ${event.origin}`);
+        }
+
+        diagnostics.log('message', 'Received message', { type: event.data?.type });
         
-        switch(event.data.type) {
+        switch(event.data?.type) {
           case 'WIDGET_ERROR':
             diagnostics.error('Widget error from iframe', event.data.error);
             break;
@@ -188,8 +251,7 @@
             diagnostics.log('iframe_debug', event.data.message, event.data);
             break;
           case 'REACT_LOADED':
-            diagnostics.log('react_status', 'React initialization status', event.data);
-            diagnostics.connectionStatus.reactLoaded = true;
+            diagnostics.updateConnectionStatus('reactLoaded', true);
             break;
           case 'setHeight':
             if (this.iframe) {
@@ -207,16 +269,7 @@
       diagnostics.log('widget_ready', 'Widget reported ready', data);
       clearTimeout(this.initTimeout);
       this.isReady = true;
-      
-      // Verify React is loaded
-      if (this.iframe?.contentWindow) {
-        try {
-          const hasReact = Boolean(this.iframe.contentWindow.React);
-          diagnostics.log('react_check', `React availability: ${hasReact}`);
-        } catch (error) {
-          diagnostics.error('React verification failed', error);
-        }
-      }
+      diagnostics.updateConnectionStatus('widgetReady', true);
     }
 
     createIframe(sweepstakesId) {
@@ -226,38 +279,28 @@
         this.cleanup();
         this.iframe = document.createElement('iframe');
         
-        // Enhanced iframe attributes
         this.iframe.style.width = '100%';
         this.iframe.style.border = 'none';
         this.iframe.style.minHeight = '600px';
         this.iframe.setAttribute('scrolling', 'no');
         this.iframe.setAttribute('title', 'Sweepstakes Widget');
-        this.iframe.setAttribute('loading', 'eager'); // Prioritize loading
+        this.iframe.setAttribute('loading', 'eager');
         
-        // Enhanced load handling
         this.iframe.onload = () => {
           diagnostics.log('iframe_load', 'Iframe loaded');
-          diagnostics.connectionStatus.iframeLoaded = true;
+          diagnostics.updateConnectionStatus('iframeLoaded', true);
           clearTimeout(this.loadTimeout);
-          this.verifyIframeContent();
         };
         
         this.iframe.onerror = (error) => {
           diagnostics.error('Iframe load error', error);
-          diagnostics.connectionStatus.iframeLoaded = false;
+          diagnostics.updateConnectionStatus('iframeLoaded', false);
           this.handleLoadError(error);
         };
         
         const embedUrl = `${STORAGE_URL}/embed.html?v=${VERSION}&t=${Date.now()}`;
         this.iframe.src = embedUrl;
         
-        // Set up connection monitoring
-        this.connectionCheckInterval = setInterval(() => {
-          if (!this.isReady) {
-            this.checkConnection();
-          }
-        }, 5000);
-
         return this.iframe;
       } catch (error) {
         diagnostics.error('Error creating iframe', error);
@@ -265,89 +308,10 @@
       }
     }
 
-    checkConnection() {
-      const status = diagnostics.connectionStatus;
-      diagnostics.log('connection_check', 'Checking connection status', status);
-      
-      if (!status.iframeLoaded || !status.reactLoaded) {
-        this.retryConnection();
-      }
-    }
-
-    verifyIframeContent() {
-      try {
-        if (!this.iframe.contentWindow) {
-          throw new Error('Cannot access iframe content window');
-        }
-
-        // Log loaded resources
-        diagnostics.log('resources', 'Loaded resources', Array.from(diagnostics.resources));
-        
-        // Verify React
-        if (this.iframe.contentWindow.React) {
-          diagnostics.log('react_check', 'React is available');
-        } else {
-          diagnostics.error('React not found in iframe');
-        }
-
-        this.isReady = true;
-        diagnostics.log('verify', 'Iframe content verified');
-      } catch (error) {
-        diagnostics.error('Content verification failed', error);
-        this.handleLoadError(error);
-      }
-    }
-
-    handleLoadError(error) {
-      diagnostics.error('Load error occurred', error);
-      
-      if (this.retryCount < MAX_RETRIES) {
-        this.retryCount++;
-        diagnostics.log('retry', `Retrying (${this.retryCount}/${MAX_RETRIES})`);
-        
-        setTimeout(() => {
-          this.setIframeSource();
-        }, 1000 * this.retryCount);
-      } else {
-        diagnostics.error('Max retries reached');
-        this.showError('Failed to load widget content after multiple attempts');
-      }
-    }
-
-    setIframeSource() {
-      try {
-        const url = new URL(`${STORAGE_URL}/embed.html`);
-        url.searchParams.append('v', VERSION);
-        url.searchParams.append('t', Date.now().toString());
-        
-        diagnostics.log('set_src', `Setting iframe src: ${url.toString()}`);
-        this.iframe.src = url.toString();
-      } catch (error) {
-        diagnostics.error('Error setting iframe source', error);
-        throw error;
-      }
-    }
-
-    showError(message) {
-      diagnostics.error('Showing error message', { message });
-      const container = document.getElementById('sweepstakes-widget');
-      if (container) {
-        container.innerHTML = `
-          <div style="padding: 20px; border: 1px solid #f0f0f0; border-radius: 8px; text-align: center;">
-            <p style="color: #666; margin: 0;">Unable to load sweepstakes widget: ${message}</p>
-            <pre style="font-size: 12px; margin-top: 10px; text-align: left; background: #f5f5f5; padding: 10px; border-radius: 4px; overflow: auto;">
-              ${JSON.stringify(diagnostics.events.slice(-5), null, 2)}
-            </pre>
-          </div>
-        `;
-      }
-    }
-
     cleanup() {
       diagnostics.log('cleanup', 'Cleaning up iframe manager');
       clearTimeout(this.loadTimeout);
       clearTimeout(this.initTimeout);
-      clearInterval(this.connectionCheckInterval);
       
       if (this.iframe) {
         this.iframe.onload = null;
@@ -359,6 +323,11 @@
       diagnostics.resources.clear();
       this.isReady = false;
       this.retryCount = 0;
+      
+      // Reset connection status
+      diagnostics.updateConnectionStatus('iframeLoaded', false);
+      diagnostics.updateConnectionStatus('reactLoaded', false);
+      diagnostics.updateConnectionStatus('widgetReady', false);
     }
   }
 
