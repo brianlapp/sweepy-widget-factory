@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { WidgetRoot } from './components/WidgetRoot';
-import type { WidgetConfig, WidgetError, WidgetState } from './types';
+import { WidgetState, WidgetError, WidgetConfig } from './types';
+import { updateWidgetStatus, logWidgetError } from './utils/testing';
 
 const widgetState: WidgetState = {
   isReady: false,
@@ -9,9 +10,8 @@ const widgetState: WidgetState = {
 };
 
 const logger = {
-  info: (msg: string, ...args: any[]) => {
-    console.log(`[Widget] ${msg}`, ...args);
-    window.parent.postMessage({ type: 'WIDGET_INFO', message: msg }, '*');
+  info: (msg: string) => {
+    console.info(`[Widget] ${msg}`);
   },
   error: (msg: string, error?: Error) => {
     console.error(`[Widget Error] ${msg}`, error);
@@ -25,13 +25,16 @@ const logger = {
       error: widgetError
     }, '*');
     widgetState.error = widgetError;
+    updateWidgetStatus(widgetState);
   }
 };
 
-export function initializeWidget(sweepstakesId: string) {
-  logger.info('Initializing widget with ID:', sweepstakesId);
-  
+export function initializeWidget() {
   try {
+    logger.info('Initializing widget...');
+    widgetState.isLoading = true;
+    updateWidgetStatus(widgetState);
+
     const root = document.getElementById('root');
     if (!root) {
       throw new Error('Root element not found');
@@ -45,20 +48,17 @@ export function initializeWidget(sweepstakesId: string) {
 
     createRoot(root).render(
       <WidgetRoot 
-        sweepstakesId={sweepstakesId}
+        config={config}
         onReady={() => {
           widgetState.isReady = true;
-          logger.info('Widget initialized successfully');
+          widgetState.isLoading = false;
+          updateWidgetStatus(widgetState);
           window.parent.postMessage({ type: 'WIDGET_READY' }, '*');
         }}
-        onError={(error: Error) => {
-          logger.error('Widget error:', error);
-        }}
+        onError={(error) => logger.error(error.message, error.context)}
       />
     );
-    
   } catch (error) {
-    logger.error('Initialization failed:', error as Error);
-    throw error;
+    logger.error('Failed to initialize widget', error as Error);
   }
 }

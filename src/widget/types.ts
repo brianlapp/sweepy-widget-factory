@@ -6,7 +6,7 @@ export interface WidgetConfig {
 
 export interface WidgetMessage {
   type: string;
-  data?: any;
+  payload?: any;
 }
 
 export interface WidgetError {
@@ -23,6 +23,7 @@ export interface WidgetState {
 }
 
 export interface WidgetProps {
-  sweepstakesId: string;
   config: WidgetConfig;
+  onReady: () => void;
+  onError: (error: WidgetError) => void;
 }
