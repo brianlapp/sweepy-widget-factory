@@ -1,6 +1,7 @@
 export interface WidgetConfig {
   storageUrl: string;
   version: string;
+  environment: 'development' | 'production';
 }
 
 export interface WidgetMessage {
@@ -12,6 +13,7 @@ export interface WidgetError {
   code: string;
   message: string;
   details?: any;
+  context?: Error;
 }
 
 export interface WidgetState {

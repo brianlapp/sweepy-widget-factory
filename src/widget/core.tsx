@@ -4,7 +4,8 @@ import type { WidgetConfig, WidgetError, WidgetState } from './types';
 
 const widgetState: WidgetState = {
   isReady: false,
-  hasError: false,
+  isLoading: false,
+  error: null
 };
 
 const logger = {
@@ -15,16 +16,14 @@ const logger = {
   error: (msg: string, error?: Error) => {
     console.error(`[Widget Error] ${msg}`, error);
     const widgetError: WidgetError = {
-      name: 'WidgetError',
+      code: error?.name || 'ERROR',
       message: msg,
-      code: error?.name,
       context: error,
     };
     window.parent.postMessage({ 
       type: 'WIDGET_ERROR', 
       error: widgetError
     }, '*');
-    widgetState.hasError = true;
     widgetState.error = widgetError;
   }
 };
@@ -39,9 +38,9 @@ export function initializeWidget(sweepstakesId: string) {
     }
 
     const config: WidgetConfig = {
-      sweepstakesId,
-      version: process.env.VITE_APP_VERSION,
-      environment: process.env.NODE_ENV as 'development' | 'production'
+      version: process.env.VITE_APP_VERSION || '1.0.0',
+      environment: process.env.NODE_ENV as 'development' | 'production',
+      storageUrl: process.env.VITE_STORAGE_URL || ''
     };
 
     createRoot(root).render(
