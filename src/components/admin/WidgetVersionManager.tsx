@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { uploadWidgetFiles } from '@/utils/uploadWidget';
 
-// Import new components
+// Import components
 import { CountdownCard } from './widget/CountdownCard';
 import { ErrorMonitoringCard } from './widget/ErrorMonitoringCard';
 import { ImplementationProgress } from './widget/ImplementationProgress';
@@ -76,6 +76,12 @@ const implementationStatus = {
 
 // Add new countdown configuration
 const targetLaunchDate = new Date('2025-02-01T00:00:00Z');
+
+const getEmbedCode = (sweepstakesId: string) => {
+  return `<!-- Sweepstakes Widget Embed Code -->
+<div id="sweepstakes-widget" data-sweepstakes-id="${sweepstakesId}"></div>
+<script src="https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static/widget.js"></script>`;
+};
 
 export function WidgetVersionManager() {
   const queryClient = useQueryClient();
