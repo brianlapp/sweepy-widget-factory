@@ -1,17 +1,20 @@
+import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { WidgetRoot } from './components/WidgetRoot';
-import { WidgetState, WidgetError, WidgetConfig } from './types';
-import { updateWidgetStatus, logWidgetError } from './utils/testing';
+import { WidgetState, WidgetError, WidgetMessage } from './types';
 
 const widgetState: WidgetState = {
-  isReady: false,
-  isLoading: false,
+  isLoading: true,
   error: null
 };
 
-const logger = {
+const updateWidgetStatus = (state: WidgetState) => {
+  window.parent.postMessage({ type: state.error ? 'WIDGET_ERROR' : 'WIDGET_STATUS', state }, '*');
+};
+
+export const logger = {
   info: (msg: string) => {
-    console.info(`[Widget] ${msg}`);
+    console.log(`[Widget] ${msg}`);
   },
   error: (msg: string, error?: Error) => {
     console.error(`[Widget Error] ${msg}`, error);
@@ -22,10 +25,8 @@ const logger = {
     };
     window.parent.postMessage({ 
       type: 'WIDGET_ERROR', 
-      error: widgetError
-    }, '*');
-    widgetState.error = widgetError;
-    updateWidgetStatus(widgetState);
+      error: widgetError 
+    } as WidgetMessage, '*');
   }
 };
 
@@ -40,18 +41,23 @@ export function initializeWidget(containerId = 'root') {
       throw new Error('Root element not found');
     }
 
-    const config: WidgetConfig = {
-      version: process.env.VITE_APP_VERSION || '1.0.0',
-      environment: process.env.NODE_ENV as 'development' | 'production',
-      storageUrl: process.env.VITE_STORAGE_URL || ''
+    const sweepstakesId = root.getAttribute('data-sweepstakes-id');
+    if (!sweepstakesId) {
+      throw new Error('No sweepstakes ID provided');
+    }
+
+    const config = {
+      storageUrl: process.env.STORAGE_URL || '',
+      version: process.env.VERSION || '1.0.0',
+      sweepstakesId
     };
 
     createRoot(root).render(
-      <WidgetRoot 
+      <WidgetRoot
         config={config}
         onReady={() => {
-          widgetState.isReady = true;
           widgetState.isLoading = false;
+          widgetState.error = null;
           updateWidgetStatus(widgetState);
           window.parent.postMessage({ type: 'WIDGET_READY' }, '*');
         }}
@@ -59,6 +65,8 @@ export function initializeWidget(containerId = 'root') {
       />
     );
   } catch (error) {
-    logger.error('Failed to initialize widget', error as Error);
+    if (error instanceof Error) {
+      logger.error('Failed to initialize widget', error);
+    }
   }
 }

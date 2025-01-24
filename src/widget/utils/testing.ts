@@ -1,20 +1,21 @@
-import { WidgetError, WidgetState } from '../types';
+import { WidgetError, WidgetTestConfig } from '../types';
 
-export function createTestWidget(containerId: string, sweepstakesId: string): void {
-  console.log('[Widget Test] Creating test widget:', { containerId, sweepstakesId });
+export function createTestWidget(config: WidgetTestConfig) {
+  const { containerId, sweepstakesId } = config;
   
-  const container = document.getElementById(containerId);
+  // Create container if it doesn't exist
+  let container = document.getElementById(containerId);
   if (!container) {
-    console.error('[Widget Test] Container not found:', containerId);
-    return;
+    container = document.createElement('div');
+    container.id = containerId;
+    document.body.appendChild(container);
   }
 
-  // Clear existing content
-  container.innerHTML = '';
-  
-  // Set data attribute
+  // Set sweepstakes ID
   container.setAttribute('data-sweepstakes-id', sweepstakesId);
-  
+
+  console.log('[Widget Test] Creating test widget with config:', config);
+
   // Initialize widget
   if (window.initializeWidget) {
     window.initializeWidget(containerId);
@@ -23,7 +24,7 @@ export function createTestWidget(containerId: string, sweepstakesId: string): vo
   }
 }
 
-export function logWidgetError(error: WidgetError): void {
+export function logWidgetError(error: WidgetError) {
   console.group('[Widget Error]');
   console.error('Code:', error.code);
   console.error('Message:', error.message);
@@ -33,21 +34,9 @@ export function logWidgetError(error: WidgetError): void {
   console.groupEnd();
 }
 
-export function updateWidgetStatus(state: WidgetState): void {
-  const statusIndicator = document.getElementById('statusIndicator');
-  const statusText = document.getElementById('statusText');
-  
-  if (!statusIndicator || !statusText) return;
-  
-  if (state.error) {
-    statusIndicator.className = 'status-indicator error';
-    statusText.textContent = `Error: ${state.error.message}`;
-    logWidgetError(state.error);
-  } else if (state.isLoading) {
-    statusIndicator.className = 'status-indicator';
-    statusText.textContent = 'Loading widget...';
-  } else if (state.isReady) {
-    statusIndicator.className = 'status-indicator ready';
-    statusText.textContent = 'Widget is ready';
+export function updateWidgetStatus(containerId: string, status: string) {
+  const container = document.getElementById(containerId);
+  if (container) {
+    container.setAttribute('data-widget-status', status);
   }
 }

@@ -13,7 +13,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
     },
   },
 });
@@ -44,8 +44,8 @@ class ErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="p-4 text-red-500">
-          Something went wrong. Please try again later.
+        <div className="widget-error">
+          An error occurred while rendering the widget.
         </div>
       );
     }
@@ -54,31 +54,27 @@ class ErrorBoundary extends React.Component<
 }
 
 export function WidgetRoot({ config, onReady, onError }: WidgetRootProps) {
-  const sweepstakesId = document.querySelector('#root')?.getAttribute('data-sweepstakes-id') || '';
-
   React.useEffect(() => {
     const updateHeight = () => {
       const height = document.documentElement.scrollHeight;
       window.parent.postMessage({ type: 'setHeight', height }, '*');
     };
 
-    updateHeight();
     const observer = new ResizeObserver(updateHeight);
-    observer.observe(document.body);
-    
-    onReady?.();
-    
-    return () => observer.disconnect();
-  }, [onReady]);
+    observer.observe(document.documentElement);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   return (
     <ErrorBoundary onError={onError}>
       <QueryClientProvider client={queryClient}>
-        <div className="widget-container">
-          <SweepstakesWidget 
-            sweepstakesId={sweepstakesId}
-          />
-        </div>
+        <SweepstakesWidget 
+          sweepstakesId={config.sweepstakesId || ''} 
+          onReady={onReady}
+        />
       </QueryClientProvider>
     </ErrorBoundary>
   );

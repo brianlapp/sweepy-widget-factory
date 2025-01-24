@@ -1,29 +1,27 @@
 export interface WidgetConfig {
   storageUrl: string;
   version: string;
-  environment: 'development' | 'production';
+  sweepstakesId?: string;
 }
 
-export interface WidgetMessage {
-  type: string;
-  payload?: any;
+export interface WidgetState {
+  isLoading: boolean;
+  error: WidgetError | null;
 }
 
 export interface WidgetError {
   code: string;
   message: string;
-  details?: any;
-  context?: Error;
+  details?: string;
 }
 
-export interface WidgetState {
-  isReady: boolean;
-  isLoading: boolean;
-  error: WidgetError | null;
+export interface WidgetMessage {
+  type: string;
+  error?: WidgetError;
+  height?: number;
 }
 
-export interface WidgetProps {
-  config: WidgetConfig;
-  onReady: () => void;
-  onError: (error: WidgetError) => void;
+export interface WidgetTestConfig {
+  containerId: string;
+  sweepstakesId: string;
 }
