@@ -32,17 +32,21 @@ export default defineConfig(({ mode }): UserConfig => ({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    sourcemap: true,
+    minify: mode === 'production',
     rollupOptions: {
       input: mode === 'production' 
-        ? { main: path.resolve(__dirname, 'index.html') }
-        : { 
+        ? path.resolve(__dirname, 'src/widget.ts')
+        : {
             main: path.resolve(__dirname, 'index.html'),
-            widget: path.resolve(__dirname, 'src/widget.tsx')
+            widget: path.resolve(__dirname, 'src/widget.ts')
           },
       output: {
+        format: 'iife',
+        name: 'SweepstakesWidget',
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === 'widget') {
-            return 'widget-bundle.js';
+            return 'widget.js';
           }
           return 'assets/[name]-[hash].js';
         },
@@ -50,13 +54,5 @@ export default defineConfig(({ mode }): UserConfig => ({
         chunkFileNames: 'assets/[name]-[hash].js',
       },
     },
-    lib: mode === 'production' ? {
-      entry: path.resolve(__dirname, 'src/widget.tsx'),
-      name: 'SweepstakesWidget',
-      fileName: () => 'widget-bundle.js',
-      formats: ['iife'],
-    } : undefined,
-    sourcemap: true,
-    minify: mode === 'production',
   },
 }));
