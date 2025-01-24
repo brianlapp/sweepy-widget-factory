@@ -99,9 +99,8 @@
             }
         };
 
-        // Load widget bundle
         const widgetScript = document.createElement('script');
-        widgetScript.src = 'widget-bundle.js';
+        widgetScript.src = '/widget-bundle.js';
         widgetScript.onload = () => {
             logVerification('resourcesLoaded', true, { script: 'widget-bundle.js' });
         };
@@ -111,7 +110,6 @@
 
         document.body.appendChild(widgetScript);
 
-        // Log verification status periodically
         setInterval(() => {
             console.table(window.__WIDGET_STATE__.verificationPoints);
         }, 5000);
