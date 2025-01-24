@@ -2,6 +2,7 @@ import React from 'react';
 import { Check, Copy } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { getEmbedCode } from '@/utils/widgetUtils';
 
 interface Sweepstakes {
   id: string;
@@ -25,12 +26,6 @@ export function EmbedInstructions({
   onSweepstakesSelect,
   onCopyCode,
 }: EmbedInstructionsProps) {
-  const getEmbedCode = (sweepstakesId: string) => {
-    return `<!-- Sweepstakes Widget Embed Code -->
-<div id="sweepstakes-widget" data-sweepstakes-id="${sweepstakesId}"></div>
-<script src="https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static/widget.js"></script>`;
-  };
-
   if (!activeVersion) return null;
 
   return (
