@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Info, Copy, Check, AlertCircle, Activity } from 'lucide-react';
+import { Info, Copy, Check, AlertCircle, Activity, Bug } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { uploadWidgetFiles } from '@/utils/uploadWidget';
 import {
@@ -95,6 +95,12 @@ export function WidgetVersionManager() {
   const [testSweepstakesId, setTestSweepstakesId] = React.useState('');
   const [testIframe, setTestIframe] = React.useState<HTMLIFrameElement | null>(null);
   const [timeUntilLaunch, setTimeUntilLaunch] = React.useState('');
+  const [errorLogs, setErrorLogs] = React.useState<Array<{
+    timestamp: string;
+    message: string;
+    type: 'error' | 'warning' | 'info';
+    details?: any;
+  }>>([]);
 
   React.useEffect(() => {
     const updateCountdown = () => {
@@ -285,6 +291,34 @@ export function WidgetVersionManager() {
     
     setTestIframe(iframe);
     
+    // Enhanced message handler for widget iframe
+    const handleWidgetMessage = (event: MessageEvent) => {
+      if (event.data.type === 'WIDGET_ERROR') {
+        console.error('Widget Error:', event.data.error);
+        setErrorLogs(prev => [...prev, {
+          timestamp: new Date().toISOString(),
+          message: event.data.error.message,
+          type: 'error',
+          details: event.data.error
+        }]);
+        toast.error(`Widget Error: ${event.data.error.message}`);
+      } else if (event.data.type === 'WIDGET_WARNING') {
+        setErrorLogs(prev => [...prev, {
+          timestamp: new Date().toISOString(),
+          message: event.data.message,
+          type: 'warning'
+        }]);
+      } else if (event.data.type === 'WIDGET_INFO') {
+        setErrorLogs(prev => [...prev, {
+          timestamp: new Date().toISOString(),
+          message: event.data.message,
+          type: 'info'
+        }]);
+      }
+    };
+
+    window.addEventListener('message', handleWidgetMessage);
+    
     // Listen for widget messages
     window.addEventListener('message', (event) => {
       if (event.data.type === 'WIDGET_ERROR') {
@@ -375,6 +409,69 @@ export function WidgetVersionManager() {
           Important: Always use the exact embed code provided below. The format of this code is critical for the widget to function correctly.
         </AlertDescription>
       </Alert>
+
+      {/* New Error Monitoring Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Bug className="h-5 w-5 text-red-500" />
+              <CardTitle>Error Monitoring</CardTitle>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setErrorLogs([])}
+            >
+              Clear Logs
+            </Button>
+          </div>
+          <CardDescription>
+            Real-time error tracking and diagnostics for the widget
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {errorLogs.length === 0 ? (
+              <div className="text-center text-muted-foreground p-4">
+                No errors recorded
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {errorLogs.map((log, index) => (
+                  <div
+                    key={index}
+                    className={`p-3 rounded-lg border ${
+                      log.type === 'error' ? 'border-red-200 bg-red-50' :
+                      log.type === 'warning' ? 'border-yellow-200 bg-yellow-50' :
+                      'border-blue-200 bg-blue-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">
+                        {new Date(log.timestamp).toLocaleTimeString()}
+                      </span>
+                      <Badge variant={
+                        log.type === 'error' ? 'destructive' :
+                        log.type === 'warning' ? 'warning' :
+                        'default'
+                      }>
+                        {log.type}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-sm">{log.message}</p>
+                    {log.details && (
+                      <pre className="mt-2 text-xs bg-background/50 p-2 rounded overflow-x-auto">
+                        {JSON.stringify(log.details, null, 2)}
+                      </pre>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Implementation Progress */}
       <Card>
