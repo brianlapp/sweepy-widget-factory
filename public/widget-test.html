@@ -97,13 +97,7 @@
         const debugConsole = document.getElementById('debug-console');
         
         function logToDebug(type, ...args) {
-            const timestamp = new Date().toLocaleTimeString('en-US', { 
-                hour12: false,
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
-            
+            const timestamp = new Date().toLocaleTimeString();
             const message = args.map(arg => 
                 typeof arg === 'object' ? JSON.stringify(arg) : arg
             ).join(' ');
@@ -153,18 +147,8 @@
                     option.textContent = sweep.title;
                     select.appendChild(option);
                 });
-
-                if (sweepstakes.length === 0) {
-                    console.warn('No active sweepstakes found');
-                    const option = document.createElement('option');
-                    option.disabled = true;
-                    option.text = 'No active sweepstakes available';
-                    select.appendChild(option);
-                }
             } catch (error) {
                 console.error('Failed to load sweepstakes:', error);
-                const select = document.getElementById('sweepstakesSelect');
-                select.innerHTML = '<option value="">Error loading sweepstakes</option>';
             }
         }
 
@@ -199,15 +183,18 @@
             }
 
             cleanupWidget();
+            console.log('Initializing widget with ID:', sweepstakesId);
 
             const script = document.createElement('script');
-            script.src = WIDGET_URL;
+            script.src = WIDGET_URL + '?t=' + Date.now(); // Add cache-busting
             script.async = true;
-            script.onerror = (error) => console.error('Failed to load widget script:', error);
+            script.onerror = (error) => {
+                console.error('Failed to load widget script:', error);
+                const container = document.getElementById('sweepstakes-widget');
+                container.innerHTML = '<div class="error">Failed to load widget. Please check console for details.</div>';
+            };
             document.body.appendChild(script);
             currentWidget = script;
-
-            console.log('Widget initialization triggered for sweepstakes:', sweepstakesId);
         }
 
         // Initialize sweepstakes dropdown
@@ -215,7 +202,9 @@
 
         // Listen for widget messages
         window.addEventListener('message', (event) => {
-            console.info('Widget message received:', event.data);
+            if (event.data && event.data.type) {
+                console.info('Widget message received:', event.data);
+            }
         });
     </script>
 </body>
