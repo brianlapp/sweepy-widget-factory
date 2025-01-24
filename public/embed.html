@@ -10,14 +10,52 @@
     <script>
         console.log('[Widget] Starting initialization...');
         
-        // Enhanced initialization tracking
+        // Enhanced initialization and resource tracking
         window.__WIDGET_STATE__ = {
             loadStartTime: Date.now(),
             reactLoaded: false,
             widgetInitialized: false,
             error: null,
-            logs: []
+            logs: [],
+            resources: {
+                scripts: new Set(),
+                styles: new Set(),
+                images: new Set(),
+                loadedCount: 0,
+                totalCount: 0
+            }
         };
+
+        // Enhanced resource tracking
+        const resourceObserver = new PerformanceObserver((list) => {
+            list.getEntries().forEach(entry => {
+                const resource = entry.name;
+                const type = entry.initiatorType;
+                const duration = entry.duration;
+                
+                logState('RESOURCE', `Loaded ${type}: ${resource}`, {
+                    duration,
+                    size: entry.transferSize
+                });
+
+                window.__WIDGET_STATE__.resources[type + 's']?.add(resource);
+                window.__WIDGET_STATE__.resources.loadedCount++;
+                
+                checkResourcesComplete();
+            });
+        });
+
+        resourceObserver.observe({ entryTypes: ['resource'] });
+
+        function checkResourcesComplete() {
+            const state = window.__WIDGET_STATE__;
+            if (state.resources.loadedCount === state.resources.totalCount) {
+                logState('COMPLETE', 'All resources loaded', {
+                    count: state.resources.loadedCount,
+                    timing: Date.now() - state.loadStartTime
+                });
+            }
+        }
 
         function logState(type, message, data = {}) {
             const log = {
@@ -31,7 +69,6 @@
             window.__WIDGET_STATE__.logs.push(log);
             console.log(`[Widget ${type}]`, message, data);
             
-            // Report state to parent
             window.parent.postMessage({
                 type: 'WIDGET_STATE',
                 state: window.__WIDGET_STATE__,
@@ -39,7 +76,7 @@
             }, '*');
         }
 
-        // Enhanced error tracking
+        // Enhanced error tracking with resource failures
         window.onerror = function(msg, url, line, col, error) {
             window.__WIDGET_STATE__.error = {
                 message: msg,
@@ -51,17 +88,19 @@
             return false;
         };
 
-        // Track React availability
+        // Track React availability with enhanced validation
         Object.defineProperty(window, 'React', {
             set: function(value) {
                 window.__WIDGET_STATE__.reactLoaded = true;
-                logState('REACT', 'React loaded and available');
+                logState('REACT', 'React loaded and available', {
+                    version: value?.version
+                });
                 return value;
             },
             configurable: true
         });
 
-        // Initialize widget with enhanced tracking
+        // Initialize widget with enhanced resource tracking
         window.__initializeWidget = function(sweepstakesId) {
             logState('INIT', 'Initializing widget', { sweepstakesId });
             
@@ -96,24 +135,42 @@
             }
         };
 
-        // Load widget bundle with timeout
+        // Load widget bundle with enhanced tracking
         const scriptLoadTimeout = setTimeout(() => {
             if (!window.__WIDGET_STATE__.reactLoaded) {
                 logState('TIMEOUT', 'Script load timeout');
             }
         }, 5000);
 
-        // Track script load
+        // Enhanced script loading with validation
         const widgetScript = document.createElement('script');
         widgetScript.src = 'widget-bundle.js';
         widgetScript.onload = () => {
             clearTimeout(scriptLoadTimeout);
-            logState('LOAD', 'Widget bundle loaded');
+            logState('LOAD', 'Widget bundle loaded successfully');
+            validateResources();
         };
         widgetScript.onerror = (error) => {
             clearTimeout(scriptLoadTimeout);
             logState('ERROR', 'Failed to load widget bundle', { error });
         };
+
+        // Validate all required resources
+        function validateResources() {
+            const requiredResources = ['widget-bundle.js', 'React', 'ReactDOM'];
+            const missingResources = requiredResources.filter(resource => {
+                if (resource === 'React') return !window.React;
+                if (resource === 'ReactDOM') return !window.ReactDOM;
+                return !window.__WIDGET_STATE__.resources.scripts.has(resource);
+            });
+
+            if (missingResources.length > 0) {
+                logState('ERROR', 'Missing required resources', { missingResources });
+            } else {
+                logState('VALIDATION', 'All required resources loaded');
+            }
+        }
+
         document.body.appendChild(widgetScript);
     </script>
 </body>
