@@ -14,7 +14,8 @@ export function SweepstakesWidget({
   disclaimer,
   thankYouHeadline,
   thankYouImageUrl,
-  trackingUrl
+  trackingUrl,
+  onReady
 }: SweepstakesWidgetProps) {
   const [isSubmitted, setIsSubmitted] = React.useState(false);
 
@@ -33,7 +34,10 @@ export function SweepstakesWidget({
       }
       return data;
     },
-    enabled: !!sweepstakesId, // Only run query if we have a valid ID
+    enabled: !!sweepstakesId,
+    onSuccess: () => {
+      onReady?.();
+    }
   });
 
   if (isLoading) {
