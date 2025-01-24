@@ -12,7 +12,7 @@ export interface WidgetState {
 export interface WidgetError {
   code: string;
   message: string;
-  details?: string;
+  details?: unknown;
 }
 
 export interface WidgetMessage {
@@ -25,3 +25,5 @@ export interface WidgetTestConfig {
   containerId: string;
   sweepstakesId: string;
 }
+
+export type WidgetStatus = 'initializing' | 'ready' | 'error' | 'loading';
