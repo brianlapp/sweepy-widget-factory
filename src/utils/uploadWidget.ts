@@ -28,7 +28,7 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
     }
 
     console.log('[Widget Upload] Fetching widget files...');
-    const widgetContent = await fetchFile('widget-bundle.js');
+    const widgetContent = await fetchFile('widget.js');
     
     console.log('[Widget Upload] Generating bundle hash...');
     const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(widgetContent))

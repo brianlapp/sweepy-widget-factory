@@ -1,8 +1,9 @@
 import React from 'react';
-import { Info } from 'lucide-react';
+import { Info, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 interface Version {
   id: string;
@@ -41,7 +42,14 @@ export function VersionsList({
           onClick={onCreateVersion}
           disabled={isCreating}
         >
-          Create Version
+          {isCreating ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Creating...
+            </>
+          ) : (
+            'Create Version'
+          )}
         </Button>
       </CardHeader>
       <CardContent>
@@ -67,10 +75,24 @@ export function VersionsList({
                   <Button
                     size="sm"
                     variant={version.is_active ? "secondary" : "default"}
-                    onClick={() => onDeployVersion(version.id)}
+                    onClick={() => {
+                      if (!version.is_active) {
+                        toast.info('Starting deployment...');
+                        onDeployVersion(version.id);
+                      }
+                    }}
                     disabled={version.is_active || isDeploying}
                   >
-                    {version.is_active ? 'Deployed' : 'Deploy'}
+                    {isDeploying ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Deploying...
+                      </>
+                    ) : version.is_active ? (
+                      'Deployed'
+                    ) : (
+                      'Deploy'
+                    )}
                   </Button>
                 </div>
               </div>
