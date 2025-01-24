@@ -4,91 +4,101 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sweepstakes Widget</title>
-    <!-- Load React synchronously -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Load React synchronously with error handling -->
     <script>
-        // Enhanced diagnostic logging utility
+        window.onerror = function(msg, url, line, col, error) {
+            console.error('[Widget Error]', { msg, url, line, col, error });
+            if (window.parent) {
+                window.parent.postMessage({ 
+                    type: 'WIDGET_ERROR', 
+                    error: { message: msg, url, line } 
+                }, '*');
+            }
+            return false;
+        };
+
+        // Track script loading
+        const scriptStatus = {
+            react: false,
+            reactDom: false
+        };
+
+        function checkReactLoaded() {
+            if (window.React && window.ReactDOM) {
+                console.log('[Widget] React loaded successfully:', React.version);
+                window.parent.postMessage({ 
+                    type: 'REACT_LOADED',
+                    version: React.version
+                }, '*');
+                return true;
+            }
+            return false;
+        }
+
+        // Enhanced diagnostic logging
         const logger = {
             timeStart: Date.now(),
             info: function(msg, ...args) {
-                const timestamp = new Date().toISOString();
-                console.log(`[Widget Embed ${timestamp}] ${msg}`, ...args);
-                this.sendToParent('DEBUG_LOG', { message: msg, args, timestamp });
+                console.log(`[Widget ${new Date().toISOString()}] ${msg}`, ...args);
             },
             error: function(msg, ...args) {
-                const timestamp = new Date().toISOString();
-                console.error(`[Widget Embed ${timestamp}] Error: ${msg}`, ...args);
-                this.sendToParent('WIDGET_ERROR', { message: msg, args, timestamp });
-            },
-            sendToParent: function(type, message) {
-                try {
-                    if (window.parent) {
-                        window.parent.postMessage({ 
-                            type, 
-                            message,
-                            timestamp: Date.now(),
-                            timeSinceStart: Date.now() - this.timeStart,
-                            reactStatus: this.verifyReact()
-                        }, '*');
-                    }
-                } catch (error) {
-                    console.error('[Widget Embed] Error sending message to parent:', error);
+                console.error(`[Widget Error] ${msg}`, ...args);
+                if (window.parent) {
+                    window.parent.postMessage({ 
+                        type: 'WIDGET_ERROR', 
+                        error: { message: msg, args } 
+                    }, '*');
                 }
-            },
-            verifyReact: function() {
-                return {
-                    react: typeof React !== 'undefined',
-                    reactDOM: typeof ReactDOM !== 'undefined',
-                    version: React?.version
-                };
             }
         };
-
-        // Verify React loaded successfully
-        window.addEventListener('load', function() {
-            const reactStatus = logger.verifyReact();
-            if (!reactStatus.react || !reactStatus.reactDOM) {
-                logger.error('React failed to load', reactStatus);
-                return;
-            }
-            logger.info('React loaded successfully', reactStatus);
-        });
-
-        // Handle widget initialization
+    </script>
+    
+    <!-- Load React core first -->
+    <script 
+        src="https://unpkg.com/react@18/umd/react.production.min.js" 
+        crossorigin
+        onload="scriptStatus.react = true; logger.info('React core loaded');"
+        onerror="logger.error('Failed to load React core');">
+    </script>
+    
+    <!-- Load ReactDOM after React core -->
+    <script 
+        src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" 
+        crossorigin
+        onload="scriptStatus.reactDom = true; logger.info('ReactDOM loaded'); checkReactLoaded();"
+        onerror="logger.error('Failed to load ReactDOM');">
+    </script>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+        // Initialize widget only after React is loaded
         window.addEventListener('message', function(event) {
             if (event.data.type === 'INIT_WIDGET') {
-                const reactStatus = logger.verifyReact();
-                if (!reactStatus.react || !reactStatus.reactDOM) {
+                logger.info('Received init message:', event.data);
+                
+                if (!checkReactLoaded()) {
                     logger.error('React not available for widget initialization');
                     return;
                 }
 
-                logger.info('Initializing widget with config:', event.data);
-                window.WIDGET_CONFIG = event.data;
-                
                 try {
+                    window.WIDGET_CONFIG = event.data;
                     window.initializeWidget(event.data.sweepstakesId);
                     logger.info('Widget initialized successfully');
-                    logger.sendToParent('WIDGET_READY', { timestamp: Date.now() });
+                    window.parent.postMessage({ type: 'WIDGET_READY' }, '*');
                 } catch (error) {
                     logger.error('Widget initialization failed:', error);
                 }
             }
         });
 
-        // Global error handlers
-        window.onerror = function(msg, url, line, col, error) {
-            logger.error('Global error:', { msg, url, line, col, error: error?.stack });
-            return false;
-        };
-
-        window.addEventListener('unhandledrejection', function(event) {
-            logger.error('Unhandled promise rejection:', event.reason);
+        // Verify React availability on load
+        window.addEventListener('load', function() {
+            if (!checkReactLoaded()) {
+                logger.error('React failed to load on window load');
+            }
         });
     </script>
-</head>
-<body>
-    <div id="root"></div>
 </body>
 </html>
