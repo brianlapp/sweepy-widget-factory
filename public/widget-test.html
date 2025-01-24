@@ -16,7 +16,7 @@
             padding: 20px;
             margin: 20px 0;
             border-radius: 8px;
-            min-height: 400px;
+            transition: height 0.3s ease;
         }
         .controls {
             margin-bottom: 20px;
@@ -36,6 +36,7 @@
         .error { color: #dc2626; }
         .success { color: #059669; }
         .info { color: #2563eb; }
+        .warning { color: #d97706; }
         select, button {
             padding: 8px 12px;
             border: 1px solid #e2e8f0;
@@ -60,6 +61,27 @@
             color: #64748b;
             font-size: 14px;
         }
+        .widget-status {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 8px;
+            border-radius: 6px;
+            background: #f8fafc;
+        }
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #94a3b8;
+        }
+        .status-indicator.ready {
+            background: #059669;
+        }
+        .status-indicator.error {
+            background: #dc2626;
+        }
     </style>
 </head>
 <body>
@@ -71,6 +93,11 @@
         <select id="sweepstakesSelect" onchange="handleSweepstakesChange(this.value)">
             <option value="">Select a sweepstakes...</option>
         </select>
+    </div>
+
+    <div class="widget-status">
+        <div id="statusIndicator" class="status-indicator"></div>
+        <span id="statusText">Waiting for widget...</span>
     </div>
 
     <div class="test-container">
@@ -85,8 +112,8 @@
         const WIDGET_URL = `${SUPABASE_URL}/storage/v1/object/public/static/widget.js`;
         
         let currentWidget = null;
+        let widgetContainer = document.querySelector('.test-container');
         
-        // Override console.log to capture widget logs
         const originalConsole = {
             log: console.log,
             error: console.error,
@@ -95,6 +122,13 @@
         };
 
         const debugConsole = document.getElementById('debug-console');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        
+        function updateStatus(status, message) {
+            statusIndicator.className = `status-indicator ${status}`;
+            statusText.textContent = message;
+        }
         
         function logToDebug(type, ...args) {
             const timestamp = new Date().toLocaleTimeString();
@@ -149,6 +183,7 @@
                 });
             } catch (error) {
                 console.error('Failed to load sweepstakes:', error);
+                updateStatus('error', 'Failed to load sweepstakes');
             }
         }
 
@@ -159,6 +194,7 @@
                 const scripts = document.querySelectorAll('script[src*="widget.js"]');
                 scripts.forEach(script => script.remove());
                 currentWidget = null;
+                updateStatus('', 'Widget cleaned up');
             }
         }
 
@@ -175,21 +211,48 @@
             initializeWidget();
         }
 
+        window.addEventListener('message', (event) => {
+            if (event.data) {
+                switch(event.data.type) {
+                    case 'WIDGET_READY':
+                        console.info('Widget is ready');
+                        updateStatus('ready', 'Widget is ready');
+                        break;
+                    case 'WIDGET_ERROR':
+                        console.error('Widget error:', event.data.error);
+                        updateStatus('error', `Widget error: ${event.data.error.message}`);
+                        break;
+                    case 'setHeight':
+                        if (event.data.height && widgetContainer) {
+                            widgetContainer.style.height = `${event.data.height}px`;
+                        }
+                        break;
+                    default:
+                        if (event.data.type) {
+                            console.info('Widget message:', event.data);
+                        }
+                }
+            }
+        });
+
         function initializeWidget() {
             const sweepstakesId = document.getElementById('sweepstakesSelect').value;
             if (!sweepstakesId) {
                 console.error('Please select a sweepstakes first');
+                updateStatus('error', 'Please select a sweepstakes first');
                 return;
             }
 
             cleanupWidget();
             console.log('Initializing widget with ID:', sweepstakesId);
+            updateStatus('', 'Loading widget...');
 
             const script = document.createElement('script');
-            script.src = WIDGET_URL + '?t=' + Date.now(); // Add cache-busting
+            script.src = WIDGET_URL + '?t=' + Date.now();
             script.async = true;
             script.onerror = (error) => {
                 console.error('Failed to load widget script:', error);
+                updateStatus('error', 'Failed to load widget script');
                 const container = document.getElementById('sweepstakes-widget');
                 container.innerHTML = '<div class="error">Failed to load widget. Please check console for details.</div>';
             };
@@ -199,13 +262,6 @@
 
         // Initialize sweepstakes dropdown
         loadSweepstakes();
-
-        // Listen for widget messages
-        window.addEventListener('message', (event) => {
-            if (event.data && event.data.type) {
-                console.info('Widget message received:', event.data);
-            }
-        });
     </script>
 </body>
 </html>
