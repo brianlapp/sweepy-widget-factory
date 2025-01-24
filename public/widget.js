@@ -6,6 +6,8 @@
     constructor() {
       this.iframe = null;
       this.isReady = false;
+      this.retryCount = 0;
+      this.maxRetries = 3;
       console.log('[Widget] Initializing WidgetLoader');
       
       window.addEventListener('message', this.handleMessage.bind(this), false);
@@ -21,9 +23,11 @@
       switch(type) {
         case 'WIDGET_ERROR':
           console.error('[Widget] Error from iframe:', data.error);
+          this.handleWidgetError(data.error);
           break;
         case 'WIDGET_READY':
           this.isReady = true;
+          this.retryCount = 0;
           console.log('[Widget] Ready event received');
           break;
         case 'setHeight':
@@ -31,11 +35,33 @@
             this.iframe.style.height = `${data.height}px`;
           }
           break;
+        case 'WIDGET_RETRY':
+          this.retryInitialization();
+          break;
       }
     }
 
     handleError(event) {
       console.error('[Widget] Global error:', event.error);
+      this.handleWidgetError(event.error);
+    }
+
+    handleWidgetError(error) {
+      if (this.retryCount < this.maxRetries) {
+        console.log(`[Widget] Attempting retry ${this.retryCount + 1} of ${this.maxRetries}`);
+        this.retryInitialization();
+      } else {
+        console.error('[Widget] Max retries reached, widget failed to initialize');
+      }
+    }
+
+    retryInitialization() {
+      this.retryCount++;
+      console.log(`[Widget] Retrying initialization (${this.retryCount}/${this.maxRetries})`);
+      if (this.iframe) {
+        const sweepstakesId = this.iframe.getAttribute('data-sweepstakes-id');
+        this.createIframe(sweepstakesId);
+      }
     }
 
     createIframe(sweepstakesId) {
@@ -51,6 +77,7 @@
       this.iframe.style.minHeight = '600px';
       this.iframe.setAttribute('scrolling', 'no');
       this.iframe.setAttribute('title', 'Sweepstakes Widget');
+      this.iframe.setAttribute('data-sweepstakes-id', sweepstakesId);
       
       const embedUrl = `${STORAGE_URL}/embed.html?v=${VERSION}&t=${Date.now()}`;
       console.log('[Widget] Setting iframe src:', embedUrl);
@@ -83,6 +110,7 @@
         this.iframe = null;
       }
       this.isReady = false;
+      this.retryCount = 0;
       console.log('[Widget] Cleanup completed');
     }
   }
