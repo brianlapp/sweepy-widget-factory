@@ -6,46 +6,86 @@
   const LOAD_TIMEOUT = 10000;
   const ALLOWED_ORIGINS = ['*']; // We can make this more restrictive later
 
-  // Enhanced diagnostic system with connection monitoring
-  const diagnostics = {
-    startTime: Date.now(),
-    events: [],
-    errors: [],
-    resources: new Set(),
-    networkRequests: [],
-    connectionStatus: {
-      iframeLoaded: false,
-      reactLoaded: false,
-      widgetInitialized: false,
-      lastError: null
-    },
-    log: function(type, message, data = {}) {
+  // Enhanced error tracking system
+  class ErrorTracker {
+    constructor() {
+      this.errors = [];
+      this.errorListeners = new Set();
+      this.maxErrors = 10;
+    }
+
+    addError(error, context = {}) {
+      const errorObj = {
+        message: error.message || error,
+        stack: error.stack,
+        timestamp: Date.now(),
+        context
+      };
+      
+      this.errors.push(errorObj);
+      if (this.errors.length > this.maxErrors) {
+        this.errors.shift();
+      }
+      
+      this.notifyListeners(errorObj);
+      return errorObj;
+    }
+
+    onError(callback) {
+      this.errorListeners.add(callback);
+      return () => this.errorListeners.delete(callback);
+    }
+
+    notifyListeners(error) {
+      this.errorListeners.forEach(listener => {
+        try {
+          listener(error);
+        } catch (e) {
+          console.error('Error in error listener:', e);
+        }
+      });
+    }
+
+    getErrors() {
+      return [...this.errors];
+    }
+
+    clear() {
+      this.errors = [];
+    }
+  }
+
+  // Enhanced diagnostic system
+  class Diagnostics {
+    constructor() {
+      this.startTime = Date.now();
+      this.events = [];
+      this.errorTracker = new ErrorTracker();
+      this.resources = new Set();
+      this.networkRequests = [];
+    }
+
+    log(type, message, data = {}) {
       const event = {
         type,
         message,
         timestamp: Date.now(),
         timeSinceStart: Date.now() - this.startTime,
-        connectionStatus: { ...this.connectionStatus },
         data
       };
       this.events.push(event);
       console.log(`[Widget Diagnostic] ${type}:`, message, data);
       return event;
-    },
-    error: function(message, error = null) {
-      const errorEvent = {
-        message,
-        error: error?.toString(),
-        stack: error?.stack,
+    }
+
+    error(message, error = null) {
+      return this.errorTracker.addError(error || message, {
         timestamp: Date.now(),
-        connectionStatus: { ...this.connectionStatus }
-      };
-      this.errors.push(errorEvent);
-      this.connectionStatus.lastError = message;
-      console.error(`[Widget Error] ${message}`, error);
-      return errorEvent;
-    },
-    network: function(request) {
+        lastEvent: this.events[this.events.length - 1]
+      });
+    }
+
+    network(request) {
       const details = {
         url: request.url,
         status: request.status,
@@ -55,9 +95,23 @@
       this.networkRequests.push(details);
       this.log('network_request', `${request.type} request to ${request.url}`, details);
     }
-  };
 
-  // Enhanced IframeManager with better connection handling
+    getDiagnosticReport() {
+      return {
+        startTime: this.startTime,
+        events: this.events,
+        errors: this.errorTracker.getErrors(),
+        resources: Array.from(this.resources),
+        networkRequests: this.networkRequests,
+        uptime: Date.now() - this.startTime
+      };
+    }
+  }
+
+  // Initialize diagnostics
+  const diagnostics = new Diagnostics();
+
+  // Enhanced IframeManager with error recovery
   class IframeManager {
     constructor() {
       this.retryCount = 0;
@@ -65,33 +119,57 @@
       this.isReady = false;
       this.loadTimeout = null;
       this.initTimeout = null;
-      this.connectionCheckInterval = null;
       
       window.addEventListener('message', this.handleMessage.bind(this));
-      window.addEventListener('online', this.handleOnline.bind(this));
-      window.addEventListener('offline', this.handleOffline.bind(this));
+      window.addEventListener('error', this.handleError.bind(this));
+      window.addEventListener('unhandledrejection', this.handlePromiseError.bind(this));
       
-      diagnostics.log('init', 'IframeManager initialized with enhanced connection handling');
+      diagnostics.log('init', 'IframeManager initialized with enhanced error handling');
     }
 
-    handleOnline() {
-      diagnostics.log('connection', 'Network connection restored');
-      if (this.iframe && !this.isReady) {
-        this.retryConnection();
+    handleError(event) {
+      diagnostics.error('Global error caught', {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        error: event.error
+      });
+      this.attemptRecovery();
+    }
+
+    handlePromiseError(event) {
+      diagnostics.error('Unhandled promise rejection', event.reason);
+      this.attemptRecovery();
+    }
+
+    attemptRecovery() {
+      if (this.retryCount < MAX_RETRIES) {
+        this.retryCount++;
+        diagnostics.log('recovery', `Attempting recovery (${this.retryCount}/${MAX_RETRIES})`);
+        this.reloadIframe();
+      } else {
+        this.handleFatalError('Max retries reached');
       }
     }
 
-    handleOffline() {
-      diagnostics.log('connection', 'Network connection lost');
+    handleFatalError(message) {
+      diagnostics.error('Fatal error', message);
+      this.showErrorUI(message);
+      this.cleanup();
     }
 
-    retryConnection() {
-      if (this.retryCount < MAX_RETRIES) {
-        this.retryCount++;
-        diagnostics.log('retry', `Attempting to reconnect (${this.retryCount}/${MAX_RETRIES})`);
-        this.setIframeSource();
-      } else {
-        diagnostics.error('Max retries reached');
+    showErrorUI(message) {
+      const container = document.getElementById('sweepstakes-widget');
+      if (container) {
+        container.innerHTML = `
+          <div style="padding: 20px; border: 1px solid #f0f0f0; border-radius: 8px; text-align: center;">
+            <p style="color: #666; margin: 0;">Widget error: ${message}</p>
+            <button onclick="window.location.reload()" style="margin-top: 10px; padding: 8px 16px; background: #4f46e5; color: white; border: none; border-radius: 4px; cursor: pointer;">
+              Retry
+            </button>
+          </div>
+        `;
       }
     }
 
@@ -288,25 +366,28 @@
   const initialize = () => {
     diagnostics.log('init', 'Initializing widget script');
     
-    const container = document.getElementById('sweepstakes-widget');
-    if (!container) {
-      diagnostics.error('Widget container not found');
-      return;
-    }
+    try {
+      const container = document.getElementById('sweepstakes-widget');
+      if (!container) {
+        throw new Error('Widget container not found');
+      }
 
-    const sweepstakesId = container.getAttribute('data-sweepstakes-id');
-    if (!sweepstakesId) {
-      diagnostics.error('No sweepstakes ID provided');
-      return;
-    }
+      const sweepstakesId = container.getAttribute('data-sweepstakes-id');
+      if (!sweepstakesId) {
+        throw new Error('No sweepstakes ID provided');
+      }
 
-    diagnostics.log('init', 'Found sweepstakes ID', { sweepstakesId });
-    const iframeManager = new IframeManager();
-    const iframe = iframeManager.createIframe(sweepstakesId);
-    
-    if (iframe) {
-      container.appendChild(iframe);
-      diagnostics.log('init', 'Widget initialized successfully');
+      diagnostics.log('init', 'Found sweepstakes ID', { sweepstakesId });
+      const iframeManager = new IframeManager();
+      const iframe = iframeManager.createIframe(sweepstakesId);
+      
+      if (iframe) {
+        container.appendChild(iframe);
+        diagnostics.log('init', 'Widget initialized successfully');
+      }
+    } catch (error) {
+      diagnostics.error('Initialization failed', error);
+      throw error;
     }
   };
 
