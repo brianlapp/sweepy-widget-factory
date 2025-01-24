@@ -7,55 +7,74 @@ import type { UserConfig } from 'vite';
 const version = new Date().toISOString().split('T')[0] + '-' + 
                Math.random().toString(36).substring(2, 7);
 
-export default defineConfig(({ mode }): UserConfig => ({
-  server: {
-    host: "::",
-    port: 8080,
-    middlewareMode: false,
-  },
-  plugins: [
-    react({
-      tsDecorators: true,
-      jsxImportSource: "react",
-    }),
-    mode === 'development' && componentTagger(),
-  ].filter(Boolean),
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-    dedupe: ['react', 'react-dom'],
-  },
-  define: {
-    'process.env.VITE_APP_VERSION': JSON.stringify(version),
-  },
-  build: {
-    outDir: 'dist',
-    assetsDir: 'assets',
-    sourcemap: true,
-    minify: mode === 'production',
-    rollupOptions: {
-      input: {
-        widget: path.resolve(__dirname, 'src/widget.ts'),
-        main: path.resolve(__dirname, 'index.html'),
+// Separate configs for main app and widget
+export default defineConfig(({ mode }): UserConfig => {
+  const isWidget = process.env.BUILD_TARGET === 'widget';
+  
+  const baseConfig = {
+    plugins: [
+      react({
+        tsDecorators: true,
+        jsxImportSource: "react",
+      }),
+      mode === 'development' && componentTagger(),
+    ].filter(Boolean),
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
       },
-      output: {
-        // Shared configuration for all outputs
-        assetFileNames: 'assets/[name]-[hash][extname]',
-        chunkFileNames: 'assets/[name]-[hash].js',
-        entryFileNames: (chunkInfo) => {
-          // Special handling for widget entry
-          if (chunkInfo.name === 'widget') {
-            return 'widget.js';
-          }
-          // All other entries go to assets directory
-          return 'assets/[name]-[hash].js';
-        },
-        // IIFE format for the widget
-        format: 'iife',
-        // Ensure each entry point is self-contained
-        manualChunks: undefined,
-      }
+      dedupe: ['react', 'react-dom'],
     },
-  },
-}));
+    define: {
+      'process.env.VITE_APP_VERSION': JSON.stringify(version),
+    },
+  };
+
+  // Widget-specific configuration
+  if (isWidget) {
+    return {
+      ...baseConfig,
+      build: {
+        outDir: 'dist/widget',
+        lib: {
+          entry: path.resolve(__dirname, 'src/widget.ts'),
+          name: 'SweepstakesWidget',
+          formats: ['iife'],
+          fileName: () => 'widget.js',
+        },
+        rollupOptions: {
+          external: [],
+          output: {
+            globals: {},
+          },
+        },
+      },
+    };
+  }
+
+  // Main app configuration
+  return {
+    ...baseConfig,
+    server: {
+      host: "::",
+      port: 8080,
+      middlewareMode: false,
+    },
+    build: {
+      outDir: 'dist',
+      assetsDir: 'assets',
+      sourcemap: true,
+      minify: mode === 'production',
+      rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+        },
+        output: {
+          assetFileNames: 'assets/[name]-[hash][extname]',
+          chunkFileNames: 'assets/[name]-[hash].js',
+          entryFileNames: 'assets/[name]-[hash].js',
+        },
+      },
+    },
+  };
+});
