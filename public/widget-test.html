@@ -16,9 +16,13 @@
             padding: 20px;
             margin: 20px 0;
             border-radius: 8px;
+            min-height: 400px;
         }
         .controls {
             margin-bottom: 20px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
         }
         #debug-console {
             background: #f8f9fa;
@@ -32,6 +36,30 @@
         .error { color: #dc2626; }
         .success { color: #059669; }
         .info { color: #2563eb; }
+        select, button {
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background: white;
+            font-size: 14px;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        .placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 400px;
+            color: #64748b;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -54,7 +82,10 @@
     <script>
         const SUPABASE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhyeWNnbXpnc2tjYmh2ZGNsZmxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzczOTgzMDgsImV4cCI6MjA1Mjk3NDMwOH0.9_abIKE2UBX8AUB3R3VDLtYCR6MtrE6C1SAIAOy0CgA';
-
+        const WIDGET_URL = `${SUPABASE_URL}/storage/v1/object/public/static/widget.js`;
+        
+        let currentWidget = null;
+        
         // Override console.log to capture widget logs
         const originalConsole = {
             log: console.log,
@@ -66,7 +97,13 @@
         const debugConsole = document.getElementById('debug-console');
         
         function logToDebug(type, ...args) {
-            const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+            const timestamp = new Date().toLocaleTimeString('en-US', { 
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            
             const message = args.map(arg => 
                 typeof arg === 'object' ? JSON.stringify(arg) : arg
             ).join(' ');
@@ -96,8 +133,7 @@
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
                         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                        'Content-Type': 'application/json',
-                        'Prefer': 'return=minimal'
+                        'Content-Type': 'application/json'
                     }
                 });
                 
@@ -132,12 +168,27 @@
             }
         }
 
-        function handleSweepstakesChange(sweepstakesId) {
-            const container = document.getElementById('sweepstakes-widget');
-            container.setAttribute('data-sweepstakes-id', sweepstakesId);
-            if (sweepstakesId) {
-                initializeWidget();
+        function cleanupWidget() {
+            if (currentWidget) {
+                const container = document.getElementById('sweepstakes-widget');
+                container.innerHTML = '';
+                const scripts = document.querySelectorAll('script[src*="widget.js"]');
+                scripts.forEach(script => script.remove());
+                currentWidget = null;
             }
+        }
+
+        function handleSweepstakesChange(sweepstakesId) {
+            cleanupWidget();
+            const container = document.getElementById('sweepstakes-widget');
+            
+            if (!sweepstakesId) {
+                container.innerHTML = '<div class="placeholder">Select a sweepstakes to test the widget</div>';
+                return;
+            }
+            
+            container.setAttribute('data-sweepstakes-id', sweepstakesId);
+            initializeWidget();
         }
 
         function initializeWidget() {
@@ -147,20 +198,14 @@
                 return;
             }
 
-            // Clear previous widget
-            const container = document.getElementById('sweepstakes-widget');
-            container.innerHTML = '';
-
-            // Load widget script
-            const existingScript = document.querySelector('script[src*="widget.js"]');
-            if (existingScript) {
-                existingScript.remove();
-            }
+            cleanupWidget();
 
             const script = document.createElement('script');
-            script.src = '/widget.js';
+            script.src = WIDGET_URL;
+            script.async = true;
             script.onerror = (error) => console.error('Failed to load widget script:', error);
             document.body.appendChild(script);
+            currentWidget = script;
 
             console.log('Widget initialization triggered for sweepstakes:', sweepstakesId);
         }
