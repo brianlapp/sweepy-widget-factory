@@ -4,12 +4,67 @@
   const MESSAGE_TIMEOUT = 5000;
   const MAX_RETRIES = 3;
   const LOAD_TIMEOUT = 10000;
-  const ALLOWED_ORIGINS = ['*'];
-  const MESSAGE_DEBOUNCE = 1000; // 1 second debounce for messages
+  const ALLOWED_ORIGINS = [
+    'http://localhost:8080',
+    'https://xrycgmzgskcbhvdclflj.supabase.co'
+  ];
+  const MESSAGE_DEBOUNCE = 100; // 100ms debounce
+  const VERIFICATION_POINTS = {
+    initialization: false,
+    originValidation: false,
+    messageDebouncing: false,
+    errorHandling: false
+  };
   
   let lastMessageTime = 0;
   let messageQueue = [];
   let isProcessingQueue = false;
+  let messageCache = new Set();
+  let diagnosticCount = 0;
+  const MAX_DIAGNOSTIC_COUNT = 1000;
+
+  class MessageValidator {
+    static validateOrigin(origin) {
+      const isValid = ALLOWED_ORIGINS.includes('*') || ALLOWED_ORIGINS.includes(origin);
+      console.log(`[Widget Verification] Origin validation: ${origin} - ${isValid}`);
+      VERIFICATION_POINTS.originValidation = true;
+      return isValid;
+    }
+
+    static validateMessageType(type) {
+      const validTypes = ['WIDGET_READY', 'WIDGET_ERROR', 'REACT_LOADED', 'setHeight'];
+      return validTypes.includes(type);
+    }
+
+    static shouldProcessMessage(message, origin) {
+      const now = Date.now();
+      if (now - lastMessageTime < MESSAGE_DEBOUNCE) {
+        console.log('[Widget Verification] Message debounced');
+        return false;
+      }
+
+      const messageKey = `${JSON.stringify(message)}-${now}`;
+      if (messageCache.has(messageKey)) {
+        console.log('[Widget Verification] Duplicate message blocked');
+        return false;
+      }
+
+      if (!this.validateOrigin(origin)) {
+        console.error('[Widget Verification] Invalid origin blocked:', origin);
+        return false;
+      }
+
+      messageCache.add(messageKey);
+      if (messageCache.size > 100) {
+        const oldestKey = Array.from(messageCache)[0];
+        messageCache.delete(oldestKey);
+      }
+
+      lastMessageTime = now;
+      VERIFICATION_POINTS.messageDebouncing = true;
+      return true;
+    }
+  }
 
   class ErrorTracker {
     constructor() {
@@ -79,56 +134,42 @@
       this.errorTracker = new ErrorTracker();
       this.resources = new Set();
       this.networkRequests = [];
-      this.lastMessageSent = 0;
-      this.messageCache = new Set(); // Cache to prevent duplicate messages
-    }
-
-    shouldSendMessage(type, message) {
-      const now = Date.now();
-      if (now - this.lastMessageSent < MESSAGE_DEBOUNCE) {
-        return false;
-      }
-
-      // Create a unique key for this message
-      const messageKey = `${type}-${message}-${now}`;
-      if (this.messageCache.has(messageKey)) {
-        return false;
-      }
-
-      // Add to cache and clean old entries
-      this.messageCache.add(messageKey);
-      if (this.messageCache.size > 100) { // Limit cache size
-        const oldestKey = Array.from(this.messageCache)[0];
-        this.messageCache.delete(oldestKey);
-      }
-
-      this.lastMessageSent = now;
-      return true;
     }
 
     log(type, message, data = {}) {
-      if (!this.shouldSendMessage(type, message)) {
+      if (diagnosticCount >= MAX_DIAGNOSTIC_COUNT) {
+        console.warn('[Widget Verification] Max diagnostic count reached');
         return null;
       }
 
+      if (!MessageValidator.shouldProcessMessage({ type, message }, window.location.origin)) {
+        return null;
+      }
+
+      diagnosticCount++;
       const event = {
         type,
         message,
         timestamp: Date.now(),
         timeSinceStart: Date.now() - this.startTime,
-        data
+        data,
+        verificationPoint: Object.keys(VERIFICATION_POINTS).find(key => !VERIFICATION_POINTS[key])
       };
       
       this.events.push(event);
-      console.log(`[Widget Diagnostic] ${type}:`, message, data);
+      console.log(`[Widget Verification] ${type}:`, message, data);
       
-      try {
-        window.parent.postMessage({
-          type: 'WIDGET_DIAGNOSTIC',
-          event
-        }, '*');
-      } catch (e) {
-        console.error('Failed to send diagnostic to parent:', e);
+      // Only send critical messages to parent
+      if (['ERROR', 'WIDGET_READY', 'REACT_LOADED'].includes(type)) {
+        try {
+          window.parent.postMessage({
+            type: 'WIDGET_DIAGNOSTIC',
+            event
+          }, '*');
+        } catch (e) {
+          console.error('[Widget Verification] Failed to send diagnostic:', e);
+          VERIFICATION_POINTS.errorHandling = true;
+        }
       }
       
       return event;
@@ -172,9 +213,6 @@
     }
   }
 
-  // Initialize diagnostics
-  const diagnostics = new Diagnostics();
-
   class IframeManager {
     constructor() {
       this.retryCount = 0;
@@ -182,57 +220,37 @@
       this.isReady = false;
       this.loadTimeout = null;
       this.initTimeout = null;
-      this.lastMessageTime = 0;
-      this.processedMessages = new Set();
       
       window.addEventListener('message', this.handleMessage.bind(this), false);
       window.addEventListener('error', this.handleError.bind(this), true);
       window.addEventListener('unhandledrejection', this.handlePromiseError.bind(this), true);
       
-      diagnostics.log('init', 'IframeManager initialized with enhanced error handling');
+      console.log('[Widget Verification] IframeManager initialized');
+      VERIFICATION_POINTS.initialization = true;
     }
 
     handleMessage(event) {
       try {
-        if (!ALLOWED_ORIGINS.includes('*') && !ALLOWED_ORIGINS.includes(event.origin)) {
-          throw new Error(`Unauthorized message origin: ${event.origin}`);
+        if (!MessageValidator.shouldProcessMessage(event.data, event.origin)) {
+          return;
         }
 
         const { type, data } = event.data || {};
-        if (!type) return;
-
-        // Create a unique message identifier
-        const messageId = `${type}-${JSON.stringify(data)}-${Date.now()}`;
-        if (this.processedMessages.has(messageId)) {
-          return; // Skip duplicate messages
-        }
-
-        // Implement message debouncing
-        const now = Date.now();
-        if (now - this.lastMessageTime < MESSAGE_DEBOUNCE) {
+        if (!type || !MessageValidator.validateMessageType(type)) {
           return;
         }
-        this.lastMessageTime = now;
 
-        // Add to processed messages cache
-        this.processedMessages.add(messageId);
-        if (this.processedMessages.size > 100) {
-          // Clean up old messages
-          const oldestMessage = Array.from(this.processedMessages)[0];
-          this.processedMessages.delete(oldestMessage);
-        }
-
-        diagnostics.log('message', `Received message: ${type}`, { data });
+        console.log('[Widget Verification] Processing valid message:', type);
         
         switch(type) {
           case 'WIDGET_ERROR':
-            diagnostics.error('Widget error from iframe', event.data.error);
+            this.errorTracker.addError('Widget error from iframe', event.data.error);
             break;
           case 'WIDGET_READY':
             this.handleWidgetReady(event.data);
             break;
           case 'REACT_LOADED':
-            diagnostics.updateConnectionStatus('reactLoaded', true);
+            this.updateConnectionStatus('reactLoaded', true);
             break;
           case 'setHeight':
             if (this.iframe && event.data.height) {
@@ -241,7 +259,8 @@
             break;
         }
       } catch (error) {
-        diagnostics.error('Message handling error', error);
+        console.error('[Widget Verification] Message handling error:', error);
+        VERIFICATION_POINTS.errorHandling = true;
       }
     }
 
@@ -257,20 +276,20 @@
         error: event.error
       };
       
-      diagnostics.error('Global error caught', errorDetails);
+      this.errorTracker.error('Global error caught', errorDetails);
       this.attemptRecovery(errorDetails);
     }
 
     handlePromiseError(event) {
       event.preventDefault();
-      diagnostics.error('Unhandled promise rejection', event.reason);
+      this.errorTracker.error('Unhandled promise rejection', event.reason);
       this.attemptRecovery({ message: 'Promise rejection', error: event.reason });
     }
 
     attemptRecovery(errorDetails) {
       if (this.retryCount < MAX_RETRIES) {
         this.retryCount++;
-        diagnostics.log('recovery', `Attempting recovery (${this.retryCount}/${MAX_RETRIES})`, errorDetails);
+        console.log('[Widget Verification] Attempting recovery:', this.retryCount);
         this.reloadIframe();
       } else {
         this.handleFatalError('Max retries reached', errorDetails);
@@ -279,14 +298,14 @@
 
     reloadIframe() {
       if (this.iframe) {
-        diagnostics.log('reload', 'Reloading iframe');
+        console.log('[Widget Verification] Reloading iframe');
         this.cleanup();
         this.setIframeSource();
       }
     }
 
     handleFatalError(message, details = {}) {
-      diagnostics.error('Fatal error', { message, details });
+      this.errorTracker.error('Fatal error', { message, details });
       this.showErrorUI(message);
       this.cleanup();
     }
@@ -306,14 +325,14 @@
     }
 
     handleWidgetReady(data) {
-      diagnostics.log('widget_ready', 'Widget reported ready', data);
+      console.log('[Widget Verification] Widget reported ready', data);
       clearTimeout(this.initTimeout);
       this.isReady = true;
-      diagnostics.updateConnectionStatus('widgetReady', true);
+      this.updateConnectionStatus('widgetReady', true);
     }
 
     createIframe(sweepstakesId) {
-      diagnostics.log('create_iframe', 'Creating iframe', { sweepstakesId });
+      console.log('[Widget Verification] Creating iframe', { sweepstakesId });
       
       try {
         this.cleanup();
@@ -327,14 +346,14 @@
         this.iframe.setAttribute('loading', 'eager');
         
         this.iframe.onload = () => {
-          diagnostics.log('iframe_load', 'Iframe loaded');
-          diagnostics.updateConnectionStatus('iframeLoaded', true);
+          console.log('[Widget Verification] Iframe loaded');
+          this.updateConnectionStatus('iframeLoaded', true);
           clearTimeout(this.loadTimeout);
         };
         
         this.iframe.onerror = (error) => {
-          diagnostics.error('Iframe load error', error);
-          diagnostics.updateConnectionStatus('iframeLoaded', false);
+          this.errorTracker.error('Iframe load error', error);
+          this.updateConnectionStatus('iframeLoaded', false);
           this.handleLoadError(error);
         };
         
@@ -343,13 +362,13 @@
         
         return this.iframe;
       } catch (error) {
-        diagnostics.error('Error creating iframe', error);
+        this.errorTracker.error('Error creating iframe', error);
         throw error;
       }
     }
 
     cleanup() {
-      diagnostics.log('cleanup', 'Cleaning up iframe manager');
+      console.log('[Widget Verification] Cleaning up iframe manager');
       clearTimeout(this.loadTimeout);
       clearTimeout(this.initTimeout);
       
@@ -360,20 +379,20 @@
         this.iframe = null;
       }
 
-      diagnostics.resources.clear();
+      this.resources.clear();
       this.isReady = false;
       this.retryCount = 0;
       
       // Reset connection status
-      diagnostics.updateConnectionStatus('iframeLoaded', false);
-      diagnostics.updateConnectionStatus('reactLoaded', false);
-      diagnostics.updateConnectionStatus('widgetReady', false);
+      this.updateConnectionStatus('iframeLoaded', false);
+      this.updateConnectionStatus('reactLoaded', false);
+      this.updateConnectionStatus('widgetReady', false);
     }
   }
 
   // Initialize when the script loads
   const initialize = () => {
-    diagnostics.log('init', 'Initializing widget script');
+    console.log('[Widget Verification] Starting initialization');
     
     try {
       const container = document.getElementById('sweepstakes-widget');
@@ -386,25 +405,28 @@
         throw new Error('No sweepstakes ID provided');
       }
 
-      diagnostics.log('init', 'Found sweepstakes ID', { sweepstakesId });
       const iframeManager = new IframeManager();
       const iframe = iframeManager.createIframe(sweepstakesId);
       
       if (iframe) {
         container.appendChild(iframe);
-        diagnostics.log('init', 'Widget initialized successfully');
+        console.log('[Widget Verification] Widget initialized successfully');
+        
+        // Log verification status after 5 seconds
+        setTimeout(() => {
+          console.table(VERIFICATION_POINTS);
+        }, 5000);
       }
     } catch (error) {
-      diagnostics.error('Initialization failed', error);
+      console.error('[Widget Verification] Initialization failed:', error);
+      VERIFICATION_POINTS.errorHandling = true;
       throw error;
     }
   };
 
   if (document.readyState === 'loading') {
-    diagnostics.log('init', 'Document loading, waiting for DOMContentLoaded');
     document.addEventListener('DOMContentLoaded', initialize);
   } else {
-    diagnostics.log('init', 'Document ready, initializing immediately');
     initialize();
   }
 })();

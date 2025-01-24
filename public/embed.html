@@ -8,9 +8,8 @@
 <body>
     <div id="root"></div>
     <script>
-        console.log('[Widget] Starting initialization...');
+        console.log('[Widget Verification] Starting initialization...');
         
-        // Enhanced initialization and resource tracking
         window.__WIDGET_STATE__ = {
             loadStartTime: Date.now(),
             reactLoaded: false,
@@ -19,19 +18,22 @@
             logs: [],
             lastMessageTime: 0,
             processedMessages: new Set(),
-            resources: {
-                scripts: new Set(),
-                styles: new Set(),
-                images: new Set(),
-                loadedCount: 0,
-                totalCount: 0
+            verificationPoints: {
+                initialization: false,
+                resourcesLoaded: false,
+                reactMounted: false,
+                errorHandling: false
             }
         };
 
-        // Message debouncing
+        function logVerification(point, status, details = {}) {
+            window.__WIDGET_STATE__.verificationPoints[point] = status;
+            console.log(`[Widget Verification] ${point}:`, status, details);
+        }
+
         function shouldProcessMessage(type, data) {
             const now = Date.now();
-            if (now - window.__WIDGET_STATE__.lastMessageTime < 1000) {
+            if (now - window.__WIDGET_STATE__.lastMessageTime < 100) {
                 return false;
             }
 
@@ -43,7 +45,6 @@
             window.__WIDGET_STATE__.lastMessageTime = now;
             window.__WIDGET_STATE__.processedMessages.add(messageKey);
 
-            // Clean up old messages
             if (window.__WIDGET_STATE__.processedMessages.size > 100) {
                 const oldestMessage = Array.from(window.__WIDGET_STATE__.processedMessages)[0];
                 window.__WIDGET_STATE__.processedMessages.delete(oldestMessage);
@@ -52,79 +53,33 @@
             return true;
         }
 
-        // Enhanced resource tracking
         const resourceObserver = new PerformanceObserver((list) => {
             list.getEntries().forEach(entry => {
-                const resource = entry.name;
-                const type = entry.initiatorType;
-                const duration = entry.duration;
-                
-                if (shouldProcessMessage('RESOURCE', { resource, type })) {
-                    logState('RESOURCE', `Loaded ${type}: ${resource}`, {
-                        duration,
-                        size: entry.transferSize
+                if (shouldProcessMessage('RESOURCE', { url: entry.name })) {
+                    logVerification('resourcesLoaded', true, {
+                        resource: entry.name,
+                        duration: entry.duration
                     });
                 }
-
-                window.__WIDGET_STATE__.resources[type + 's']?.add(resource);
-                window.__WIDGET_STATE__.resources.loadedCount++;
-                
-                checkResourcesComplete();
             });
         });
 
         resourceObserver.observe({ entryTypes: ['resource'] });
 
-        function checkResourcesComplete() {
-            const state = window.__WIDGET_STATE__;
-            if (state.resources.loadedCount === state.resources.totalCount) {
-                logState('COMPLETE', 'All resources loaded', {
-                    count: state.resources.loadedCount,
-                    timing: Date.now() - state.loadStartTime
-                });
-            }
-        }
-
-        function logState(type, message, data = {}) {
-            if (!shouldProcessMessage(type, { message, ...data })) {
-                return;
-            }
-
-            const log = {
-                type,
-                message,
-                timestamp: Date.now(),
-                timeSinceStart: Date.now() - window.__WIDGET_STATE__.loadStartTime,
-                state: { ...window.__WIDGET_STATE__ },
-                data
-            };
-            window.__WIDGET_STATE__.logs.push(log);
-            console.log(`[Widget ${type}]`, message, data);
-            
-            window.parent.postMessage({
-                type: 'WIDGET_STATE',
-                state: window.__WIDGET_STATE__,
-                log
-            }, '*');
-        }
-
-        // Enhanced error tracking with resource failures
         window.onerror = function(msg, url, line, col, error) {
-            window.__WIDGET_STATE__.error = {
+            logVerification('errorHandling', true, {
                 message: msg,
                 url,
                 line,
                 stack: error?.stack
-            };
-            logState('ERROR', msg, { url, line, col, stack: error?.stack });
+            });
             return false;
         };
 
-        // Track React availability with enhanced validation
         Object.defineProperty(window, 'React', {
             set: function(value) {
                 window.__WIDGET_STATE__.reactLoaded = true;
-                logState('REACT', 'React loaded and available', {
+                logVerification('reactMounted', true, {
                     version: value?.version
                 });
                 return value;
@@ -132,9 +87,8 @@
             configurable: true
         });
 
-        // Initialize widget with enhanced resource tracking
         window.__initializeWidget = function(sweepstakesId) {
-            logState('INIT', 'Initializing widget', { sweepstakesId });
+            logVerification('initialization', true, { sweepstakesId });
             
             try {
                 if (!window.initializeWidget) {
@@ -143,67 +97,35 @@
                 
                 window.initializeWidget(sweepstakesId);
                 window.__WIDGET_STATE__.widgetInitialized = true;
-                logState('SUCCESS', 'Widget initialized successfully');
                 
                 window.parent.postMessage({ 
                     type: 'WIDGET_READY',
                     sweepstakesId 
                 }, '*');
             } catch (error) {
-                logState('ERROR', 'Initialization failed', {
+                logVerification('errorHandling', true, {
                     message: error.message,
                     stack: error.stack
                 });
-                
-                window.parent.postMessage({ 
-                    type: 'WIDGET_ERROR',
-                    error: {
-                        message: 'Initialization failed',
-                        details: error.message,
-                        stack: error.stack
-                    }
-                }, '*');
                 throw error;
             }
         };
 
-        // Load widget bundle with enhanced tracking
-        const scriptLoadTimeout = setTimeout(() => {
-            if (!window.__WIDGET_STATE__.reactLoaded) {
-                logState('TIMEOUT', 'Script load timeout');
-            }
-        }, 5000);
-
-        // Enhanced script loading with validation
         const widgetScript = document.createElement('script');
         widgetScript.src = 'widget-bundle.js';
         widgetScript.onload = () => {
-            clearTimeout(scriptLoadTimeout);
-            logState('LOAD', 'Widget bundle loaded successfully');
-            validateResources();
+            logVerification('resourcesLoaded', true, { script: 'widget-bundle.js' });
         };
         widgetScript.onerror = (error) => {
-            clearTimeout(scriptLoadTimeout);
-            logState('ERROR', 'Failed to load widget bundle', { error });
+            logVerification('errorHandling', true, { error });
         };
 
-        // Validate all required resources
-        function validateResources() {
-            const requiredResources = ['widget-bundle.js', 'React', 'ReactDOM'];
-            const missingResources = requiredResources.filter(resource => {
-                if (resource === 'React') return !window.React;
-                if (resource === 'ReactDOM') return !window.ReactDOM;
-                return !window.__WIDGET_STATE__.resources.scripts.has(resource);
-            });
-
-            if (missingResources.length > 0) {
-                logState('ERROR', 'Missing required resources', { missingResources });
-            } else {
-                logState('VALIDATION', 'All required resources loaded');
-            }
-        }
-
         document.body.appendChild(widgetScript);
+
+        // Log verification status after 5 seconds
+        setTimeout(() => {
+            console.table(window.__WIDGET_STATE__.verificationPoints);
+        }, 5000);
     </script>
 </body>
 </html>
