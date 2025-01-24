@@ -2,11 +2,12 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
+import type { UserConfig } from 'vite';
 
 const version = new Date().toISOString().split('T')[0] + '-' + 
                Math.random().toString(36).substring(2, 7);
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }): UserConfig => ({
   server: {
     host: "::",
     port: 8080,
@@ -32,12 +33,12 @@ export default defineConfig(({ mode }) => ({
     outDir: 'dist',
     assetsDir: 'assets',
     rollupOptions: {
-      input: mode === 'production' ? {
-        main: path.resolve(__dirname, 'index.html'),
-      } : {
-        main: path.resolve(__dirname, 'index.html'),
-        widget: path.resolve(__dirname, 'src/widget.tsx'),
-      },
+      input: mode === 'production' 
+        ? { main: path.resolve(__dirname, 'index.html') }
+        : { 
+            main: path.resolve(__dirname, 'index.html'),
+            widget: path.resolve(__dirname, 'src/widget.tsx')
+          },
       output: {
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === 'widget') {
