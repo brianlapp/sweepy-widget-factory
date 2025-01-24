@@ -37,19 +37,13 @@ export default defineConfig(({ mode }): UserConfig => ({
     rollupOptions: {
       input: mode === 'production' 
         ? path.resolve(__dirname, 'src/widget.ts')
-        : {
-            main: path.resolve(__dirname, 'index.html'),
-            widget: path.resolve(__dirname, 'src/widget.ts')
-          },
+        : path.resolve(__dirname, 'index.html'),
       output: {
-        format: 'iife',
+        format: mode === 'production' ? 'iife' : 'es',
         name: 'SweepstakesWidget',
-        entryFileNames: (chunkInfo) => {
-          if (chunkInfo.name === 'widget') {
-            return 'widget.js';
-          }
-          return 'assets/[name]-[hash].js';
-        },
+        entryFileNames: mode === 'production' 
+          ? 'widget.js'
+          : 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash][extname]',
         chunkFileNames: 'assets/[name]-[hash].js',
       },
