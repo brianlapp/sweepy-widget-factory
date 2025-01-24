@@ -40,13 +40,13 @@
     <div class="controls">
         <button onclick="initializeWidget()">Initialize Widget</button>
         <button onclick="clearLogs()">Clear Logs</button>
-        <select id="sweepstakesSelect">
+        <select id="sweepstakesSelect" onchange="handleSweepstakesChange(this.value)">
             <option value="">Select a sweepstakes...</option>
         </select>
     </div>
 
     <div class="test-container">
-        <div id="sweepstakes-widget" data-sweepstakes-id=""></div>
+        <div id="sweepstakes-widget"></div>
     </div>
 
     <div id="debug-console"></div>
@@ -111,24 +111,32 @@
                 const select = document.getElementById('sweepstakesSelect');
                 select.innerHTML = '<option value="">Select a sweepstakes...</option>';
                 
+                sweepstakes.forEach(sweep => {
+                    const option = document.createElement('option');
+                    option.value = sweep.id;
+                    option.textContent = sweep.title;
+                    select.appendChild(option);
+                });
+
                 if (sweepstakes.length === 0) {
                     console.warn('No active sweepstakes found');
                     const option = document.createElement('option');
                     option.disabled = true;
                     option.text = 'No active sweepstakes available';
                     select.appendChild(option);
-                } else {
-                    sweepstakes.forEach(sweep => {
-                        const option = document.createElement('option');
-                        option.value = sweep.id;
-                        option.textContent = sweep.title;
-                        select.appendChild(option);
-                    });
                 }
             } catch (error) {
                 console.error('Failed to load sweepstakes:', error);
                 const select = document.getElementById('sweepstakesSelect');
                 select.innerHTML = '<option value="">Error loading sweepstakes</option>';
+            }
+        }
+
+        function handleSweepstakesChange(sweepstakesId) {
+            const container = document.getElementById('sweepstakes-widget');
+            container.setAttribute('data-sweepstakes-id', sweepstakesId);
+            if (sweepstakesId) {
+                initializeWidget();
             }
         }
 
@@ -142,13 +150,19 @@
             // Clear previous widget
             const container = document.getElementById('sweepstakes-widget');
             container.innerHTML = '';
-            container.setAttribute('data-sweepstakes-id', sweepstakesId);
 
             // Load widget script
+            const existingScript = document.querySelector('script[src*="widget.js"]');
+            if (existingScript) {
+                existingScript.remove();
+            }
+
             const script = document.createElement('script');
             script.src = '/widget.js';
             script.onerror = (error) => console.error('Failed to load widget script:', error);
             document.body.appendChild(script);
+
+            console.log('Widget initialization triggered for sweepstakes:', sweepstakesId);
         }
 
         // Initialize sweepstakes dropdown
