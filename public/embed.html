@@ -10,7 +10,7 @@
     <script>
         console.log('[Widget Verification] Starting initialization...');
         
-        // Initialize widget state
+        // Initialize widget state with enhanced error tracking
         window.__WIDGET_STATE__ = {
             loadStartTime: Date.now(),
             reactLoaded: false,
@@ -23,42 +23,105 @@
                 initialization: false,
                 resourcesLoaded: false,
                 reactMounted: false,
-                errorHandling: false
+                errorHandling: false,
+                recoveryAttempted: false,
+                healthCheck: false
+            },
+            errorMetrics: {
+                count: 0,
+                lastError: null,
+                recoveryAttempts: 0,
+                successfulRecoveries: 0
             }
         };
 
+        // Enhanced verification logging
         function logVerification(point, status, details = {}) {
+            const timestamp = new Date().toISOString();
+            const logEntry = {
+                point,
+                status,
+                timestamp,
+                details
+            };
+            
             window.__WIDGET_STATE__.verificationPoints[point] = status;
+            window.__WIDGET_STATE__.logs.push(logEntry);
+            
             console.log(`[Widget Verification] ${point}:`, status, details);
+            
+            // Send verification status to parent
+            window.parent.postMessage({
+                type: 'WIDGET_VERIFICATION',
+                verification: logEntry
+            }, '*');
         }
 
-        window.addEventListener('message', function(event) {
-            if (event.data.type === 'INITIALIZE_WIDGET' && event.data.sweepstakesId) {
-                window.__initializeWidget(event.data.sweepstakesId);
-            }
-        });
+        // Enhanced error handling
+        function handleError(error, context) {
+            const errorMetrics = window.__WIDGET_STATE__.errorMetrics;
+            errorMetrics.count++;
+            errorMetrics.lastError = {
+                message: error.message,
+                stack: error.stack,
+                context,
+                timestamp: new Date().toISOString()
+            };
 
+            logVerification('errorHandling', true, {
+                error: errorMetrics.lastError,
+                totalErrors: errorMetrics.count
+            });
+
+            // Attempt recovery if possible
+            if (errorMetrics.recoveryAttempts < 3) {
+                errorMetrics.recoveryAttempts++;
+                logVerification('recoveryAttempted', true, {
+                    attempt: errorMetrics.recoveryAttempts
+                });
+                
+                window.parent.postMessage({
+                    type: 'WIDGET_RETRY',
+                    error: errorMetrics.lastError
+                }, '*');
+            } else {
+                console.error('[Widget Error] Max recovery attempts reached');
+            }
+        }
+
+        // Resource loading monitoring
         const resourceObserver = new PerformanceObserver((list) => {
             list.getEntries().forEach(entry => {
                 logVerification('resourcesLoaded', true, {
                     resource: entry.name,
-                    duration: entry.duration
+                    duration: entry.duration,
+                    type: entry.entryType
                 });
             });
         });
 
-        resourceObserver.observe({ entryTypes: ['resource'] });
+        resourceObserver.observe({ 
+            entryTypes: ['resource', 'navigation', 'paint'] 
+        });
 
+        // Error event listeners
         window.onerror = function(msg, url, line, col, error) {
-            logVerification('errorHandling', true, {
-                message: msg,
+            handleError(error || new Error(msg), {
+                type: 'window.onerror',
                 url,
                 line,
-                stack: error?.stack
+                col
             });
             return false;
         };
 
+        window.addEventListener('unhandledrejection', function(event) {
+            handleError(event.reason, {
+                type: 'unhandledrejection'
+            });
+        });
+
+        // React mounting verification
         Object.defineProperty(window, 'React', {
             set: function(value) {
                 window.__WIDGET_STATE__.reactLoaded = true;
@@ -70,6 +133,7 @@
             configurable: true
         });
 
+        // Widget initialization with enhanced error handling
         window.__initializeWidget = function(sweepstakesId) {
             logVerification('initialization', true, { sweepstakesId });
             
@@ -85,28 +149,46 @@
                     type: 'WIDGET_READY',
                     sweepstakesId 
                 }, '*');
+
+                // Start health check interval
+                setInterval(() => {
+                    const health = {
+                        memory: performance.memory ? {
+                            usedJSHeapSize: performance.memory.usedJSHeapSize,
+                            totalJSHeapSize: performance.memory.totalJSHeapSize
+                        } : null,
+                        timing: performance.timing,
+                        errors: window.__WIDGET_STATE__.errorMetrics
+                    };
+
+                    logVerification('healthCheck', true, health);
+                }, 30000);
+
             } catch (error) {
-                logVerification('errorHandling', true, {
-                    message: error.message,
-                    stack: error.stack
+                handleError(error, {
+                    type: 'initialization',
+                    sweepstakesId
                 });
                 throw error;
             }
         };
 
+        // Load widget script
         const widgetScript = document.createElement('script');
         widgetScript.src = '/widget.js';
         widgetScript.onload = () => {
             logVerification('resourcesLoaded', true, { script: 'widget.js' });
         };
         widgetScript.onerror = (error) => {
-            logVerification('errorHandling', true, { error });
+            handleError(error, { type: 'script-load' });
         };
 
         document.body.appendChild(widgetScript);
 
+        // Periodic state logging
         setInterval(() => {
             console.table(window.__WIDGET_STATE__.verificationPoints);
+            console.table(window.__WIDGET_STATE__.errorMetrics);
         }, 5000);
     </script>
 </body>
