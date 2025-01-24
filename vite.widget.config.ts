@@ -9,15 +9,24 @@ export default defineConfig({
     lib: {
       entry: path.resolve(__dirname, 'src/widget/index.ts'),
       name: 'SweepstakesWidget',
-      fileName: 'widget',
       formats: ['iife'],
+      fileName: () => 'widget.js',
     },
     rollupOptions: {
       output: {
-        entryFileNames: 'widget.js',
         extend: true,
+        inlineDynamicImports: true,
+        manualChunks: undefined,
+        globals: {
+          react: 'React',
+          'react-dom': 'ReactDOM',
+        },
       },
+      external: ['react', 'react-dom'],
     },
+    sourcemap: true,
+    minify: 'terser',
+    target: 'es2015',
   },
   resolve: {
     alias: {

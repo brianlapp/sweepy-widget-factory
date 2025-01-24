@@ -4,23 +4,24 @@ import { SweepstakesWidget } from '@/components/SweepstakesWidget';
 
 interface WidgetRootProps {
   sweepstakesId: string;
+  onReady?: () => void;
+  onError?: (error: Error) => void;
 }
 
-// Create a client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 5 * 60 * 1000,
     },
   },
 });
 
 class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
+  { children: React.ReactNode; onError?: (error: Error) => void },
   { hasError: boolean; error: Error | null }
 > {
-  constructor(props: { children: React.ReactNode }) {
+  constructor(props: { children: React.ReactNode; onError?: (error: Error) => void }) {
     super(props);
     this.state = { hasError: false, error: null };
   }
@@ -30,11 +31,7 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error) {
-    console.error('[Widget Error]', error);
-    window.parent.postMessage({ 
-      type: 'WIDGET_ERROR', 
-      error: { message: error.message } 
-    }, '*');
+    this.props.onError?.(error);
   }
 
   render() {
@@ -49,29 +46,24 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-export function WidgetRoot({ sweepstakesId }: WidgetRootProps) {
+export function WidgetRoot({ sweepstakesId, onReady, onError }: WidgetRootProps) {
   React.useEffect(() => {
     const updateHeight = () => {
       const height = document.documentElement.scrollHeight;
       window.parent.postMessage({ type: 'setHeight', height }, '*');
     };
 
-    // Initial height update
     updateHeight();
-
-    // Setup resize observer
     const observer = new ResizeObserver(updateHeight);
     observer.observe(document.body);
-
-    // Report ready state
-    window.parent.postMessage({ type: 'WIDGET_READY' }, '*');
     
-    // Cleanup
+    onReady?.();
+    
     return () => observer.disconnect();
-  }, []);
+  }, [onReady]);
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary onError={onError}>
       <QueryClientProvider client={queryClient}>
         <div className="widget-container">
           <SweepstakesWidget 
