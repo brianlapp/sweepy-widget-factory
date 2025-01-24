@@ -1,23 +1,17 @@
-import { initializeWidget } from './core';
+import { initializeWidget } from './core/WidgetLoader';
+import { createTestWidget } from './utils/testing';
 import { logger } from './utils/logger';
 
-// Initialize error handling
-window.onerror = (message, source, lineno, colno, error) => {
-  logger.error('Global error:', { message, source, lineno, colno, error });
-};
+// Export the main widget initialization function
+export { initializeWidget, createTestWidget, logger };
 
-// Export initialization function
-window.initializeWidget = initializeWidget;
-
-// Export types for external usage
-export * from './types';
-
-// Log initialization
-logger.info('Widget bundle loaded successfully');
-
-// Declare global types
+// Make the initialization function available globally
 declare global {
   interface Window {
     initializeWidget: typeof initializeWidget;
   }
 }
+
+window.initializeWidget = initializeWidget;
+
+logger.info(`Widget version ${process.env.VITE_APP_VERSION} initialized`);
