@@ -35,8 +35,10 @@ export function SweepstakesWidget({
       return data;
     },
     enabled: !!sweepstakesId,
-    onSuccess: () => {
-      onReady?.();
+    meta: {
+      onSuccess: () => {
+        onReady?.();
+      }
     }
   });
 
