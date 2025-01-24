@@ -24,6 +24,7 @@ function WidgetRoot({ sweepstakesId }: { sweepstakesId: string }) {
         // Track React availability
         (window as any).__REACT_STATUS__.loaded = true;
         logger.info('React loaded and available');
+        window.parent.postMessage({ type: 'REACT_LOADED', status: true }, '*');
 
         const observer = new ResizeObserver(updateHeight);
         observer.observe(document.body);

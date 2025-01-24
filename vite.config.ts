@@ -45,8 +45,7 @@ export default defineConfig(({ mode }) => ({
         assetFileNames: 'assets/[name]-[hash][extname]',
         chunkFileNames: 'assets/[name]-[hash].js',
       },
-      // Important: We're now bundling React with our widget
-      external: [],
+      external: [], // Important: We're now bundling React with our widget
     },
     sourcemap: true,
     minify: mode === 'production',
