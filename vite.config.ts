@@ -7,10 +7,10 @@ import type { UserConfig } from 'vite';
 const version = new Date().toISOString().split('T')[0] + '-' + 
                Math.random().toString(36).substring(2, 7);
 
-// Separate configs for main app and widget
-export default defineConfig(({ mode }): UserConfig => {
+export default defineConfig(({ mode, command }): UserConfig => {
   const isWidget = process.env.BUILD_TARGET === 'widget';
   
+  // Base configuration shared between widget and main app
   const baseConfig = {
     plugins: [
       react({
@@ -46,8 +46,11 @@ export default defineConfig(({ mode }): UserConfig => {
           external: [],
           output: {
             globals: {},
+            inlineDynamicImports: true,
           },
         },
+        sourcemap: mode === 'development',
+        minify: mode === 'production',
       },
     };
   }
@@ -61,7 +64,7 @@ export default defineConfig(({ mode }): UserConfig => {
       middlewareMode: false,
     },
     build: {
-      outDir: 'dist',
+      outDir: 'dist/app',
       assetsDir: 'assets',
       sourcemap: true,
       minify: mode === 'production',
