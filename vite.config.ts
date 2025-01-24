@@ -32,24 +32,23 @@ export default defineConfig(({ mode }) => ({
     outDir: 'dist',
     assetsDir: 'assets',
     rollupOptions: {
-      input: {
+      input: mode === 'production' ? {
+        main: path.resolve(__dirname, 'index.html'),
+      } : {
         main: path.resolve(__dirname, 'index.html'),
         widget: path.resolve(__dirname, 'src/widget.tsx'),
       },
       output: {
-        // Ensure widget builds as a standalone JS file
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === 'widget') {
             return 'widget-bundle.js';
           }
           return 'assets/[name]-[hash].js';
         },
-        format: 'iife', // Add this to ensure proper browser compatibility
         assetFileNames: 'assets/[name]-[hash][extname]',
         chunkFileNames: 'assets/[name]-[hash].js',
       },
     },
-    // Ensure widget builds separately from main app
     lib: mode === 'production' ? {
       entry: path.resolve(__dirname, 'src/widget.tsx'),
       name: 'SweepstakesWidget',
