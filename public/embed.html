@@ -10,6 +10,7 @@
     <script>
         console.log('[Widget Verification] Starting initialization...');
         
+        // Initialize widget state
         window.__WIDGET_STATE__ = {
             loadStartTime: Date.now(),
             reactLoaded: false,
@@ -31,41 +32,26 @@
             console.log(`[Widget Verification] ${point}:`, status, details);
         }
 
-        function shouldProcessMessage(type, data) {
-            const now = Date.now();
-            if (now - window.__WIDGET_STATE__.lastMessageTime < 100) {
-                return false;
+        // Listen for initialization message
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'INITIALIZE_WIDGET' && event.data.sweepstakesId) {
+                window.__initializeWidget(event.data.sweepstakesId);
             }
+        });
 
-            const messageKey = `${type}-${JSON.stringify(data)}-${now}`;
-            if (window.__WIDGET_STATE__.processedMessages.has(messageKey)) {
-                return false;
-            }
-
-            window.__WIDGET_STATE__.lastMessageTime = now;
-            window.__WIDGET_STATE__.processedMessages.add(messageKey);
-
-            if (window.__WIDGET_STATE__.processedMessages.size > 100) {
-                const oldestMessage = Array.from(window.__WIDGET_STATE__.processedMessages)[0];
-                window.__WIDGET_STATE__.processedMessages.delete(oldestMessage);
-            }
-
-            return true;
-        }
-
+        // Resource loading tracking
         const resourceObserver = new PerformanceObserver((list) => {
             list.getEntries().forEach(entry => {
-                if (shouldProcessMessage('RESOURCE', { url: entry.name })) {
-                    logVerification('resourcesLoaded', true, {
-                        resource: entry.name,
-                        duration: entry.duration
-                    });
-                }
+                logVerification('resourcesLoaded', true, {
+                    resource: entry.name,
+                    duration: entry.duration
+                });
             });
         });
 
         resourceObserver.observe({ entryTypes: ['resource'] });
 
+        // Error handling
         window.onerror = function(msg, url, line, col, error) {
             logVerification('errorHandling', true, {
                 message: msg,
@@ -76,6 +62,7 @@
             return false;
         };
 
+        // Track React availability
         Object.defineProperty(window, 'React', {
             set: function(value) {
                 window.__WIDGET_STATE__.reactLoaded = true;
@@ -87,6 +74,7 @@
             configurable: true
         });
 
+        // Widget initialization function
         window.__initializeWidget = function(sweepstakesId) {
             logVerification('initialization', true, { sweepstakesId });
             
@@ -111,6 +99,7 @@
             }
         };
 
+        // Load widget bundle
         const widgetScript = document.createElement('script');
         widgetScript.src = 'widget-bundle.js';
         widgetScript.onload = () => {
@@ -122,8 +111,8 @@
 
         document.body.appendChild(widgetScript);
 
-        // Log verification status after 5 seconds
-        setTimeout(() => {
+        // Log verification status periodically
+        setInterval(() => {
             console.table(window.__WIDGET_STATE__.verificationPoints);
         }, 5000);
     </script>

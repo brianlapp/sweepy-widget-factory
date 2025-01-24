@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Widget Test Environment</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-container {
+            border: 1px solid #e2e8f0;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        #debug-console {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-family: monospace;
+            height: 200px;
+            overflow-y: auto;
+        }
+        .error { color: #dc2626; }
+        .success { color: #059669; }
+        .info { color: #2563eb; }
+    </style>
+</head>
+<body>
+    <h1>Widget Test Environment</h1>
+    
+    <div class="controls">
+        <button onclick="initializeWidget()">Initialize Widget</button>
+        <button onclick="clearLogs()">Clear Logs</button>
+        <select id="sweepstakesSelect">
+            <option value="">Select a sweepstakes...</option>
+        </select>
+    </div>
+
+    <div class="test-container">
+        <!-- Widget will be initialized here -->
+        <div id="sweepstakes-widget" data-sweepstakes-id=""></div>
+    </div>
+
+    <div id="debug-console"></div>
+
+    <script>
+        // Override console.log to capture widget logs
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn,
+            info: console.info
+        };
+
+        const debugConsole = document.getElementById('debug-console');
+        
+        function logToDebug(type, ...args) {
+            const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg) : arg
+            ).join(' ');
+            
+            const logElement = document.createElement('div');
+            logElement.className = type;
+            logElement.textContent = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            debugConsole.appendChild(logElement);
+            debugConsole.scrollTop = debugConsole.scrollHeight;
+            
+            // Also log to browser console
+            originalConsole[type](...args);
+        }
+
+        console.log = (...args) => logToDebug('info', ...args);
+        console.error = (...args) => logToDebug('error', ...args);
+        console.warn = (...args) => logToDebug('warning', ...args);
+        console.info = (...args) => logToDebug('success', ...args);
+
+        function clearLogs() {
+            debugConsole.innerHTML = '';
+        }
+
+        // Load available sweepstakes for testing
+        async function loadSweepstakes() {
+            try {
+                const response = await fetch('https://xrycgmzgskcbhvdclflj.supabase.co/rest/v1/sweepstakes?select=id,title&is_active=eq.true', {
+                    headers: {
+                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhyeWNnbXpnc2tjYmh2ZGNsZmxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDYwNDQ4MDAsImV4cCI6MjAyMTYyMDgwMH0.SZLqryz_-stFWS4vnGWPwS-tqHGYLM-8R1_Y5L-Swtw'
+                    }
+                });
+                const sweepstakes = await response.json();
+                
+                const select = document.getElementById('sweepstakesSelect');
+                sweepstakes.forEach(sweep => {
+                    const option = document.createElement('option');
+                    option.value = sweep.id;
+                    option.textContent = sweep.title;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Failed to load sweepstakes:', error);
+            }
+        }
+
+        function initializeWidget() {
+            const sweepstakesId = document.getElementById('sweepstakesSelect').value;
+            if (!sweepstakesId) {
+                console.error('Please select a sweepstakes first');
+                return;
+            }
+
+            // Clear previous widget
+            const container = document.getElementById('sweepstakes-widget');
+            container.innerHTML = '';
+            container.setAttribute('data-sweepstakes-id', sweepstakesId);
+
+            // Load widget script
+            const script = document.createElement('script');
+            script.src = 'widget.js';
+            script.onerror = (error) => console.error('Failed to load widget script:', error);
+            document.body.appendChild(script);
+        }
+
+        // Initialize sweepstakes dropdown
+        loadSweepstakes();
+
+        // Listen for widget messages
+        window.addEventListener('message', (event) => {
+            console.info('Widget message received:', event.data);
+        });
+    </script>
+</body>
+</html>
