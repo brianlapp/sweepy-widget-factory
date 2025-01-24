@@ -94,6 +94,9 @@ interface PerformanceMetrics {
   resourceLoadTime: number;
 }
 
+// Add new countdown configuration
+const targetLaunchDate = new Date('2025-02-01T00:00:00Z'); // Set your target launch date
+
 export function WidgetVersionManager() {
   const queryClient = useQueryClient();
   const [copied, setCopied] = React.useState(false);
@@ -105,6 +108,30 @@ export function WidgetVersionManager() {
   });
   const [testSweepstakesId, setTestSweepstakesId] = React.useState('');
   const [testIframe, setTestIframe] = React.useState<HTMLIFrameElement | null>(null);
+  const [timeUntilLaunch, setTimeUntilLaunch] = React.useState('');
+
+  React.useEffect(() => {
+    const updateCountdown = () => {
+      const now = new Date();
+      const diff = targetLaunchDate.getTime() - now.getTime();
+      
+      if (diff <= 0) {
+        setTimeUntilLaunch('Launch time!');
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      
+      setTimeUntilLaunch(`${days}d ${hours}h ${minutes}m`);
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 60000); // Update every minute
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // Performance monitoring
   React.useEffect(() => {
@@ -337,6 +364,52 @@ export function WidgetVersionManager() {
 
   return (
     <div className="space-y-6">
+      {/* Add Countdown Card at the top */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Activity className="h-5 w-5 text-blue-500" />
+              <CardTitle>Widget Launch Countdown</CardTitle>
+            </div>
+            <Badge variant="secondary" className="text-lg font-mono">
+              {timeUntilLaunch}
+            </Badge>
+          </div>
+          <CardDescription>
+            Time remaining until widget goes live on third-party sites
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
+                <Check className="h-4 w-4 text-green-500" />
+                <div>
+                  <p className="text-sm font-medium">Core Implementation</p>
+                  <p className="text-xs text-muted-foreground">Basic widget structure complete</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
+                <Check className="h-4 w-4 text-green-500" />
+                <div>
+                  <p className="text-sm font-medium">Error Handling</p>
+                  <p className="text-xs text-muted-foreground">Robust error capture system</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
+                <Check className="h-4 w-4 text-green-500" />
+                <div>
+                  <p className="text-sm font-medium">Storage Integration</p>
+                  <p className="text-xs text-muted-foreground">File storage system ready</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Keep existing cards */}
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
