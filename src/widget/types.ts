@@ -19,9 +19,8 @@ export interface WidgetState {
 export type WidgetStatus = 'initializing' | 'ready' | 'error' | 'loading';
 
 // Error Handling Types
-export interface WidgetError {
+export interface WidgetError extends Error {
   code: string;
-  message: string;
   details?: unknown;
 }
 

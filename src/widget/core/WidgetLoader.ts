@@ -88,11 +88,13 @@ export class WidgetLoader {
 
   private handleError(event: ErrorEvent): void {
     logger.error('Global error:', event.error);
-    this.handleWidgetError({
-      code: 'GLOBAL_ERROR',
+    const widgetError: WidgetError = {
+      name: 'WidgetError',
       message: event.message,
+      code: 'GLOBAL_ERROR',
       details: event.error
-    });
+    };
+    this.handleWidgetError(widgetError);
   }
 
   private handleWidgetError(error: WidgetError): void {
@@ -133,3 +135,8 @@ export class WidgetLoader {
     logger.info('Widget cleanup completed');
   }
 }
+
+// Export the initialize function
+export const initializeWidget = (config: WidgetConfig): WidgetLoader => {
+  return new WidgetLoader(config);
+};
