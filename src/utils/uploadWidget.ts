@@ -11,24 +11,25 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
   console.log('[Widget Upload] Starting widget files upload process...');
   
   try {
-    // Helper function to fetch file content
+    // Helper function to fetch file content with better error handling
     async function fetchFile(filename: string) {
       console.log(`[Widget Upload] Attempting to fetch ${filename}...`);
       try {
-        const response = await fetch(`/public/${filename}`);
+        // Use the correct path without 'public/'
+        const response = await fetch(`/${filename}`);
         if (!response.ok) {
-          throw new Error(`Failed to fetch ${filename}`);
+          throw new Error(`Failed to fetch ${filename} with status ${response.status}`);
         }
         const content = await response.text();
         console.log(`[Widget Upload] Successfully fetched ${filename}, content length:`, content.length);
         return content;
       } catch (error) {
         console.error(`[Widget Upload] Error fetching ${filename}:`, error);
-        throw error;
+        throw new Error(`Failed to fetch ${filename}: ${error.message}`);
       }
     }
 
-    // Fetch both widget.js and embed.html content
+    // Fetch both widget.js and embed.html content with proper paths
     console.log('[Widget Upload] Fetching widget files...');
     const [widgetContent, embedContent] = await Promise.all([
       fetchFile('widget.js'),
@@ -53,7 +54,7 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
     // Add a small delay to ensure files are properly removed
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Upload both files with cache control headers
+    // Upload both files with cache control headers and proper MIME types
     console.log('[Widget Upload] Uploading widget files...');
     const uploads = await Promise.all([
       supabase.storage
@@ -72,17 +73,24 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
         })
     ]);
 
+    // Check for upload errors with more detailed error reporting
     const uploadErrors = uploads.filter(upload => upload.error);
     if (uploadErrors.length > 0) {
       console.error('[Widget Upload] Upload errors:', uploadErrors);
-      throw new Error(`File upload failed: ${uploadErrors[0].error.message}`);
+      const errorMessages = uploadErrors.map(upload => upload.error?.message).join(', ');
+      throw new Error(`File upload failed: ${errorMessages}`);
     }
 
     // Verify the files were uploaded
-    const { data: files } = await supabase.storage
+    const { data: files, error: listError } = await supabase.storage
       .from('static')
       .list();
     
+    if (listError) {
+      console.error('[Widget Upload] Error listing files:', listError);
+      throw new Error(`Failed to verify uploads: ${listError.message}`);
+    }
+
     console.log('[Widget Upload] Current files in storage:', files);
     console.log('[Widget Upload] Upload completed successfully');
     
