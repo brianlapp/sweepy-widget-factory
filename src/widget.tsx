@@ -57,19 +57,6 @@ function initializeWidget(sweepstakesId: string) {
         window.parent.postMessage({ type: 'WIDGET_READY' }, '*');
     } catch (error) {
         logger.error('Initialization error:', error);
-        const root = document.getElementById('root');
-        if (root) {
-            root.innerHTML = `
-                <div class="p-6 bg-white rounded-lg shadow-sm">
-                    <h2 class="text-lg font-semibold text-red-600 mb-2">
-                        Widget Initialization Error
-                    </h2>
-                    <p class="text-gray-600">
-                        ${error instanceof Error ? error.message : 'Unable to load sweepstakes widget'}
-                    </p>
-                </div>
-            `;
-        }
         window.parent.postMessage({ 
             type: 'WIDGET_ERROR', 
             error: { 
@@ -78,6 +65,7 @@ function initializeWidget(sweepstakesId: string) {
                 stack: error instanceof Error ? error.stack : undefined
             } 
         }, '*');
+        throw error; // Re-throw to trigger error boundary
     }
 }
 

@@ -38,14 +38,14 @@ export default defineConfig(({ mode }) => ({
       output: {
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === 'widget') {
-            return 'widget.js';
+            return 'widget-bundle.js';
           }
           return 'assets/[name]-[hash].js';
         },
         assetFileNames: 'assets/[name]-[hash][extname]',
         chunkFileNames: 'assets/[name]-[hash].js',
       },
-      external: [], // Important: We're now bundling React with our widget
+      external: [], // Bundle everything together
     },
     sourcemap: true,
     minify: mode === 'production',

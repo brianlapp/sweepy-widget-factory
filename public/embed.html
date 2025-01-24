@@ -8,6 +8,14 @@
 <body>
     <div id="root"></div>
     <script>
+        console.log('[Widget] Starting initialization...');
+        
+        // Track React availability
+        window.__REACT_STATUS__ = {
+            loaded: false,
+            error: null
+        };
+
         // Enhanced error tracking
         window.onerror = function(msg, url, line, col, error) {
             console.error('[Widget Error]', { msg, url, line, col, error });
@@ -18,25 +26,7 @@
             return false;
         };
 
-        // Detailed initialization logging
-        console.log('[Widget] Starting initialization...');
-        
-        // Track React availability
-        window.__REACT_STATUS__ = {
-            loaded: false,
-            error: null
-        };
-
-        // Enhanced load event handling
-        window.addEventListener('load', function() {
-            console.log('[Widget] Window loaded, checking React status:', window.__REACT_STATUS__);
-            window.parent.postMessage({ 
-                type: 'WIDGET_LOADED',
-                status: window.__REACT_STATUS__
-            }, '*');
-        });
-
-        // Track React initialization
+        // Track widget initialization
         window.__WIDGET_READY__ = false;
         window.__initializeWidget = function(sweepstakesId) {
             console.log('[Widget] Initializing with ID:', sweepstakesId);
@@ -58,6 +48,6 @@
             }
         };
     </script>
-    <script src="widget.js"></script>
+    <script src="widget-bundle.js"></script>
 </body>
 </html>
