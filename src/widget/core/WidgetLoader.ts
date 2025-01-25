@@ -23,6 +23,11 @@ export class WidgetLoader {
     logger.info('WidgetLoader initialized with config:', config);
   }
 
+  // Static initialization method
+  static initialize(config: WidgetConfig): WidgetLoader {
+    return new WidgetLoader(config);
+  }
+
   public createIframe(sweepstakesId: string): HTMLIFrameElement {
     logger.info('Creating iframe for sweepstakes:', sweepstakesId);
     
@@ -139,3 +144,8 @@ export class WidgetLoader {
     logger.info('Widget cleanup completed');
   }
 }
+
+// Export the initialize function
+export const initializeWidget = (config: WidgetConfig): WidgetLoader => {
+  return WidgetLoader.initialize(config);
+};
