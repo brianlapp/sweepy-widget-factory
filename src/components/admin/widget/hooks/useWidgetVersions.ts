@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { uploadWidgetFiles } from '@/utils/uploadWidget';
+import { uploadWidget } from '@/utils/uploadWidget';
 
 export interface Version {
   id: string;
@@ -75,18 +75,18 @@ export function useWidgetVersions() {
         console.log('[Widget Deploy] Starting deployment for version:', versionId);
         
         toast.info('Building and uploading widget files...');
-        const uploadResult = await uploadWidgetFiles();
+        const { bundleHash } = await uploadWidget();
         
-        if (!uploadResult.success || !uploadResult.bundleHash) {
-          console.error('[Widget Deploy] Upload failed:', uploadResult.error);
-          throw new Error(`Upload failed: ${uploadResult.error}`);
+        if (!bundleHash) {
+          console.error('[Widget Deploy] Upload failed: No bundle hash returned');
+          throw new Error('Upload failed: No bundle hash returned');
         }
 
-        console.log('[Widget Deploy] Files uploaded successfully, bundle hash:', uploadResult.bundleHash);
+        console.log('[Widget Deploy] Files uploaded successfully, bundle hash:', bundleHash);
 
         const { error: updateError } = await supabase.rpc('deploy_widget_version', {
           p_version_id: versionId,
-          p_bundle_hash: uploadResult.bundleHash
+          p_bundle_hash: bundleHash
         });
 
         if (updateError) {
