@@ -1,16 +1,20 @@
-import { WidgetConfig, WidgetError } from '../types';
 import { logger } from '../utils/logger';
 
+interface WidgetConfig {
+  storageUrl: string;
+  version: string;
+}
+
 export class WidgetLoader {
-  private iframe: HTMLIFrameElement | null;
   private config: WidgetConfig;
+  private iframe: HTMLIFrameElement | null;
   private retryAttempts: number;
   private readonly maxRetries = 3;
   private readonly retryDelay = 1000;
 
   constructor(config: WidgetConfig) {
-    this.iframe = null;
     this.config = config;
+    this.iframe = null;
     this.retryAttempts = 0;
     
     window.addEventListener('message', this.handleMessage.bind(this));
@@ -88,7 +92,7 @@ export class WidgetLoader {
 
   private handleError(event: ErrorEvent): void {
     logger.error('Global error:', event.error);
-    const widgetError: WidgetError = {
+    const widgetError = {
       name: 'WidgetError',
       message: event.message,
       code: 'GLOBAL_ERROR',
@@ -97,7 +101,7 @@ export class WidgetLoader {
     this.handleWidgetError(widgetError);
   }
 
-  private handleWidgetError(error: WidgetError): void {
+  private handleWidgetError(error: any): void {
     logger.error('Widget error:', error);
     
     if (this.retryAttempts < this.maxRetries) {
@@ -135,8 +139,3 @@ export class WidgetLoader {
     logger.info('Widget cleanup completed');
   }
 }
-
-// Export the initialize function
-export const initializeWidget = (config: WidgetConfig): WidgetLoader => {
-  return new WidgetLoader(config);
-};
