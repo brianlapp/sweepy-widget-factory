@@ -1,13 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-interface UploadResult {
-  success: boolean;
-  bundleHash: string | null;
-  error?: string;
-  details?: any;
-}
-
-export async function uploadWidgetFiles(): Promise<UploadResult> {
+export async function uploadWidget() {
   console.log('[Widget Upload] Starting widget files upload process...');
   
   try {
@@ -41,19 +34,28 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
         iframe.style.minHeight = '400px';
         iframe.allow = 'clipboard-write';
         
-        // Set iframe source with sweepstakes ID
-        const embedUrl = new URL('/embed.html', window.location.href);
-        embedUrl.searchParams.set('id', sweepstakesId);
-        iframe.src = embedUrl.toString();
+        // Set iframe source with sweepstakes ID using Supabase storage URL
+        const embedUrl = \`\${STORAGE_URL}/embed.html?id=\${sweepstakesId}&v=\${VERSION}\`;
+        iframe.src = embedUrl;
         
         // Handle iframe messages for height adjustments
         window.addEventListener('message', function(event) {
           if (event.data && event.data.type === 'setHeight') {
             iframe.style.height = event.data.height + 'px';
           }
+          // Log widget status messages
+          if (event.data && event.data.type === 'WIDGET_STATUS') {
+            console.log('[Widget] Status:', event.data.status);
+          }
+          // Handle widget errors
+          if (event.data && event.data.type === 'WIDGET_ERROR') {
+            console.error('[Widget] Error:', event.data.error);
+          }
         });
 
         container.appendChild(iframe);
+        
+        console.log('[Widget] Iframe created and added to container');
       }
 
       // Initialize when DOM is ready
@@ -75,9 +77,10 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
       .then(hash => Array.from(new Uint8Array(hash))
         .map(b => b.toString(16).padStart(2, '0'))
         .join(''));
-    console.log('[Widget Upload] Generated bundle hash:', bundleHash);
+    
+    console.log('[Widget Upload] Bundle hash:', bundleHash);
 
-    // Delete existing files first
+    // Remove existing widget files
     console.log('[Widget Upload] Removing existing widget files...');
     await supabase.storage
       .from('static')
@@ -101,27 +104,15 @@ export async function uploadWidgetFiles(): Promise<UploadResult> {
       .upload('widget.js', blob, uploadOptions);
 
     if (uploadError) {
-      console.error('[Widget Upload] Upload error:', uploadError);
+      console.error('[Widget Upload] Error uploading widget:', uploadError);
       throw uploadError;
     }
 
-    // Get and log public URL
-    const widgetUrl = supabase.storage
-      .from('static')
-      .getPublicUrl('widget.js').data.publicUrl;
-
-    console.log('[Widget Upload] Public URL:', widgetUrl);
-    console.log('[Widget Upload] Upload completed successfully');
-    
-    return { success: true, bundleHash };
+    console.log('[Widget Upload] Widget files uploaded successfully');
+    return { bundleHash };
 
   } catch (error) {
-    console.error('[Widget Upload] Upload process failed:', error);
-    return {
-      success: false,
-      bundleHash: null,
-      error: error.message,
-      details: error
-    };
+    console.error('[Widget Upload] Error in upload process:', error);
+    throw error;
   }
 }
