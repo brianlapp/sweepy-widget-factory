@@ -40,12 +40,15 @@ export default defineConfig(({ mode, command }): UserConfig => {
           entry: path.resolve(__dirname, 'src/widget/index.ts'),
           name: 'SweepstakesWidget',
           formats: ['iife'],
-          fileName: () => 'widget.js',
+          fileName: () => 'widget-bundle.js',
         },
         rollupOptions: {
-          external: [],
+          external: ['react', 'react-dom'],
           output: {
-            globals: {},
+            globals: {
+              react: 'React',
+              'react-dom': 'ReactDOM'
+            },
             inlineDynamicImports: true,
           },
         },
