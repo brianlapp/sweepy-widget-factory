@@ -22,6 +22,8 @@
     <script>
         console.log('[Widget] Starting initialization...');
         
+        const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
+        
         // Error handling for script loading
         function handleScriptError(library, source) {
             console.error(`[Widget] Failed to load ${library} from ${source} CDN`);
@@ -73,7 +75,7 @@
 
     <!-- Widget Bundle -->
     <script 
-        src="https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static/widget.js"
+        src="https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static/widget-bundle.js"
         onload="console.log('[Widget] Widget bundle loaded successfully')"
         onerror="console.error('[Widget] Failed to load widget bundle')"
         defer>
