@@ -248,7 +248,7 @@
             updateStatus('', 'Loading widget...');
 
             const script = document.createElement('script');
-            script.src = WIDGET_URL + '?t=' + Date.now();
+            script.src = `${WIDGET_URL}?t=${Date.now()}`;
             script.async = true;
             script.onerror = (error) => {
                 console.error('Failed to load widget script:', error);
