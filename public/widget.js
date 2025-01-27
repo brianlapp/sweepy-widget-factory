@@ -2,9 +2,6 @@
   const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
   const VERSION = process.env.VITE_APP_VERSION || '1.0.0';
   
-  // Import the WidgetLoader class
-  const { WidgetLoader } = require('../src/widget/core/WidgetLoader');
-  
   // Initialize the widget
   const initialize = () => {
     console.log('[Widget] Starting initialization');
