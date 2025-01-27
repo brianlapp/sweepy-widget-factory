@@ -22,14 +22,9 @@ export function createTestWidget(config: WidgetTestConfig) {
 
     console.log('[Widget Test] Container ready, initializing widget');
 
-    // Initialize widget with proper config
+    // Initialize widget with sweepstakes ID
     if (window.initializeWidget) {
-      const widgetConfig: WidgetConfig = {
-        storageUrl: '',
-        version: '1.0.0',
-        sweepstakesId
-      };
-      window.initializeWidget(widgetConfig);
+      window.initializeWidget(sweepstakesId);
       console.log('[Widget Test] Widget initialized successfully');
     } else {
       throw new Error('Widget initialization function not found');
