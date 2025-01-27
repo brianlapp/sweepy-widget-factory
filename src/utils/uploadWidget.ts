@@ -4,13 +4,16 @@ export async function uploadWidget() {
   console.log('[Widget Upload] Starting widget files upload process...');
   
   try {
-    // Create the widget bundle content
+    // Create the widget bundle content with a timestamp to ensure uniqueness
+    const timestamp = new Date().toISOString();
     const widgetBundle = `
     (function() {
       const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
       const VERSION = '${process.env.VITE_APP_VERSION || '1.0.0'}';
+      const BUNDLE_TIMESTAMP = '${timestamp}';
       
       console.log('[Widget] Starting initialization');
+      console.log('[Widget] Bundle timestamp:', BUNDLE_TIMESTAMP);
       
       function initialize() {
         const container = document.getElementById('sweepstakes-widget');
@@ -35,7 +38,7 @@ export async function uploadWidget() {
         iframe.allow = 'clipboard-write';
         
         // Set iframe source with sweepstakes ID using Supabase storage URL
-        const embedUrl = \`\${STORAGE_URL}/embed.html?id=\${sweepstakesId}&v=\${VERSION}\`;
+        const embedUrl = \`\${STORAGE_URL}/embed.html?id=\${sweepstakesId}&v=\${VERSION}&t=\${BUNDLE_TIMESTAMP}\`;
         iframe.src = embedUrl;
         
         // Handle iframe messages for height adjustments
@@ -93,7 +96,7 @@ export async function uploadWidget() {
 
     // Set proper CORS headers and cache control
     const uploadOptions = {
-      cacheControl: '3600',
+      cacheControl: '0', // Disable caching to ensure latest version is always fetched
       upsert: true,
       contentType: 'application/javascript; charset=utf-8',
     };
