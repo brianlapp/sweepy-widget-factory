@@ -85,9 +85,14 @@ export async function uploadWidget() {
 
     // Remove existing widget files
     console.log('[Widget Upload] Removing existing widget files...');
-    await supabase.storage
+    const { error: removeError } = await supabase.storage
       .from('static')
       .remove(['widget.js']);
+
+    if (removeError) {
+      console.warn('[Widget Upload] Error removing existing widget:', removeError);
+      // Continue anyway as the file might not exist
+    }
 
     // Create blob with proper content type
     const blob = new Blob([widgetBundle], { 
