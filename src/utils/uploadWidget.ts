@@ -110,14 +110,22 @@ export async function uploadWidget() {
     try {
       const bundlePath = path.join(process.cwd(), 'dist/widget/widget-bundle.js');
       const bundleContent = await fs.readFile(bundlePath, 'utf-8');
+      
+      // Generate bundle hash from content
+      const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(bundleContent))
+        .then(hash => Array.from(new Uint8Array(hash))
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join(''));
+      
       await uploadFile('widget-bundle.js', bundleContent);
+      
+      console.log('[Widget Upload] All files uploaded successfully');
+      return { bundleHash };
+
     } catch (error) {
       console.error('[Widget Upload] Error reading bundle file:', error);
       throw new Error('Widget bundle not found. Did you run the build command?');
     }
-
-    console.log('[Widget Upload] All files uploaded successfully');
-    return { success: true };
 
   } catch (error) {
     console.error('[Widget Upload] Error in upload process:', error);
