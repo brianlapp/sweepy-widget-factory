@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import type { UserConfig } from 'vite';
+import fs from 'fs';
 
 const version = new Date().toISOString().split('T')[0] + '-' + 
                Math.random().toString(36).substring(2, 7);
@@ -20,6 +21,17 @@ export default defineConfig(({ mode, command }): UserConfig => {
         jsxImportSource: "react",
       }),
       mode === 'development' && componentTagger(),
+      {
+        name: 'log-bundle-size',
+        closeBundle: () => {
+          if (isWidget && fs.existsSync('dist/widget/widget-bundle.js')) {
+            console.log('[Widget Build] Bundle created:', {
+              size: fs.statSync('dist/widget/widget-bundle.js').size,
+              path: 'dist/widget/widget-bundle.js'
+            });
+          }
+        }
+      }
     ].filter(Boolean),
     resolve: {
       alias: {
