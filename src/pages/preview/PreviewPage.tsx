@@ -35,6 +35,7 @@ export function PreviewPage() {
       return data;
     },
     enabled: !!id,
+    retry: 1,
   });
 
   if (isLoading) {
