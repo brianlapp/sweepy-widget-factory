@@ -3,6 +3,13 @@ import { createRoot } from 'react-dom/client';
 import { SweepstakesWidget } from '@/components/SweepstakesWidget';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+// Declare the global interface for TypeScript
+declare global {
+  interface Window {
+    initializeWidget: (sweepstakesId: string) => void;
+  }
+}
+
 // Create a client
 const queryClient = new QueryClient();
 
