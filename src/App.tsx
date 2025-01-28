@@ -22,6 +22,7 @@ function App() {
           {/* Standalone routes without sidebar */}
           <Route path="/embed/:id" element={<EmbedPage />} />
           <Route path="/preview/:id" element={<PreviewPage />} />
+          <Route path="/auth" element={<AuthPage />} />
           
           {/* Routes with sidebar */}
           <Route
@@ -33,7 +34,6 @@ function App() {
                   <Routes>
                     <Route index element={<Index />} />
                     <Route path="readme" element={<ReadmePage />} />
-                    <Route path="auth" element={<AuthPage />} />
                     <Route path="admin" element={<AdminDashboard />} />
                     <Route path="admin/sweepstakes/new" element={<EditSweepstakesPage />} />
                     <Route path="admin/sweepstakes/:id/edit" element={<EditSweepstakesPage />} />
