@@ -1,14 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
 
 function cleanEmbedHtml(content: string): string {
-  // Remove Vite development scripts
   return content.replace(
     /<script type="module">[\s\S]*?<\/script>\s*<script type="module" src="\/@vite\/client"><\/script>/,
     ''
   ).trim();
 }
 
-async function uploadFile(filename: string, content: string | Buffer) {
+async function uploadFile(filename: string, content: string | Buffer, contentType?: string) {
   console.log(`[Widget Upload] Uploading ${filename}...`);
   
   // Remove existing file
@@ -18,20 +17,21 @@ async function uploadFile(filename: string, content: string | Buffer) {
     
   if (removeError) {
     console.warn(`[Widget Upload] Error removing existing ${filename}:`, removeError);
-    // Continue as file might not exist
   }
 
   // Create blob with proper content type
-  const contentType = filename.endsWith('.html') ? 'text/html' : 'application/javascript';
+  const type = contentType || (filename.endsWith('.html') ? 'text/html' : 
+                              filename.endsWith('.js') ? 'application/javascript' : 
+                              'text/plain');
+  
   const blob = new Blob([content], { 
-    type: `${contentType}; charset=utf-8`
+    type: `${type}; charset=utf-8`
   });
 
-  // Upload with proper options
   const uploadOptions = {
     cacheControl: '0',
     upsert: true,
-    contentType: `${contentType}; charset=utf-8`,
+    contentType: `${type}; charset=utf-8`,
   };
 
   const { error: uploadError } = await supabase.storage
@@ -61,7 +61,17 @@ export async function uploadWidget() {
       console.log('[Widget] Starting initialization');
       console.log('[Widget] Bundle timestamp:', BUNDLE_TIMESTAMP);
       
-      function initialize() {
+      function loadScript(src) {
+        return new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = src;
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
+
+      async function initialize() {
         const container = document.getElementById('sweepstakes-widget');
         if (!container) {
           console.error('[Widget] Container not found');
@@ -89,12 +99,6 @@ export async function uploadWidget() {
           if (event.data && event.data.type === 'setHeight') {
             iframe.style.height = event.data.height + 'px';
           }
-          if (event.data && event.data.type === 'WIDGET_STATUS') {
-            console.log('[Widget] Status:', event.data.status);
-          }
-          if (event.data && event.data.type === 'WIDGET_ERROR') {
-            console.error('[Widget] Error:', event.data.error);
-          }
         });
 
         container.appendChild(iframe);
@@ -110,26 +114,26 @@ export async function uploadWidget() {
       window.initializeWidget = initialize;
     })();`;
 
-    // 1. Upload the loader script (widget.js)
-    await uploadFile('widget.js', loaderScript);
+    // Upload the loader script (widget.js)
+    await uploadFile('widget.js', loaderScript, 'application/javascript');
 
-    // 2. Upload embed.html
+    // Upload embed.html
     const embedHtmlResponse = await fetch('/public/embed.html');
     if (!embedHtmlResponse.ok) {
       throw new Error('Embed HTML not found');
     }
     const embedHtmlContent = await embedHtmlResponse.text();
     const cleanedEmbedHtml = cleanEmbedHtml(embedHtmlContent);
-    await uploadFile('embed.html', cleanedEmbedHtml);
+    await uploadFile('embed.html', cleanedEmbedHtml, 'text/html');
 
-    // 3. Upload the React bundle (widget-bundle.js)
+    // Upload the React bundle (widget-bundle.js)
     const response = await fetch('/dist/widget/widget-bundle.js');
     if (!response.ok) {
       throw new Error('Widget bundle not found. Did you run the build command?');
     }
     
     const bundleContent = await response.text();
-    await uploadFile('widget-bundle.js', bundleContent);
+    await uploadFile('widget-bundle.js', bundleContent, 'application/javascript');
     
     // Generate bundle hash
     const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(bundleContent))

@@ -6,9 +6,9 @@ export default defineConfig({
   plugins: [react()],
   build: {
     lib: {
-      entry: path.resolve(__dirname, 'src/widget/index.ts'),
+      entry: path.resolve(__dirname, 'src/widget/index.tsx'),
       name: 'SweepstakesWidget',
-      fileName: 'widget',
+      fileName: 'widget-bundle',
       formats: ['iife'],
     },
     rollupOptions: {
