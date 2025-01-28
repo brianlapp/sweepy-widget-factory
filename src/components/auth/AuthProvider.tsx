@@ -28,22 +28,41 @@ export function AuthProvider({ children }: AuthProviderProps): React.ReactElemen
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log("Initial session:", session); // Debug log
-      setSession(session);
-      setIsLoading(false);
-    });
+    let mounted = true;
+
+    async function getInitialSession() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (mounted) {
+          console.log("[Auth] Initial session loaded:", !!session);
+          setSession(session);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("[Auth] Error getting initial session:", error);
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    getInitialSession();
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("Auth state changed:", session); // Debug log
-      setSession(session);
-      setIsLoading(false);
+      if (mounted) {
+        console.log("[Auth] Auth state changed:", !!session);
+        setSession(session);
+        setIsLoading(false);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
