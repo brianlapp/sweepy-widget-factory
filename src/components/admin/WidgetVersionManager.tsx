@@ -93,15 +93,20 @@ export function WidgetVersionManager() {
     createTestWidget 
   } = useWidgetTesting();
 
-  const { data: sweepstakes } = useQuery({
+  const { data: sweepstakes, error: sweepstakesError } = useQuery({
     queryKey: ['sweepstakes'],
     queryFn: async () => {
+      console.log('[Widget Versions] Fetching sweepstakes...');
       const { data, error } = await supabase
         .from('sweepstakes')
         .select('id, title')
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('[Widget Versions] Error fetching sweepstakes:', error);
+        throw error;
+      }
+      console.log('[Widget Versions] Fetched sweepstakes:', data);
       return data;
     },
   });
@@ -129,7 +134,30 @@ export function WidgetVersionManager() {
   }, []);
 
   if (isLoading) {
-    return <div>Loading versions...</div>;
+    return (
+      <div className="space-y-4">
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Loading widget versions...
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (sweepstakesError) {
+    console.error('[Widget Versions] Error:', sweepstakesError);
+    return (
+      <div className="space-y-4">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Error loading sweepstakes data. Please try again later.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
   }
 
   const activeVersion = versions?.find(v => v.is_active);
