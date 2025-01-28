@@ -34,7 +34,7 @@ function App() {
                 element={
                   <div className="flex min-h-screen w-full">
                     <AppSidebar />
-                    <main className="flex-1 overflow-y-auto bg-muted/10">
+                    <main className="flex-1 overflow-y-auto bg-muted/10 p-6">
                       <Routes>
                         <Route path="/" element={<Index />} />
                         <Route path="/readme" element={<ReadmePage />} />
