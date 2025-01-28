@@ -5,83 +5,133 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sweepstakes Widget</title>
     
-    <!-- React CDN -->
+    <!-- Add React and ReactDOM -->
     <script 
         src="https://unpkg.com/react@18/umd/react.production.min.js" 
-        crossorigin
-        onload="console.log('[Widget] React loaded successfully')"
-        onerror="handleScriptError('React', 'primary')">
+        crossorigin>
     </script>
     <script 
         src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" 
-        crossorigin
-        onload="console.log('[Widget] ReactDOM loaded successfully')"
-        onerror="handleScriptError('ReactDOM', 'primary')">
-    </script>
-
-    <script>
-        console.log('[Widget] Starting initialization...');
-        
-        const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
-        
-        // Error handling for script loading
-        function handleScriptError(library, source) {
-            console.error(`[Widget] Failed to load ${library} from ${source} CDN`);
-            loadFallbackScript(library);
-        }
-
-        // Fallback CDN loading
-        function loadFallbackScript(library) {
-            console.log(`[Widget] Attempting to load ${library} from fallback CDN`);
-            const fallbackUrls = {
-                'React': 'https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js',
-                'ReactDOM': 'https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js'
-            };
-            
-            const script = document.createElement('script');
-            script.src = fallbackUrls[library];
-            script.crossOrigin = 'anonymous';
-            script.onload = () => console.log(`[Widget] ${library} loaded successfully from fallback`);
-            script.onerror = () => console.error(`[Widget] Failed to load ${library} from fallback CDN`);
-            document.head.appendChild(script);
-        }
-
-        // Get sweepstakes ID from URL
-        const params = new URLSearchParams(window.location.search);
-        const sweepstakesId = params.get('id');
-        console.log('[Widget] Sweepstakes ID:', sweepstakesId);
-
-        // Initialize widget when dependencies are ready
-        function initializeWidgetWhenReady() {
-            if (window.React && window.ReactDOM && window.initializeWidget) {
-                console.log('[Widget] All dependencies loaded, initializing widget...');
-                try {
-                    window.initializeWidget(sweepstakesId);
-                    console.log('[Widget] Widget initialized successfully');
-                } catch (error) {
-                    console.error('[Widget] Failed to initialize widget:', error);
-                }
-            } else {
-                console.log('[Widget] Waiting for dependencies...');
-                setTimeout(initializeWidgetWhenReady, 100);
-            }
-        }
-
-        window.addEventListener('load', () => {
-            console.log('[Widget] Window loaded, checking dependencies...');
-            initializeWidgetWhenReady();
-        });
-    </script>
-
-    <!-- Widget Bundle -->
-    <script 
-        src="https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static/widget-bundle.js"
-        onload="console.log('[Widget] Widget bundle loaded successfully')"
-        onerror="console.error('[Widget] Failed to load widget bundle')"
-        defer>
+        crossorigin>
     </script>
 </head>
 <body>
     <div id="root"></div>
+    <script>
+        // Get the STORAGE_URL from the URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const version = urlParams.get('v');
+        const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
+        
+        console.log('[Widget Verification] Starting initialization...');
+        
+        window.__WIDGET_STATE__ = {
+            loadStartTime: Date.now(),
+            reactLoaded: false,
+            widgetInitialized: false,
+            error: null,
+            logs: [],
+            lastMessageTime: 0,
+            processedMessages: new Set(),
+            verificationPoints: {
+                initialization: false,
+                resourcesLoaded: false,
+                reactMounted: false,
+                errorHandling: false
+            }
+        };
+
+        function logVerification(point, status, details = {}) {
+            window.__WIDGET_STATE__.verificationPoints[point] = status;
+            console.log(`[Widget Verification] ${point}:`, status, details);
+        }
+
+        // Listen for initialization message
+        window.addEventListener('message', function(event) {
+            const sweepstakesId = urlParams.get('id');
+            if (sweepstakesId) {
+                window.__initializeWidget(sweepstakesId);
+            }
+        });
+
+        // Resource loading tracking
+        const resourceObserver = new PerformanceObserver((list) => {
+            list.getEntries().forEach(entry => {
+                logVerification('resourcesLoaded', true, {
+                    resource: entry.name,
+                    duration: entry.duration
+                });
+            });
+        });
+
+        resourceObserver.observe({ entryTypes: ['resource'] });
+
+        // Error handling
+        window.onerror = function(msg, url, line, col, error) {
+            logVerification('errorHandling', true, {
+                message: msg,
+                url,
+                line,
+                stack: error?.stack
+            });
+            return false;
+        };
+
+        // Track React availability
+        Object.defineProperty(window, 'React', {
+            set: function(value) {
+                window.__WIDGET_STATE__.reactLoaded = true;
+                logVerification('reactMounted', true, {
+                    version: value?.version
+                });
+                return value;
+            },
+            configurable: true
+        });
+
+        // Widget initialization function
+        window.__initializeWidget = function(sweepstakesId) {
+            logVerification('initialization', true, { sweepstakesId });
+            
+            try {
+                if (!window.initializeWidget) {
+                    throw new Error('Widget initialization function not found');
+                }
+                
+                window.initializeWidget(sweepstakesId);
+                window.__WIDGET_STATE__.widgetInitialized = true;
+                
+                window.parent.postMessage({ 
+                    type: 'WIDGET_READY',
+                    sweepstakesId 
+                }, '*');
+            } catch (error) {
+                logVerification('errorHandling', true, {
+                    message: error.message,
+                    stack: error.stack
+                });
+                throw error;
+            }
+        };
+
+        // Load widget bundle with full URL
+        const widgetScript = document.createElement('script');
+        widgetScript.src = `${STORAGE_URL}/widget-bundle.js?v=${version}`;
+        widgetScript.crossOrigin = 'anonymous';
+        widgetScript.onload = () => {
+            logVerification('resourcesLoaded', true, { script: 'widget-bundle.js' });
+        };
+        widgetScript.onerror = (error) => {
+            logVerification('errorHandling', true, { error });
+            console.error('[Widget] Failed to load widget bundle:', error);
+        };
+
+        document.body.appendChild(widgetScript);
+
+        // Log verification status periodically
+        setInterval(() => {
+            console.table(window.__WIDGET_STATE__.verificationPoints);
+        }, 5000);
+    </script>
 </body>
 </html>
