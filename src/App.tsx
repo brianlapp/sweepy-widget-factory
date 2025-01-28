@@ -25,26 +25,25 @@ function App() {
           <Route path="/auth" element={<AuthPage />} />
           
           {/* Routes with sidebar */}
-          <Route
-            path="/"
-            element={
-              <div className="flex min-h-screen w-full">
-                <AppSidebar />
-                <main className="flex-1 overflow-y-auto bg-muted/10 p-6">
-                  <Routes>
-                    <Route index element={<Index />} />
-                    <Route path="readme" element={<ReadmePage />} />
-                    <Route path="admin" element={<AdminDashboard />} />
-                    <Route path="admin/sweepstakes/new" element={<EditSweepstakesPage />} />
-                    <Route path="admin/sweepstakes/:id/edit" element={<EditSweepstakesPage />} />
-                    <Route path="admin/sweepstakes/:id/analytics" element={<SweepstakesAnalyticsPage />} />
-                    <Route path="admin/widget-versions" element={<WidgetVersionManager />} />
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
-                </main>
-              </div>
-            }
-          />
+          <Route path="/" element={
+            <div className="flex min-h-screen w-full">
+              <AppSidebar />
+              <main className="flex-1 overflow-y-auto bg-muted/10 p-6">
+                <Routes>
+                  <Route index element={<Index />} />
+                  <Route path="readme" element={<ReadmePage />} />
+                  <Route path="admin">
+                    <Route index element={<AdminDashboard />} />
+                    <Route path="sweepstakes/new" element={<EditSweepstakesPage />} />
+                    <Route path="sweepstakes/:id/edit" element={<EditSweepstakesPage />} />
+                    <Route path="sweepstakes/:id/analytics" element={<SweepstakesAnalyticsPage />} />
+                    <Route path="widget-versions" element={<WidgetVersionManager />} />
+                  </Route>
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </main>
+            </div>
+          } />
         </Routes>
         <Toaster />
       </Router>

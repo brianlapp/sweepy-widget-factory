@@ -3,26 +3,36 @@ import { SweepstakesWidget } from '@/components/SweepstakesWidget';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 export function PreviewPage() {
   const { id } = useParams<{ id: string }>();
-  console.log('Preview page - Sweepstakes ID:', id);
+  console.log('[Preview Page] Rendering for sweepstakes ID:', id);
 
   const { data: sweepstakes, isLoading, error } = useQuery({
     queryKey: ['sweepstakes', id],
     queryFn: async () => {
-      console.log('Fetching sweepstakes data for ID:', id);
+      console.log('[Preview Page] Fetching sweepstakes data for ID:', id);
+      if (!id) throw new Error('No sweepstakes ID provided');
+      
       const { data, error } = await supabase
         .from('sweepstakes')
         .select('*')
         .eq('id', id)
-        .single();
+        .maybeSingle();
       
       if (error) {
-        console.error('Error fetching sweepstakes:', error);
+        console.error('[Preview Page] Error fetching sweepstakes:', error);
         throw error;
       }
-      console.log('Fetched sweepstakes data:', data);
+
+      if (!data) {
+        console.error('[Preview Page] No sweepstakes found for ID:', id);
+        throw new Error('Sweepstakes not found');
+      }
+
+      console.log('[Preview Page] Fetched sweepstakes data:', data);
       return data;
     },
     enabled: !!id,
@@ -38,9 +48,13 @@ export function PreviewPage() {
 
   if (error || !sweepstakes) {
     return (
-      <div className="container mx-auto py-8 text-center">
-        <h2 className="text-2xl font-bold text-red-500 mb-4">Sweepstakes Not Found</h2>
-        <p className="text-gray-600">The sweepstakes you're looking for doesn't exist or has been removed.</p>
+      <div className="container mx-auto py-8">
+        <Alert variant="destructive" className="max-w-md mx-auto">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {error instanceof Error ? error.message : 'Failed to load sweepstakes'}
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
