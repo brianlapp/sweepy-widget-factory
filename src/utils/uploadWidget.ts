@@ -130,7 +130,8 @@ export async function uploadWidget() {
         throw new Error(`Failed to read bundle file: ${bundleResponse.statusText}`);
       }
       const bundleBlob = await bundleResponse.blob();
-      await uploadFile(files.bundle, await bundleBlob.arrayBuffer());
+      const arrayBuffer = await bundleBlob.arrayBuffer();
+      await uploadFile(files.bundle, Buffer.from(arrayBuffer));
     } catch (error) {
       console.error('[Widget Upload] Error processing bundle:', error);
       throw new Error(`Failed to process bundle: ${error.message}`);
