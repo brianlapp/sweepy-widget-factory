@@ -19,13 +19,11 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Embed route without sidebar */}
+          {/* Standalone routes without sidebar */}
           <Route path="/embed/:id" element={<EmbedPage />} />
-          
-          {/* Preview route without sidebar */}
           <Route path="/preview/:id" element={<PreviewPage />} />
           
-          {/* All other routes with sidebar */}
+          {/* Routes with sidebar */}
           <Route
             path="/"
             element={

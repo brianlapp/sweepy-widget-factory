@@ -3,14 +3,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useNavigate } from "react-router-dom";
 
 export default function Index() {
-  const navigate = useNavigate();
-
   const { data: sweepstakes, isLoading, error } = useQuery({
     queryKey: ['active-sweepstakes'],
     queryFn: async () => {
+      console.log('Fetching active sweepstakes...');
       const { data, error } = await supabase
         .from('sweepstakes')
         .select('*')
@@ -21,6 +19,7 @@ export default function Index() {
         console.error('Error fetching sweepstakes:', error);
         throw error;
       }
+      console.log('Fetched sweepstakes:', data);
       return data;
     },
   });
@@ -34,6 +33,7 @@ export default function Index() {
   }
 
   if (error) {
+    console.error('Error in Index component:', error);
     return (
       <div className="container mx-auto py-8 text-center">
         <p className="text-red-500">Error loading sweepstakes. Please try again later.</p>
