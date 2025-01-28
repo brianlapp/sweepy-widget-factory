@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import path from 'path';
+import fs from 'fs/promises';
 
 async function uploadFile(filename: string, content: string | Buffer) {
   console.log(`[Widget Upload] Uploading ${filename}...`);
@@ -40,17 +42,10 @@ async function uploadFile(filename: string, content: string | Buffer) {
 export async function uploadWidget() {
   console.log('[Widget Upload] Starting widget files upload process...');
   
-  const files = {
-    loader: 'widget.js',
-    bundle: 'widget-bundle.js'
-  };
-
-  const viteOutputDir = 'dist/widget';
-  
   try {
-    // Create the widget loader content with a timestamp
+    // Create the loader content with timestamp
     const timestamp = new Date().toISOString();
-    const widgetLoader = `
+    const loaderScript = `
     (function() {
       const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
       const VERSION = '${process.env.VITE_APP_VERSION || '1.0.0'}';
@@ -108,37 +103,21 @@ export async function uploadWidget() {
       window.initializeWidget = initialize;
     })();`;
 
-    console.log('[Widget Upload] Generated loader content length:', widgetLoader.length);
+    // 1. Upload the loader script (widget.js)
+    await uploadFile('widget.js', loaderScript);
 
-    // Generate bundle hash from loader content
-    console.log('[Widget Upload] Generating bundle hash...');
-    const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(widgetLoader))
-      .then(hash => Array.from(new Uint8Array(hash))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join(''));
-    
-    console.log('[Widget Upload] Bundle hash:', bundleHash);
-
-    // Upload loader script
-    await uploadFile(files.loader, widgetLoader);
-
-    // Upload bundle file
-    console.log('[Widget Upload] Reading bundle file...');
+    // 2. Upload the React bundle (widget-bundle.js)
     try {
-      const bundleResponse = await fetch(`/${viteOutputDir}/${files.bundle}`);
-      if (!bundleResponse.ok) {
-        throw new Error(`Failed to read bundle file: ${bundleResponse.statusText}`);
-      }
-      const bundleBlob = await bundleResponse.blob();
-      const arrayBuffer = await bundleBlob.arrayBuffer();
-      await uploadFile(files.bundle, Buffer.from(arrayBuffer));
+      const bundlePath = path.join(process.cwd(), 'dist/widget/widget-bundle.js');
+      const bundleContent = await fs.readFile(bundlePath, 'utf-8');
+      await uploadFile('widget-bundle.js', bundleContent);
     } catch (error) {
-      console.error('[Widget Upload] Error processing bundle:', error);
-      throw new Error(`Failed to process bundle: ${error.message}`);
+      console.error('[Widget Upload] Error reading bundle file:', error);
+      throw new Error('Widget bundle not found. Did you run the build command?');
     }
 
-    console.log('[Widget Upload] All widget files uploaded successfully');
-    return { bundleHash };
+    console.log('[Widget Upload] All files uploaded successfully');
+    return { success: true };
 
   } catch (error) {
     console.error('[Widget Upload] Error in upload process:', error);
