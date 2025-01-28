@@ -9,6 +9,8 @@ const version = new Date().toISOString().split('T')[0] + '-' +
 
 export default defineConfig(({ mode, command }): UserConfig => {
   const isWidget = process.env.BUILD_TARGET === 'widget';
+  console.log('[Vite Config] Build target:', process.env.BUILD_TARGET);
+  console.log('[Vite Config] Is widget build:', isWidget);
   
   // Base configuration shared between widget and main app
   const baseConfig = {
@@ -32,6 +34,7 @@ export default defineConfig(({ mode, command }): UserConfig => {
 
   // Widget-specific configuration
   if (isWidget) {
+    console.log('[Vite Config] Using widget configuration');
     return {
       ...baseConfig,
       build: {
@@ -56,12 +59,12 @@ export default defineConfig(({ mode, command }): UserConfig => {
         minify: mode === 'production',
         target: 'es2015',
         cssCodeSplit: false,
-        assetsInlineLimit: 0,
       },
     };
   }
 
   // Main app configuration
+  console.log('[Vite Config] Using main app configuration');
   return {
     ...baseConfig,
     server: {
