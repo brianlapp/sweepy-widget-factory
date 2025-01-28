@@ -1,26 +1,36 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { SweepstakesWidget } from '../components/SweepstakesWidget';
-import { logger } from './utils/logger';
+import { createRoot } from 'react-dom/client';
+import { SweepstakesWidget } from '@/components/SweepstakesWidget';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-// Declare the global interface for TypeScript
-declare global {
-  interface Window {
-    initializeWidget: (sweepstakesId: string) => void;
-  }
-}
+// Create a client
+const queryClient = new QueryClient();
 
-export function initializeWidget(sweepstakesId: string) {
-  const rootElement = document.getElementById('root');
-  if (!rootElement) throw new Error('Root element not found');
+// Initialize widget with the provided sweepstakes ID
+window.initializeWidget = function(sweepstakesId: string) {
+  console.log('[Widget] Initializing with sweepstakes ID:', sweepstakesId);
   
-  ReactDOM.createRoot(rootElement).render(
+  const container = document.getElementById('root');
+  if (!container) {
+    throw new Error('Root element not found');
+  }
+
+  const root = createRoot(container);
+  
+  root.render(
     <React.StrictMode>
-      <SweepstakesWidget sweepstakesId={sweepstakesId} />
+      <QueryClientProvider client={queryClient}>
+        <SweepstakesWidget 
+          sweepstakesId={sweepstakesId}
+          onReady={() => {
+            console.log('[Widget] Ready');
+            window.parent.postMessage({ type: 'WIDGET_READY' }, '*');
+          }}
+        />
+      </QueryClientProvider>
     </React.StrictMode>
   );
-  
-  logger.info(`Widget version ${process.env.VITE_APP_VERSION} mounted`);
-}
+};
 
-window.initializeWidget = initializeWidget;
+// Export for type checking
+export { SweepstakesWidget };

@@ -54,6 +54,9 @@ export default defineConfig(({ mode, command }): UserConfig => {
         },
         sourcemap: mode === 'development',
         minify: mode === 'production',
+        target: 'es2015',
+        cssCodeSplit: false,
+        assetsInlineLimit: 0,
       },
     };
   }
