@@ -19,12 +19,12 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Standalone routes that don't need sidebar or auth */}
+          {/* Public routes */}
+          <Route path="/auth" element={<AuthPage />} />
           <Route path="/embed/:id" element={<EmbedPage />} />
           <Route path="/preview/:id" element={<PreviewPage />} />
-          <Route path="/auth" element={<AuthPage />} />
           
-          {/* Routes with sidebar */}
+          {/* Layout routes */}
           <Route path="/" element={
             <div className="flex min-h-screen w-full">
               <AppSidebar />
@@ -46,8 +46,8 @@ function App() {
             </div>
           } />
           
-          {/* Catch-all route */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* Catch-all route - redirect to index */}
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
         <Toaster />
       </Router>
