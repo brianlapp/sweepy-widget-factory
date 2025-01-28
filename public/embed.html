@@ -21,9 +21,10 @@
         // Get the STORAGE_URL from the URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const version = urlParams.get('v');
+        const sweepstakesId = urlParams.get('id');
         const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
         
-        console.log('[Widget Verification] Starting initialization...');
+        console.log('[Widget Verification] Starting initialization...', { version, sweepstakesId });
         
         window.__WIDGET_STATE__ = {
             loadStartTime: Date.now(),
@@ -45,14 +46,6 @@
             window.__WIDGET_STATE__.verificationPoints[point] = status;
             console.log(`[Widget Verification] ${point}:`, status, details);
         }
-
-        // Listen for initialization message
-        window.addEventListener('message', function(event) {
-            const sweepstakesId = urlParams.get('id');
-            if (sweepstakesId) {
-                window.__initializeWidget(sweepstakesId);
-            }
-        });
 
         // Resource loading tracking
         const resourceObserver = new PerformanceObserver((list) => {
@@ -89,37 +82,15 @@
             configurable: true
         });
 
-        // Widget initialization function
-        window.__initializeWidget = function(sweepstakesId) {
-            logVerification('initialization', true, { sweepstakesId });
-            
-            try {
-                if (!window.initializeWidget) {
-                    throw new Error('Widget initialization function not found');
-                }
-                
-                window.initializeWidget(sweepstakesId);
-                window.__WIDGET_STATE__.widgetInitialized = true;
-                
-                window.parent.postMessage({ 
-                    type: 'WIDGET_READY',
-                    sweepstakesId 
-                }, '*');
-            } catch (error) {
-                logVerification('errorHandling', true, {
-                    message: error.message,
-                    stack: error.stack
-                });
-                throw error;
-            }
-        };
-
         // Load widget bundle with full URL
         const widgetScript = document.createElement('script');
         widgetScript.src = `${STORAGE_URL}/widget-bundle.js?v=${version}`;
         widgetScript.crossOrigin = 'anonymous';
         widgetScript.onload = () => {
             logVerification('resourcesLoaded', true, { script: 'widget-bundle.js' });
+            if (sweepstakesId && window.initializeWidget) {
+                window.initializeWidget(sweepstakesId);
+            }
         };
         widgetScript.onerror = (error) => {
             logVerification('errorHandling', true, { error });
