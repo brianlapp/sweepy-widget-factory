@@ -1,5 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
 
+function cleanEmbedHtml(content: string): string {
+  // Remove Vite development scripts
+  return content.replace(
+    /<script type="module">[\s\S]*?<\/script>\s*<script type="module" src="\/@vite\/client"><\/script>/,
+    ''
+  ).trim();
+}
+
 async function uploadFile(filename: string, content: string | Buffer) {
   console.log(`[Widget Upload] Uploading ${filename}...`);
   
@@ -111,7 +119,8 @@ export async function uploadWidget() {
       throw new Error('Embed HTML not found');
     }
     const embedHtmlContent = await embedHtmlResponse.text();
-    await uploadFile('embed.html', embedHtmlContent);
+    const cleanedEmbedHtml = cleanEmbedHtml(embedHtmlContent);
+    await uploadFile('embed.html', cleanedEmbedHtml);
 
     // 3. Upload the React bundle (widget-bundle.js)
     const response = await fetch('/dist/widget/widget-bundle.js');
