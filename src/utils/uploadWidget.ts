@@ -1,5 +1,42 @@
 import { supabase } from "@/integrations/supabase/client";
 
+async function uploadFile(filename: string, content: string | Buffer) {
+  console.log(`[Widget Upload] Uploading ${filename}...`);
+  
+  // Remove existing file
+  const { error: removeError } = await supabase.storage
+    .from('static')
+    .remove([filename]);
+    
+  if (removeError) {
+    console.warn(`[Widget Upload] Error removing existing ${filename}:`, removeError);
+    // Continue as file might not exist
+  }
+
+  // Create blob with proper content type
+  const blob = new Blob([content], { 
+    type: 'application/javascript; charset=utf-8'
+  });
+
+  // Upload with proper options
+  const uploadOptions = {
+    cacheControl: '0',
+    upsert: true,
+    contentType: 'application/javascript; charset=utf-8',
+  };
+
+  const { error: uploadError } = await supabase.storage
+    .from('static')
+    .upload(filename, blob, uploadOptions);
+
+  if (uploadError) {
+    console.error(`[Widget Upload] Error uploading ${filename}:`, uploadError);
+    throw uploadError;
+  }
+
+  console.log(`[Widget Upload] ${filename} uploaded successfully`);
+}
+
 export async function uploadWidget() {
   console.log('[Widget Upload] Starting widget files upload process...');
   
@@ -82,56 +119,18 @@ export async function uploadWidget() {
     
     console.log('[Widget Upload] Bundle hash:', bundleHash);
 
-    // Remove existing files
-    console.log('[Widget Upload] Removing existing widget files...');
-    const { error: removeError } = await supabase.storage
-      .from('static')
-      .remove([files.loader, files.bundle]);
-
-    if (removeError) {
-      console.warn('[Widget Upload] Error removing existing files:', removeError);
-      // Continue as files might not exist
-    }
-
-    // Upload options
-    const uploadOptions = {
-      cacheControl: '0',
-      upsert: true,
-      contentType: 'application/javascript; charset=utf-8',
-    };
-
     // Upload loader script
-    console.log('[Widget Upload] Uploading loader script...');
-    const loaderBlob = new Blob([widgetLoader], { 
-      type: 'application/javascript; charset=utf-8'
-    });
-
-    const { error: loaderError } = await supabase.storage
-      .from('static')
-      .upload(files.loader, loaderBlob, uploadOptions);
-
-    if (loaderError) {
-      console.error('[Widget Upload] Error uploading loader:', loaderError);
-      throw loaderError;
-    }
+    await uploadFile(files.loader, widgetLoader);
 
     // Upload bundle file
-    console.log('[Widget Upload] Uploading bundle...');
+    console.log('[Widget Upload] Reading bundle file...');
     try {
       const bundleResponse = await fetch(`/${viteOutputDir}/${files.bundle}`);
       if (!bundleResponse.ok) {
         throw new Error(`Failed to read bundle file: ${bundleResponse.statusText}`);
       }
       const bundleBlob = await bundleResponse.blob();
-      
-      const { error: bundleError } = await supabase.storage
-        .from('static')
-        .upload(files.bundle, bundleBlob, uploadOptions);
-
-      if (bundleError) {
-        console.error('[Widget Upload] Error uploading bundle:', bundleError);
-        throw bundleError;
-      }
+      await uploadFile(files.bundle, await bundleBlob.arrayBuffer());
     } catch (error) {
       console.error('[Widget Upload] Error processing bundle:', error);
       throw new Error(`Failed to process bundle: ${error.message}`);
