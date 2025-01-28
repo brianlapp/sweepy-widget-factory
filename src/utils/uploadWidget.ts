@@ -1,6 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import path from 'path';
-import fs from 'fs/promises';
 
 async function uploadFile(filename: string, content: string | Buffer) {
   console.log(`[Widget Upload] Uploading ${filename}...`);
@@ -107,25 +105,22 @@ export async function uploadWidget() {
     await uploadFile('widget.js', loaderScript);
 
     // 2. Upload the React bundle (widget-bundle.js)
-    try {
-      const bundlePath = path.join(process.cwd(), 'dist/widget/widget-bundle.js');
-      const bundleContent = await fs.readFile(bundlePath, 'utf-8');
-      
-      // Generate bundle hash from content
-      const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(bundleContent))
-        .then(hash => Array.from(new Uint8Array(hash))
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join(''));
-      
-      await uploadFile('widget-bundle.js', bundleContent);
-      
-      console.log('[Widget Upload] All files uploaded successfully');
-      return { bundleHash };
-
-    } catch (error) {
-      console.error('[Widget Upload] Error reading bundle file:', error);
+    const response = await fetch('/dist/widget/widget-bundle.js');
+    if (!response.ok) {
       throw new Error('Widget bundle not found. Did you run the build command?');
     }
+    
+    const bundleContent = await response.text();
+    await uploadFile('widget-bundle.js', bundleContent);
+    
+    // Generate bundle hash
+    const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(bundleContent))
+      .then(hash => Array.from(new Uint8Array(hash))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join(''));
+    
+    console.log('[Widget Upload] All files uploaded successfully');
+    return { bundleHash };
 
   } catch (error) {
     console.error('[Widget Upload] Error in upload process:', error);
