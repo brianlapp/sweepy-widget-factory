@@ -19,7 +19,7 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Standalone routes without sidebar */}
+          {/* Standalone routes that don't need sidebar or auth */}
           <Route path="/embed/:id" element={<EmbedPage />} />
           <Route path="/preview/:id" element={<PreviewPage />} />
           <Route path="/auth" element={<AuthPage />} />
@@ -34,16 +34,20 @@ function App() {
                   <Route path="readme" element={<ReadmePage />} />
                   <Route path="admin">
                     <Route index element={<AdminDashboard />} />
-                    <Route path="sweepstakes/new" element={<EditSweepstakesPage />} />
-                    <Route path="sweepstakes/:id/edit" element={<EditSweepstakesPage />} />
-                    <Route path="sweepstakes/:id/analytics" element={<SweepstakesAnalyticsPage />} />
+                    <Route path="sweepstakes">
+                      <Route path="new" element={<EditSweepstakesPage />} />
+                      <Route path=":id/edit" element={<EditSweepstakesPage />} />
+                      <Route path=":id/analytics" element={<SweepstakesAnalyticsPage />} />
+                    </Route>
                     <Route path="widget-versions" element={<WidgetVersionManager />} />
                   </Route>
-                  <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </main>
             </div>
           } />
+          
+          {/* Catch-all route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Toaster />
       </Router>
