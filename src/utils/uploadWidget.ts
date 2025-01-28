@@ -14,15 +14,16 @@ async function uploadFile(filename: string, content: string | Buffer) {
   }
 
   // Create blob with proper content type
+  const contentType = filename.endsWith('.html') ? 'text/html' : 'application/javascript';
   const blob = new Blob([content], { 
-    type: 'application/javascript; charset=utf-8'
+    type: `${contentType}; charset=utf-8`
   });
 
   // Upload with proper options
   const uploadOptions = {
     cacheControl: '0',
     upsert: true,
-    contentType: 'application/javascript; charset=utf-8',
+    contentType: `${contentType}; charset=utf-8`,
   };
 
   const { error: uploadError } = await supabase.storage
@@ -104,7 +105,15 @@ export async function uploadWidget() {
     // 1. Upload the loader script (widget.js)
     await uploadFile('widget.js', loaderScript);
 
-    // 2. Upload the React bundle (widget-bundle.js)
+    // 2. Upload embed.html
+    const embedHtmlResponse = await fetch('/public/embed.html');
+    if (!embedHtmlResponse.ok) {
+      throw new Error('Embed HTML not found');
+    }
+    const embedHtmlContent = await embedHtmlResponse.text();
+    await uploadFile('embed.html', embedHtmlContent);
+
+    // 3. Upload the React bundle (widget-bundle.js)
     const response = await fetch('/dist/widget/widget-bundle.js');
     if (!response.ok) {
       throw new Error('Widget bundle not found. Did you run the build command?');
