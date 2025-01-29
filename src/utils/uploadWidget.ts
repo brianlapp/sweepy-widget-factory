@@ -1,3 +1,5 @@
+import path from 'path';
+import fs from 'fs/promises';
 import { supabase } from "@/integrations/supabase/client";
 
 function cleanEmbedHtml(content: string): string {
@@ -11,22 +13,16 @@ export async function uploadWidget() {
   console.log('[Widget Upload] Starting widget files upload process...');
   
   try {
-    // Get the widget bundle from the build output
-    const bundleResponse = await fetch('/widget-bundle.js');
-    if (!bundleResponse.ok) {
-      throw new Error('Widget bundle not found in build output');
-    }
-    const bundleContent = await bundleResponse.text();
+    // Get the widget bundle from dist/widget
+    const bundlePath = path.join(process.cwd(), 'dist/widget/widget-bundle.js');
+    const bundleContent = await fs.readFile(bundlePath, 'utf-8');
 
     // Upload the widget bundle
     await uploadFile('widget-bundle.js', bundleContent, 'application/javascript');
     
-    // Upload embed.html
-    const embedHtmlResponse = await fetch('/public/embed.html');
-    if (!embedHtmlResponse.ok) {
-      throw new Error('Embed HTML not found');
-    }
-    const embedHtmlContent = await embedHtmlResponse.text();
+    // Get embed.html from public
+    const embedPath = path.join(process.cwd(), 'public/embed.html');
+    const embedHtmlContent = await fs.readFile(embedPath, 'utf-8');
     const cleanedEmbedHtml = cleanEmbedHtml(embedHtmlContent);
     await uploadFile('embed.html', cleanedEmbedHtml, 'text/html');
     
