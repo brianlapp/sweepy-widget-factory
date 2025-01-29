@@ -1,8 +1,18 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { exec } from 'https://deno.land/x/exec@0.0.5/mod.ts'
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 serve(async (req) => {
   try {
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { headers: corsHeaders })
+    }
+
     const { version } = await req.json()
     console.log('[Build Widget] Starting build for version:', version)
 
@@ -22,7 +32,7 @@ serve(async (req) => {
         success: true,
         bundle
       }),
-      { headers: { 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
     console.error('[Build Widget] Error:', error)
@@ -33,7 +43,7 @@ serve(async (req) => {
       }),
       { 
         status: 500,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   }
