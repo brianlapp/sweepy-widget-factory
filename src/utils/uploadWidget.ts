@@ -1,5 +1,3 @@
-import path from 'path';
-import fs from 'fs/promises';
 import { supabase } from "@/integrations/supabase/client";
 
 function cleanEmbedHtml(content: string): string {
@@ -7,38 +5,6 @@ function cleanEmbedHtml(content: string): string {
     /<script type="module">[\s\S]*?<\/script>\s*<script type="module" src="\/@vite\/client"><\/script>/,
     ''
   ).trim();
-}
-
-export async function uploadWidget() {
-  console.log('[Widget Upload] Starting widget files upload process...');
-  
-  try {
-    // Get the widget bundle from dist/widget
-    const bundlePath = path.join(process.cwd(), 'dist/widget/widget-bundle.js');
-    const bundleContent = await fs.readFile(bundlePath, 'utf-8');
-
-    // Upload the widget bundle
-    await uploadFile('widget-bundle.js', bundleContent, 'application/javascript');
-    
-    // Get embed.html from public
-    const embedPath = path.join(process.cwd(), 'public/embed.html');
-    const embedHtmlContent = await fs.readFile(embedPath, 'utf-8');
-    const cleanedEmbedHtml = cleanEmbedHtml(embedHtmlContent);
-    await uploadFile('embed.html', cleanedEmbedHtml, 'text/html');
-    
-    // Generate bundle hash
-    const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(bundleContent))
-      .then(hash => Array.from(new Uint8Array(hash))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join(''));
-    
-    console.log('[Widget Upload] All files uploaded successfully');
-    return { bundleHash };
-
-  } catch (error) {
-    console.error('[Widget Upload] Error in upload process:', error);
-    throw error;
-  }
 }
 
 async function uploadFile(filename: string, content: string | Buffer, contentType?: string) {
@@ -78,4 +44,32 @@ async function uploadFile(filename: string, content: string | Buffer, contentTyp
   }
 
   console.log(`[Widget Upload] ${filename} uploaded successfully`);
+}
+
+export async function uploadWidget() {
+  console.log('[Widget Upload] Starting widget files upload process...');
+  
+  try {
+    // Get the widget bundle using window.fs
+    const bundleContent = await window.fs.readFile('dist/widget/widget-bundle.js', { encoding: 'utf8' });
+    await uploadFile('widget-bundle.js', bundleContent, 'application/javascript');
+    
+    // Get embed.html
+    const embedHtmlContent = await window.fs.readFile('public/embed.html', { encoding: 'utf8' });
+    const cleanedEmbedHtml = cleanEmbedHtml(embedHtmlContent);
+    await uploadFile('embed.html', cleanedEmbedHtml, 'text/html');
+    
+    // Generate bundle hash
+    const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(bundleContent))
+      .then(hash => Array.from(new Uint8Array(hash))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join(''));
+    
+    console.log('[Widget Upload] All files uploaded successfully');
+    return { bundleHash };
+
+  } catch (error) {
+    console.error('[Widget Upload] Error in upload process:', error);
+    throw error;
+  }
 }
