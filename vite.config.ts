@@ -36,6 +36,11 @@ export default ({ mode }: { mode: string }): UserConfig => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    server: {
+      host: "::",
+      port: 8080,
+      middlewareMode: false,
+    },
     build: isWidget ? {
       outDir: 'dist/widget',
       emptyOutDir: true,
@@ -52,7 +57,10 @@ export default ({ mode }: { mode: string }): UserConfig => {
           inlineDynamicImports: true
         }
       }
-    } : undefined,
+    } : {
+      outDir: 'dist/app',
+      sourcemap: true
+    },
     base: isWidget ? './' : '/',
     define: {
       'process.env.VITE_APP_VERSION': JSON.stringify(version)
