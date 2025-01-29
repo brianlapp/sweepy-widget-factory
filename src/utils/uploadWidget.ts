@@ -1,7 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import { exec } from 'child_process';
-import path from 'path';
-import fs from 'fs';
 
 function cleanEmbedHtml(content: string): string {
   return content.replace(
@@ -53,35 +50,17 @@ export async function uploadWidget() {
   console.log('[Widget Upload] Starting widget files upload process...');
   
   try {
-    // Set BUILD_TARGET for widget build
-    process.env.BUILD_TARGET = 'widget';
-    
-    // Add debug logging
-    console.log('[Widget Deploy] Environment:', {
-      BUILD_TARGET: process.env.BUILD_TARGET,
-      config: path.resolve(process.cwd(), 'vite.config.ts'),
-      exists: fs.existsSync(path.resolve(process.cwd(), 'vite.widget.config.ts'))
-    });
-    
-    // Run the widget build
-    console.log('[Widget Upload] Running widget build...');
-    const buildResult = await new Promise((resolve, reject) => {
-      exec('vite build', (error, stdout, stderr) => {
-        if (error) {
-          console.error('[Widget Build] Error:', error);
-          reject(error);
-          return;
-        }
-        console.log('[Widget Build] Output:', stdout);
-        resolve(stdout);
-      });
+    // Call the build edge function
+    const { data: buildResult, error: buildError } = await supabase.functions.invoke('build-widget', {
+      body: { version: process.env.VITE_APP_VERSION }
     });
 
-    // Verify the bundle was created
-    const bundlePath = path.join(process.cwd(), 'dist/widget/widget-bundle.js');
-    if (!fs.existsSync(bundlePath)) {
-      throw new Error('Widget bundle not created by build process');
+    if (buildError) {
+      console.error('[Widget Build] Error:', buildError);
+      throw buildError;
     }
+
+    console.log('[Widget Build] Build completed:', buildResult);
 
     // Create the loader content with timestamp
     const timestamp = new Date().toISOString();
@@ -159,8 +138,13 @@ export async function uploadWidget() {
     const cleanedEmbedHtml = cleanEmbedHtml(embedHtmlContent);
     await uploadFile('embed.html', cleanedEmbedHtml, 'text/html');
 
+    // Get the widget bundle from the build function response
+    const bundleContent = buildResult.bundle;
+    if (!bundleContent) {
+      throw new Error('Widget bundle not found in build response');
+    }
+
     // Upload the React bundle (widget-bundle.js)
-    const bundleContent = fs.readFileSync(bundlePath, 'utf-8');
     await uploadFile('widget-bundle.js', bundleContent, 'application/javascript');
     
     // Generate bundle hash
