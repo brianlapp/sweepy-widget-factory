@@ -58,7 +58,7 @@ export async function uploadWidget(): Promise<{ bundleHash: string }> {
   console.log('[Widget Upload] Starting widget files upload process...', {
     timestamp: new Date().toISOString(),
     environment: import.meta.env.MODE,
-    customEvents: window.customEvents,
+    customEvents: window.customEvents || [],
     availableEvents: Object.keys(window).filter(key => key.startsWith('on')),
   });
   
@@ -121,8 +121,8 @@ export async function uploadWidget(): Promise<{ bundleHash: string }> {
     // Debug existing events
     console.log('[Widget Upload] Registering event handlers:', {
       timestamp: new Date().toISOString(),
-      buildComplete: window.customEvents?.includes('lovable:build-complete'),
-      buildWidget: window.customEvents?.includes('lovable:build-widget'),
+      buildComplete: window.customEvents?.includes('lovable:build-complete') || false,
+      buildWidget: window.customEvents?.includes('lovable:build-widget') || false,
     });
 
     // Add event listener for build completion
