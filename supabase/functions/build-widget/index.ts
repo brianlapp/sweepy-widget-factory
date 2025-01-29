@@ -15,50 +15,42 @@ serve(async (req) => {
     const { version } = await req.json()
     console.log('[Build Widget] Starting build for version:', version)
 
-    // Instead of building, we'll return the widget bundle content directly
-    // This is a simplified version that loads the widget and its dependencies
+    // Create a simplified widget bundle
     const bundle = `
     (function() {
       const version = '${version}';
       console.log('[Widget] Initializing version:', version);
       
-      // Core widget functionality
-      function initializeWidget(containerId, config) {
-        const container = document.getElementById(containerId);
+      function initializeWidget(sweepstakesId) {
+        console.log('[Widget] Initializing for sweepstakes:', sweepstakesId);
+        
+        const container = document.getElementById('root');
         if (!container) {
-          console.error('[Widget] Container not found:', containerId);
+          console.error('[Widget] Container not found');
           return;
         }
+
+        // Create widget content
+        const content = document.createElement('div');
+        content.innerHTML = \`
+          <div style="font-family: system-ui, sans-serif; padding: 1rem;">
+            <h2 style="margin: 0 0 1rem;">Sweepstakes Widget</h2>
+            <p>Version: \${version}</p>
+            <p>Sweepstakes ID: \${sweepstakesId}</p>
+          </div>
+        \`;
         
-        console.log('[Widget] Initializing in container:', containerId, 'with config:', config);
+        container.appendChild(content);
         
-        // Create iframe for widget content
-        const iframe = document.createElement('iframe');
-        iframe.style.width = '100%';
-        iframe.style.border = 'none';
-        iframe.style.minHeight = '400px';
+        // Handle height adjustments
+        const height = content.offsetHeight;
+        window.parent.postMessage({ type: 'setHeight', height }, '*');
         
-        // Set source with configuration
-        const params = new URLSearchParams(config);
-        iframe.src = \`\${window.location.origin}/embed?\${params.toString()}&v=\${version}\`;
-        
-        // Handle iframe messages
-        window.addEventListener('message', function(event) {
-          if (event.data && event.data.type === 'setHeight') {
-            iframe.style.height = event.data.height + 'px';
-          }
-        });
-        
-        container.appendChild(iframe);
         console.log('[Widget] Setup complete');
       }
       
-      // Expose widget initialization function
       window.initializeWidget = initializeWidget;
-      
-      console.log('[Widget] Ready to initialize');
-    })();
-    `;
+    })();`;
 
     return new Response(
       JSON.stringify({ 

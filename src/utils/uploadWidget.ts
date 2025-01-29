@@ -23,73 +23,15 @@ export async function uploadWidget() {
 
     console.log('[Widget Build] Build completed:', buildResult);
 
-    // Create the loader content with timestamp
-    const timestamp = new Date().toISOString();
-    const loaderScript = `
-    (function() {
-      const STORAGE_URL = 'https://xrycgmzgskcbhvdclflj.supabase.co/storage/v1/object/public/static';
-      const VERSION = '${process.env.VITE_APP_VERSION || '1.0.0'}';
-      const BUNDLE_TIMESTAMP = '${timestamp}';
-      
-      console.log('[Widget] Starting initialization');
-      console.log('[Widget] Bundle timestamp:', BUNDLE_TIMESTAMP);
-      
-      function loadScript(src) {
-        return new Promise((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = src;
-          script.onload = resolve;
-          script.onerror = reject;
-          document.head.appendChild(script);
-        });
-      }
+    // Get the widget bundle from the build function response
+    const bundleContent = buildResult.bundle;
+    if (!bundleContent) {
+      throw new Error('Widget bundle not found in build response');
+    }
 
-      async function initialize() {
-        const container = document.getElementById('sweepstakes-widget');
-        if (!container) {
-          console.error('[Widget] Container not found');
-          return;
-        }
-
-        const sweepstakesId = container.getAttribute('data-sweepstakes-id');
-        if (!sweepstakesId) {
-          console.error('[Widget] No sweepstakes ID provided');
-          return;
-        }
-
-        console.log('[Widget] Creating iframe for sweepstakes:', sweepstakesId);
-        
-        const iframe = document.createElement('iframe');
-        iframe.style.width = '100%';
-        iframe.style.border = 'none';
-        iframe.style.minHeight = '400px';
-        iframe.allow = 'clipboard-write';
-        
-        const embedUrl = \`\${STORAGE_URL}/embed.html?id=\${sweepstakesId}&v=\${VERSION}&t=\${BUNDLE_TIMESTAMP}\`;
-        iframe.src = embedUrl;
-        
-        window.addEventListener('message', function(event) {
-          if (event.data && event.data.type === 'setHeight') {
-            iframe.style.height = event.data.height + 'px';
-          }
-        });
-
-        container.appendChild(iframe);
-        console.log('[Widget] Iframe created and added to container');
-      }
-
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initialize);
-      } else {
-        initialize();
-      }
-
-      window.initializeWidget = initialize;
-    })();`;
-
-    // Upload the loader script (widget.js)
-    await uploadFile('widget.js', loaderScript, 'application/javascript');
-
+    // Upload the widget bundle (widget-bundle.js)
+    await uploadFile('widget-bundle.js', bundleContent, 'application/javascript');
+    
     // Upload embed.html
     const embedHtmlResponse = await fetch('/public/embed.html');
     if (!embedHtmlResponse.ok) {
@@ -98,15 +40,6 @@ export async function uploadWidget() {
     const embedHtmlContent = await embedHtmlResponse.text();
     const cleanedEmbedHtml = cleanEmbedHtml(embedHtmlContent);
     await uploadFile('embed.html', cleanedEmbedHtml, 'text/html');
-
-    // Get the widget bundle from the build function response
-    const bundleContent = buildResult.bundle;
-    if (!bundleContent) {
-      throw new Error('Widget bundle not found in build response');
-    }
-
-    // Upload the React bundle (widget-bundle.js)
-    await uploadFile('widget-bundle.js', bundleContent, 'application/javascript');
     
     // Generate bundle hash
     const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(bundleContent))
