@@ -1,4 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
+import { exec } from 'child_process';
+import path from 'path';
+import fs from 'fs';
 
 function cleanEmbedHtml(content: string): string {
   return content.replace(
@@ -50,6 +53,36 @@ export async function uploadWidget() {
   console.log('[Widget Upload] Starting widget files upload process...');
   
   try {
+    // Set BUILD_TARGET for widget build
+    process.env.BUILD_TARGET = 'widget';
+    
+    // Add debug logging
+    console.log('[Widget Deploy] Environment:', {
+      BUILD_TARGET: process.env.BUILD_TARGET,
+      config: path.resolve(process.cwd(), 'vite.config.ts'),
+      exists: fs.existsSync(path.resolve(process.cwd(), 'vite.widget.config.ts'))
+    });
+    
+    // Run the widget build
+    console.log('[Widget Upload] Running widget build...');
+    const buildResult = await new Promise((resolve, reject) => {
+      exec('vite build', (error, stdout, stderr) => {
+        if (error) {
+          console.error('[Widget Build] Error:', error);
+          reject(error);
+          return;
+        }
+        console.log('[Widget Build] Output:', stdout);
+        resolve(stdout);
+      });
+    });
+
+    // Verify the bundle was created
+    const bundlePath = path.join(process.cwd(), 'dist/widget/widget-bundle.js');
+    if (!fs.existsSync(bundlePath)) {
+      throw new Error('Widget bundle not created by build process');
+    }
+
     // Create the loader content with timestamp
     const timestamp = new Date().toISOString();
     const loaderScript = `
@@ -127,12 +160,7 @@ export async function uploadWidget() {
     await uploadFile('embed.html', cleanedEmbedHtml, 'text/html');
 
     // Upload the React bundle (widget-bundle.js)
-    const response = await fetch('/dist/widget/widget-bundle.js');
-    if (!response.ok) {
-      throw new Error('Widget bundle not found. Did you run the build command?');
-    }
-    
-    const bundleContent = await response.text();
+    const bundleContent = fs.readFileSync(bundlePath, 'utf-8');
     await uploadFile('widget-bundle.js', bundleContent, 'application/javascript');
     
     // Generate bundle hash
