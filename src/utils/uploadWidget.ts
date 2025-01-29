@@ -7,45 +7,6 @@ function cleanEmbedHtml(content: string): string {
   ).trim();
 }
 
-async function uploadFile(filename: string, content: string | Buffer, contentType?: string) {
-  console.log(`[Widget Upload] Uploading ${filename}...`);
-  
-  // Remove existing file
-  const { error: removeError } = await supabase.storage
-    .from('static')
-    .remove([filename]);
-    
-  if (removeError) {
-    console.warn(`[Widget Upload] Error removing existing ${filename}:`, removeError);
-  }
-
-  // Create blob with proper content type
-  const type = contentType || (filename.endsWith('.html') ? 'text/html' : 
-                              filename.endsWith('.js') ? 'application/javascript' : 
-                              'text/plain');
-  
-  const blob = new Blob([content], { 
-    type: `${type}; charset=utf-8`
-  });
-
-  const uploadOptions = {
-    cacheControl: '0',
-    upsert: true,
-    contentType: `${type}; charset=utf-8`,
-  };
-
-  const { error: uploadError } = await supabase.storage
-    .from('static')
-    .upload(filename, blob, uploadOptions);
-
-  if (uploadError) {
-    console.error(`[Widget Upload] Error uploading ${filename}:`, uploadError);
-    throw uploadError;
-  }
-
-  console.log(`[Widget Upload] ${filename} uploaded successfully`);
-}
-
 export async function uploadWidget() {
   console.log('[Widget Upload] Starting widget files upload process...');
   
@@ -160,4 +121,43 @@ export async function uploadWidget() {
     console.error('[Widget Upload] Error in upload process:', error);
     throw error;
   }
+}
+
+async function uploadFile(filename: string, content: string | Buffer, contentType?: string) {
+  console.log(`[Widget Upload] Uploading ${filename}...`);
+  
+  // Remove existing file
+  const { error: removeError } = await supabase.storage
+    .from('static')
+    .remove([filename]);
+    
+  if (removeError) {
+    console.warn(`[Widget Upload] Error removing existing ${filename}:`, removeError);
+  }
+
+  // Create blob with proper content type
+  const type = contentType || (filename.endsWith('.html') ? 'text/html' : 
+                              filename.endsWith('.js') ? 'application/javascript' : 
+                              'text/plain');
+  
+  const blob = new Blob([content], { 
+    type: `${type}; charset=utf-8`
+  });
+
+  const uploadOptions = {
+    cacheControl: '0',
+    upsert: true,
+    contentType: `${type}; charset=utf-8`,
+  };
+
+  const { error: uploadError } = await supabase.storage
+    .from('static')
+    .upload(filename, blob, uploadOptions);
+
+  if (uploadError) {
+    console.error(`[Widget Upload] Error uploading ${filename}:`, uploadError);
+    throw uploadError;
+  }
+
+  console.log(`[Widget Upload] ${filename} uploaded successfully`);
 }
