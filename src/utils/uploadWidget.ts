@@ -50,6 +50,15 @@ export async function uploadWidget() {
   console.log('[Widget Upload] Starting widget files upload process...');
   
   try {
+    // Debug file system availability
+    console.log('[Widget Upload] Environment check:', {
+      windowFs: !!window.fs,
+      readFile: window.fs?.readFile,
+      availableApis: Object.keys(window),
+      viteEnv: import.meta.env,
+      mode: import.meta.env.MODE
+    });
+
     // Get the widget bundle using window.fs
     const bundleContent = await window.fs.readFile('dist/widget/widget-bundle.js', { encoding: 'utf8' });
     await uploadFile('widget-bundle.js', bundleContent, 'application/javascript');
