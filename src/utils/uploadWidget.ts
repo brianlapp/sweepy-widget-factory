@@ -1,5 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
 
+// Event handler type for build completion
+type BuildCompleteEvent = CustomEvent<{
+  files: {
+    'widget-bundle.js': string;
+    'embed.html': string;
+  };
+}>;
+
 function cleanEmbedHtml(content: string): string {
   return content.replace(
     /<script type="module">[\s\S]*?<\/script>\s*<script type="module" src="\/@vite\/client"><\/script>/,
@@ -46,39 +54,45 @@ async function uploadFile(filename: string, content: string | Buffer, contentTyp
   console.log(`[Widget Upload] ${filename} uploaded successfully`);
 }
 
-export async function uploadWidget() {
+export async function uploadWidget(): Promise<{ bundleHash: string }> {
   console.log('[Widget Upload] Starting widget files upload process...');
   
-  try {
-    // Debug file system availability
-    console.log('[Widget Upload] Environment check:', {
-      windowFs: !!window.fs,
-      readFile: window.fs?.readFile,
-      availableApis: Object.keys(window),
-      viteEnv: import.meta.env,
-      mode: import.meta.env.MODE
-    });
+  return new Promise((resolve, reject) => {
+    // Listen for the build complete event
+    const handleBuildComplete = async (event: BuildCompleteEvent) => {
+      try {
+        const { files } = event.detail;
+        console.log('[Widget Upload] Build complete, files received:', Object.keys(files));
 
-    // Get the widget bundle using window.fs
-    const bundleContent = await window.fs.readFile('dist/widget/widget-bundle.js', { encoding: 'utf8' });
-    await uploadFile('widget-bundle.js', bundleContent, 'application/javascript');
-    
-    // Get embed.html
-    const embedHtmlContent = await window.fs.readFile('public/embed.html', { encoding: 'utf8' });
-    const cleanedEmbedHtml = cleanEmbedHtml(embedHtmlContent);
-    await uploadFile('embed.html', cleanedEmbedHtml, 'text/html');
-    
-    // Generate bundle hash
-    const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(bundleContent))
-      .then(hash => Array.from(new Uint8Array(hash))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join(''));
-    
-    console.log('[Widget Upload] All files uploaded successfully');
-    return { bundleHash };
+        // Upload widget bundle
+        await uploadFile('widget-bundle.js', files['widget-bundle.js'], 'application/javascript');
+        
+        // Clean and upload embed.html
+        const cleanedEmbedHtml = cleanEmbedHtml(files['embed.html']);
+        await uploadFile('embed.html', cleanedEmbedHtml, 'text/html');
+        
+        // Generate bundle hash
+        const bundleHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(files['widget-bundle.js']))
+          .then(hash => Array.from(new Uint8Array(hash))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join(''));
 
-  } catch (error) {
-    console.error('[Widget Upload] Error in upload process:', error);
-    throw error;
-  }
+        console.log('[Widget Upload] All files uploaded successfully');
+        window.removeEventListener('lovable:build-complete', handleBuildComplete as EventListener);
+        resolve({ bundleHash });
+
+      } catch (error) {
+        console.error('[Widget Upload] Error in upload process:', error);
+        window.removeEventListener('lovable:build-complete', handleBuildComplete as EventListener);
+        reject(error);
+      }
+    };
+
+    // Add event listener for build completion
+    window.addEventListener('lovable:build-complete', handleBuildComplete as EventListener);
+    
+    // Dispatch event to trigger build
+    window.dispatchEvent(new CustomEvent('lovable:build-widget'));
+    console.log('[Widget Upload] Triggered widget build...');
+  });
 }
